@@ -35,3 +35,5 @@ jobs:
           releaseBody: 'New version available.'
           releaseDraft: false
           prerelease: false
+          updaterJsonPreferNsis: false
+          includeUpdaterJson: true

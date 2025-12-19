@@ -30,7 +30,7 @@
     "icon": [
       "icons/icon.ico"
     ],
-    "targets": ["msi"],
+    "targets": ["nsis"],
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",

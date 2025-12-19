@@ -23,65 +23,15 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli
-
-      - name: Build exe only
-        run: cargo tauri build --no-bundle
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
-      - name: Download rcedit
-        run: |
-          Invoke-WebRequest -Uri "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe" -OutFile "rcedit.exe"
-
-      - name: Fix icon in exe
-        run: ./rcedit.exe "src-tauri/target/release/claude-prompts.exe" --set-icon "src-tauri/icons/icon.ico"
-
-      - name: Build MSI with fixed exe
-        run: cargo tauri build --bundles msi
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
-      - name: Get version from tag
-        id: version
-        run: |
-          $version = "${{ github.ref_name }}" -replace '^v', ''
-          echo "version=$version" >> $env:GITHUB_OUTPUT
-
-      - name: Create latest.json for updater
-        run: |
-          $version = "${{ steps.version.outputs.version }}"
-          $msiFile = Get-ChildItem -Path "src-tauri/target/release/bundle/msi/*.msi" | Select-Object -First 1
-          $sigFile = "$($msiFile.FullName).sig"
-          $signature = Get-Content $sigFile -Raw
-          $repoUrl = "${{ github.server_url }}/${{ github.repository }}"
-          $downloadUrl = "$repoUrl/releases/download/${{ github.ref_name }}/$($msiFile.Name)"
-          
-          $json = @{
-            version = $version
-            notes = "Новая версия приложения."
-            pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-            platforms = @{
-              "windows-x86_64" = @{
-                signature = $signature.Trim()
-                url = $downloadUrl
-              }
-            }
-          } | ConvertTo-Json -Depth 10
-          
-          $json | Out-File -FilePath "latest.json" -Encoding utf8
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Claude AI Prompts v${{ steps.version.outputs.version }}
-          body: 'Новая версия приложения.'
-          files: |
-            src-tauri/target/release/bundle/msi/*.msi
-            src-tauri/target/release/bundle/msi/*.msi.sig
-            latest.json
+      - name: Build and release
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: v__VERSION__
+          releaseName: 'Claude AI Prompts v__VERSION__'
+          releaseBody: 'New version available.'
+          releaseDraft: false
+          prerelease: false

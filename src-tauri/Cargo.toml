@@ -1,6 +1,6 @@
 [package]
 name = "ai-prompts-manager"
-version = "2.10.4"
+version = "2.10.5"
 description = "AI Prompts Manager App"
 authors = ["Wicked"]
 edition = "2021"

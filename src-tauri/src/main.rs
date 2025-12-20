@@ -4,9 +4,8 @@ use std::fs;
 
 #[tauri::command]
 fn reset_app_data() -> Result<(), String> {
-    // Получаем путь к AppData/Local
     if let Some(local_app_data) = dirs::data_local_dir() {
-        let app_folder = local_app_data.join("com.claude.prompts");
+        let app_folder = local_app_data.join("com.ai.prompts.manager");
         if app_folder.exists() {
             fs::remove_dir_all(&app_folder).map_err(|e| e.to_string())?;
         }

@@ -31,7 +31,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Claude AI Prompts ${{ github.ref_name }}'
+          releaseName: 'AI Prompts Manager ${{ github.ref_name }}'
           releaseBody: 'New version available.'
           releaseDraft: false
           prerelease: false

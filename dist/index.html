@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Claude AI Prompts</title>
+    <title>AI Prompts Manager</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -630,15 +630,14 @@
 
     <script>
         // --- КОНФИГУРАЦИЯ ЛОКАЛЬНОГО ХРАНЕНИЯ ---
-        const LOCAL_STORAGE_KEY = 'claude-ai-prompts-data';
-        const LOCAL_STORAGE_KEY_TASK4 = 'claude-ai-prompts-data-task4';
-        const LANGUAGE_STORAGE_KEY = 'claude-ai-prompts-language';
-        const TAB_STORAGE_KEY = 'claude-ai-prompts-tab';
-        
+        const LOCAL_STORAGE_KEY = 'ai-prompts-manager-data';
+        const LOCAL_STORAGE_KEY_TASK4 = 'ai-prompts-manager-data-task4';
+        const LANGUAGE_STORAGE_KEY = 'ai-prompts-manager-language';
+        const TAB_STORAGE_KEY = 'ai-prompts-manager-tab';        
         // Текущая вкладка
         let currentTab = localStorage.getItem(TAB_STORAGE_KEY) || 'default';
-        const DATA_VERSION_KEY = 'claude-ai-prompts-version';
-        const APP_VERSION_KEY = 'claude-ai-prompts-app-version';
+        const DATA_VERSION_KEY = 'ai-prompts-manager-version';
+        const APP_VERSION_KEY = 'ai-prompts-manager-app-version';
         const CURRENT_DATA_VERSION = 4; // Увеличить при изменении структуры блоков
         const CLAUDE_NEW_CHAT_URL = 'https://claude.ai/new'; 
         

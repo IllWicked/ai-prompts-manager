@@ -18,6 +18,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![reset_app_data])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

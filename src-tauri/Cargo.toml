@@ -1,6 +1,6 @@
 [package]
 name = "claude-prompts"
-version = "2.10.2"
+version = "2.10.3"
 description = "Claude AI Prompts App"
 authors = ["Wicked"]
 edition = "2021"

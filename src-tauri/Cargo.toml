@@ -1,6 +1,6 @@
 [package]
 name = "claude-prompts"
-version = "2.10.0"
+version = "2.10.1"
 description = "Claude AI Prompts Manager"
 authors = ["you"]
 edition = "2021"

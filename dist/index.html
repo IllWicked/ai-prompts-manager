@@ -1507,7 +1507,7 @@
             <!-- Версия и кнопка закрытия -->
             <div class="pt-3 border-t border-gray-200 flex items-center justify-between">
                 <span id="version-label" class="text-xs text-gray-400 cursor-default select-none">
-                    Версия: <span id="settings-version">3.0.0</span>
+                    Версия: <span id="settings-version">3.1.0</span>
                 </span>
                 <button onclick="hideSettingsModal()" class="px-4 py-2 text-sm font-medium text-white bg-claude-accent rounded-lg hover:opacity-90 transition-colors">
                     Закрыть
@@ -5996,7 +5996,7 @@ Hero-изображение (№1):
                 window.__TAURI__.core.invoke('plugin:app|version').then(v => {
                     versionSpan.textContent = v;
                 }).catch(() => {
-                    versionSpan.textContent = '3.0.0';
+                    versionSpan.textContent = '3.1.0';
                 });
             }
             

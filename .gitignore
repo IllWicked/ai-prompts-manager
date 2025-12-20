@@ -1,5 +1,6 @@
 # Приватный ключ подписи - НИКОГДА не загружать!
-.tauri/keys/private.key
+.tauri/keys
+src-tauri/target/
 
 # Rust build
 target/

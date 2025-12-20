@@ -26,6 +26,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "publisher": "Wicked",
     "icon": [
       "icons/icon.ico"
@@ -40,9 +41,9 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/YOUR_USERNAME/claude-prompts-app/releases/latest/download/latest.json"
+        "https://github.com/IllWicked/claude-ai-prompts/releases/latest/download/latest.json"
       ],
-      "pubkey": "YOUR_PUBLIC_KEY_HERE"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQxQzkzRTVFOEMwQTdFRDYKUldUV2ZncU1YajdKMGJqUCtnaUY4MytDS3hZQkp3NUcvRGlYY3c3WFU1dEluL2Rwek5TWUZoeVYK"
     }
   }
 }

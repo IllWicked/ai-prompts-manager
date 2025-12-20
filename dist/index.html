@@ -4164,9 +4164,11 @@ Hero-изображение (№1):
                 
                 if (needsReset && savedAppVersion !== '0.0.0') {
                     console.log(`App updated: ${savedAppVersion} → ${currentAppVersion}, resetting data...`);
+                    // Сбрасываем только данные вкладок (контент)
+                    localStorage.removeItem(TABS_STORAGE_KEY);
                     localStorage.removeItem(LOCAL_STORAGE_KEY);
                     localStorage.removeItem(LOCAL_STORAGE_KEY_TASK4);
-                    // Язык и вкладку сохраняем
+                    // НЕ трогаем: SETTINGS_STORAGE_KEY (тема, автообновление), язык
                 }
                 
                 // Сохраняем текущую версию
@@ -4196,7 +4198,6 @@ Hero-изображение (№1):
          */
         async function initializePersistence() {
             await checkAppVersionAndReset(); // Проверка версии и сброс при обновлении
-            loadPrompts();
             setupModalListeners(); // Настройка слушателей модального окна
         }
 
@@ -6459,11 +6460,12 @@ Hero-изображение (№1):
 
             // Асинхронная инициализация
             (async () => {
-                initializeDefaultTabs(); // Инициализируем дефолтные вкладки если их нет
                 // Инициализация темы
                 initThemeListener();
                 
-                await initializePersistence();
+                await initializePersistence(); // Сначала проверка версии и сброс при обновлении
+                initializeDefaultTabs(); // Потом инициализируем дефолтные вкладки если их нет
+                loadPrompts(); // Загружаем промпты после инициализации вкладок
                 initTabSelector();
                 initLanguageSelector();
                 

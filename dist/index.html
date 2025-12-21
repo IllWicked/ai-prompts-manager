@@ -1441,7 +1441,7 @@
                 
                 <!-- Патчноуты -->
                 <div id="update-notes" class="hidden mb-4">
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Что нового:</p>
+                    <p class="text-xs font-medium text-gray-500 tracking-wider mb-2">Что нового:</p>
                     <div id="update-notes-content" class="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 max-h-[200px] overflow-y-auto border border-gray-100"></div>
                 </div>
                 
@@ -1530,7 +1530,7 @@
             <!-- Версия и кнопка закрытия -->
             <div class="pt-3 border-t border-gray-200 flex items-center justify-between">
                 <span id="version-label" class="text-xs text-gray-400 cursor-default select-none">
-                    Версия: <span id="settings-version">3.4.3</span>
+                    Версия: <span id="settings-version">3.4.4</span>
                 </span>
                 <button onclick="hideSettingsModal()" class="px-4 py-2 text-sm font-medium text-white bg-claude-accent rounded-lg hover:opacity-90 transition-colors">
                     Закрыть
@@ -6337,7 +6337,7 @@ CSS-стили НЕ добавлять — использовать только
                 window.__TAURI__.core.invoke('plugin:app|version').then(v => {
                     versionSpan.textContent = v;
                 }).catch(() => {
-                    versionSpan.textContent = '3.4.3';
+                    versionSpan.textContent = '3.4.4';
                 });
             }
             

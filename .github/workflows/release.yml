@@ -18,8 +18,8 @@ jobs:
       - name: Read release notes
         id: notes
         run: |
-          if (Test-Path "RELEASE_NOTES.md") {
-            $content = Get-Content "RELEASE_NOTES.md" -Raw
+          if (Test-Path "RELEASE_NOTES.txt") {
+            $content = Get-Content "RELEASE_NOTES.txt" -Raw
           } else {
             $content = "New version available."
           }

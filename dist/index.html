@@ -1530,7 +1530,7 @@
             <!-- Версия и кнопка закрытия -->
             <div class="pt-3 border-t border-gray-200 flex items-center justify-between">
                 <span id="version-label" class="text-xs text-gray-400 cursor-default select-none">
-                    Версия: <span id="settings-version">3.4.2</span>
+                    Версия: <span id="settings-version">3.4.3</span>
                 </span>
                 <button onclick="hideSettingsModal()" class="px-4 py-2 text-sm font-medium text-white bg-claude-accent rounded-lg hover:opacity-90 transition-colors">
                     Закрыть
@@ -1768,6 +1768,7 @@
                 }]
             };
             saveAllTabs(tabs);
+            saveToUndoStack(); // Сохраняем состояние после изменения
             return id;
         }
         
@@ -1777,6 +1778,7 @@
             if (tabs[id]) {
                 tabs[id] = { ...tabs[id], ...updates };
                 saveAllTabs(tabs);
+                saveToUndoStack(); // Сохраняем состояние после изменения
             }
         }
         
@@ -1794,6 +1796,7 @@
             saveAllTabs(tabs);
             // Удаляем данные контента вкладки
             localStorage.removeItem(`ai-prompts-manager-${id}`);
+            saveToUndoStack(); // Сохраняем состояние после изменения
             return true;
         }
         
@@ -1817,6 +1820,7 @@
             };
             items.push(newBlock);
             saveAllTabs(tabs);
+            saveToUndoStack(); // Сохраняем состояние после изменения
             return newBlock.id;
         }
         
@@ -1837,6 +1841,7 @@
                 id: generateItemId()
             });
             saveAllTabs(tabs);
+            saveToUndoStack(); // Сохраняем состояние после изменения
         }
         
         function removeItemFromTab(tabId, itemId) {
@@ -1856,6 +1861,7 @@
             saveToUndoStack(); // Сохраняем состояние перед изменением
             tabs[tabId].items = items.filter(i => i.id !== itemId);
             saveAllTabs(tabs);
+            saveToUndoStack(); // Сохраняем состояние после изменения
         }
         
         function removeBlockFromTab(tabId, blockNumber) {
@@ -1882,6 +1888,7 @@
             if (item) {
                 item.title = newTitle;
                 saveAllTabs(tabs);
+                saveToUndoStack(); // Сохраняем состояние после изменения
             }
         }
         
@@ -1914,6 +1921,7 @@
             if (item) {
                 item.instruction = instruction;
                 saveAllTabs(tabs);
+                saveToUndoStack(); // Сохраняем состояние после изменения
             }
         }
         
@@ -5223,6 +5231,7 @@ CSS-стили НЕ добавлять — использовать только
             
             tab.items = newItems;
             saveAllTabs(tabs);
+            saveToUndoStack(); // Сохраняем состояние после изменения
         }
         
         // --- ИНСТРУКЦИИ БЛОКОВ (wrappers) ---
@@ -6328,7 +6337,7 @@ CSS-стили НЕ добавлять — использовать только
                 window.__TAURI__.core.invoke('plugin:app|version').then(v => {
                     versionSpan.textContent = v;
                 }).catch(() => {
-                    versionSpan.textContent = '3.4.2';
+                    versionSpan.textContent = '3.4.3';
                 });
             }
             

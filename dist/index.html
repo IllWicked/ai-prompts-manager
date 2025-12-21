@@ -1530,7 +1530,7 @@
             <!-- Версия и кнопка закрытия -->
             <div class="pt-3 border-t border-gray-200 flex items-center justify-between">
                 <span id="version-label" class="text-xs text-gray-400 cursor-default select-none">
-                    Версия: <span id="settings-version">3.4.1</span>
+                    Версия: <span id="settings-version">3.4.2</span>
                 </span>
                 <button onclick="hideSettingsModal()" class="px-4 py-2 text-sm font-medium text-white bg-claude-accent rounded-lg hover:opacity-90 transition-colors">
                     Закрыть
@@ -1752,6 +1752,7 @@
         }
         
         function createNewTab(name) {
+            saveToUndoStack(); // Сохраняем состояние перед изменением
             const tabs = getAllTabs();
             const id = generateTabId();
             const maxOrder = Math.max(0, ...Object.values(tabs).map(t => t.order || 0));
@@ -1771,6 +1772,7 @@
         }
         
         function updateTab(id, updates) {
+            saveToUndoStack(); // Сохраняем состояние перед изменением
             const tabs = getAllTabs();
             if (tabs[id]) {
                 tabs[id] = { ...tabs[id], ...updates };
@@ -1787,6 +1789,7 @@
                 return false;
             }
             
+            saveToUndoStack(); // Сохраняем состояние перед изменением
             delete tabs[id];
             saveAllTabs(tabs);
             // Удаляем данные контента вкладки
@@ -1795,6 +1798,7 @@
         }
         
         function addBlockToTab(tabId) {
+            saveToUndoStack(); // Сохраняем состояние перед изменением
             const tabs = getAllTabs();
             if (!tabs[tabId]) return;
             
@@ -1817,6 +1821,7 @@
         }
         
         function addChatBreakToTab(tabId) {
+            saveToUndoStack(); // Сохраняем состояние перед изменением
             const tabs = getAllTabs();
             if (!tabs[tabId]) return;
             
@@ -1848,6 +1853,7 @@
                 return;
             }
             
+            saveToUndoStack(); // Сохраняем состояние перед изменением
             tabs[tabId].items = items.filter(i => i.id !== itemId);
             saveAllTabs(tabs);
         }
@@ -1862,6 +1868,7 @@
         }
         
         function updateBlockTitle(tabId, blockNumber, newTitle) {
+            saveToUndoStack(); // Сохраняем состояние перед изменением
             const tabs = getAllTabs();
             if (!tabs[tabId] || !tabs[tabId].items) return;
             
@@ -1895,6 +1902,7 @@
         
         // Добавление инструкции к блоку
         function updateBlockInstruction(tabId, blockNumber, instruction) {
+            saveToUndoStack(); // Сохраняем состояние перед изменением
             const tabs = getAllTabs();
             if (!tabs[tabId] || !tabs[tabId].items) return;
             
@@ -2019,21 +2027,43 @@
         }
 
         // --- СИСТЕМА UNDO/REDO ---
-        const MAX_HISTORY_SIZE = 10;
+        const MAX_HISTORY_SIZE = 20;
         let undoStack = []; // Стек для отмены
         let redoStack = []; // Стек для повтора
         let isUndoRedoAction = false; // Флаг для предотвращения записи при undo/redo
 
         /**
-         * Сохраняет текущее состояние всех промптов в стек отмены
+         * Сохраняет полное состояние (промпты + структура tabs) в стек отмены
          */
         function saveToUndoStack() {
             if (isUndoRedoAction) return;
             
-            const currentState = {};
+            // Сохраняем контент textarea
+            const textareaState = {};
             document.querySelectorAll('.textarea-content').forEach(textarea => {
-                currentState[textarea.dataset.number] = textarea.value;
+                textareaState[textarea.dataset.number] = textarea.value;
             });
+            
+            // Сохраняем структуру всех tabs
+            const tabsState = JSON.parse(JSON.stringify(getAllTabs()));
+            
+            // Сохраняем localStorage данные для всех вкладок
+            const localStorageState = {};
+            Object.keys(tabsState).forEach(tabId => {
+                let key;
+                if (tabId === 'default') key = LOCAL_STORAGE_KEY;
+                else if (tabId === 'task4') key = LOCAL_STORAGE_KEY_TASK4;
+                else key = `ai-prompts-manager-data-${tabId}`;
+                const data = localStorage.getItem(key);
+                if (data) localStorageState[tabId] = data;
+            });
+            
+            const currentState = {
+                textarea: textareaState,
+                tabs: tabsState,
+                localStorage: localStorageState,
+                currentTab: currentTab
+            };
             
             // Проверяем, изменилось ли состояние
             if (undoStack.length > 0) {
@@ -2117,14 +2147,45 @@
          * Применяет состояние к textarea
          */
         function applyState(state) {
-            document.querySelectorAll('.textarea-content').forEach(textarea => {
-                const number = textarea.dataset.number;
-                if (state[number] !== undefined) {
-                    textarea.value = state[number];
-                    autoResizeTextarea(textarea);
-                    saveToLocalStorage(number, state[number]);
+            // Проверяем формат состояния (новый или старый)
+            if (state.tabs) {
+                // Новый формат - полное состояние
+                
+                // Восстанавливаем структуру tabs
+                saveAllTabs(state.tabs);
+                
+                // Восстанавливаем localStorage данные
+                if (state.localStorage) {
+                    Object.keys(state.localStorage).forEach(tabId => {
+                        let key;
+                        if (tabId === 'default') key = LOCAL_STORAGE_KEY;
+                        else if (tabId === 'task4') key = LOCAL_STORAGE_KEY_TASK4;
+                        else key = `ai-prompts-manager-data-${tabId}`;
+                        localStorage.setItem(key, state.localStorage[tabId]);
+                    });
                 }
-            });
+                
+                // Переключаемся на нужную вкладку и перезагружаем
+                if (state.currentTab && state.currentTab !== currentTab) {
+                    currentTab = state.currentTab;
+                    localStorage.setItem(CURRENT_TAB_KEY, currentTab);
+                }
+                
+                // Перезагружаем интерфейс
+                loadPrompts();
+                window.updateTabSelectorUI?.();
+                
+            } else {
+                // Старый формат - только textarea (для обратной совместимости)
+                document.querySelectorAll('.textarea-content').forEach(textarea => {
+                    const number = textarea.dataset.number;
+                    if (state[number] !== undefined) {
+                        textarea.value = state[number];
+                        autoResizeTextarea(textarea);
+                        saveToLocalStorage(number, state[number]);
+                    }
+                });
+            }
         }
 
         /**
@@ -4004,9 +4065,189 @@ Hero-изображение (№1):
 Посчитай теги <img> в HTML. Если их не ровно 3 — исправь.`, instruction: { type: "info", text: "Добавить файлы index1-30.md в чат" } }
         ];
         
+        // Данные для вкладки ADAPTATION (адаптация контента)
+        const PROMPTS_DATA_ADAPTATION = [
+            { number: "1", title: "Адаптация на английском (без перевода)", content: `Ты — профессиональный локализатор контента.
+Задача: Адаптировать статью с австралийского сайта под Великобританию (Англию).
+
+Входные данные: HTML-страница с оригинальной статьёй.
+
+При этом в первую очередь (если речь идёт о платёжных системах и провайдерах игр) ты должен провести анализ - действуют ли эти системы и провайдеры в указанном на территории Великобритании. Если нет, ты должен сразу об этом сообщить (на русском языке) и не приступать к дальнейшим действиям. Если работают, переходи к следующим этапам этого промпта.
+
+Любые миниатюры игр (картинки со ссылками и без) в тексте статей по провайдерам - ИГНОРИРОВАТЬ
+
+Требования к культурной адаптации:
+
+Заменить страну/регион оригинала на Великобританию (например, «Australian Online Casinos» → «English Online-Casinos», «Australian players» → «English players»)
+Заменить название бренда «Ausslots» / «Auslots» на «Top Casino Europe» во всех случаях (заголовки, текст, призывы к действию)
+НИ В КОЕМ СЛУЧАЕ не использовать термин «Pokies» в генерируемой статье, заменять его на «Slots»
+Адаптировать юридические/регуляторные упоминания под целевой регион (например, упоминание местного законодательства)
+В региональных сравнениях: заменить страну оригинала на Великобританию, при упоминании австралийских регионов - адаптировать их логично
+Культурные события и примеры: заменять на НЕЙТРАЛЬНЫЕ или УНИВЕРСАЛЬНЫЕ (Рождество, Пасха, Новый год), а НЕ на специфические национальные праздники целевой страны, если это не уместно по контексту
+Адаптировать форматы дат, валют (AUD → GBP, $ → £), единиц измерения
+Актуальные годы: начиная с 2026 (и далее - если того требует дата будущего события (например, чемпионат мира в 2027 или любом другом году после 2026)
+
+Требования к формату вывода:
+
+Готовый HTML-файл с реальными HTML-тегами (НЕ псевдоразметка в квадратных скобках)
+Название выходного файла: перевод названия оригинального файла на целевой язык с сохранением структуры и смысла, без добавления элементов, отсутствующих в оригинале
+Структура тегов:
+• Заголовок статьи → <h1>
+• Подзаголовки → <h2> или <h3>
+• Абзацы → <p>
+• Списки → <ul> / <ol> с <li>
+• Места для изображений → <div class="img-placeholder">[IMG: краткое описание]</div> (описание прописывается на целевом языке - на который переводится статья)
+• Теги должны быть чистыми, без атрибутов (id, class, style и т.д.), кроме случаев, явно указанных выше (img-placeholder)
+• НЕ добавлять: декоративные линии, цветные заголовки, цветные рамки, тени, градиенты или любые другие визуальные украшения
+CSS-стили НЕ добавлять — использовать только стандартные браузерные стили
+Игнорировать все мета-элементы, навигацию, виджеты, ссылки и другие технические веб-атрибуты исходника
+
+Выходные данные: HTML-файл с переведённой и локализованной статьёй, готовый к просмотру в браузере.`, chatBreakAfter: true },
+            { number: "2", title: "Адаптация и перевод", content: `Ты — профессиональный переводчик и локализатор контента.
+Задача: Перевести статью с английского на example язык с культурной адаптацией для example аудитории.
+
+Входные данные: HTML-страница с оригинальной статьёй.
+
+При этом в первую очередь (если речь идёт о платёжных системах и провайдерах игр) ты должен провести анализ - действуют ли эти системы и провайдеры в указанном ГЕО-регионе (ГЕО вычисляется на основе целевого языка (языка, на который будут осуществляться перевод и адаптация). В случае если в соответствующем ГЕО они не работают, ты должен сразу об этом сообщить (на русском языке) и не приступать к дальнейшим действиям. Если работают, переходи к следующим этапам этого промпта.
+
+Любые миниатюры игр (картинки со ссылками и без) в тексте статей по провайдерам - ИГНОРИРОВАТЬ
+
+Требования к переводу:
+
+Сохранить смысл и тон оригинала
+Использовать естественные для целевого языка конструкции (не калькировать с исходного)
+НЕ сокращать исходную информацию и НЕ добавлять ничего от себя
+Сохранить структуру оригинала в части всех заголовков/подзаголовков/списков
+
+Требования к культурной адаптации:
+
+Заменить страну/регион оригинала на страну целевой аудитории (например, «Australian Online Casinos» → «deutsche Online-Casinos», «Australian players» → «deutsche Spieler»)
+Заменить название бренда «Ausslots» / «Auslots» на «Top Casino Europe» во всех случаях (заголовки, текст, призывы к действию)
+НИ В КОЕМ СЛУЧАЕ не использовать термин «Pokies» в генерируемой статье, заменять его на «Slots»
+Адаптировать юридические/регуляторные упоминания под целевой регион (например, упоминание местного законодательства)
+В региональных сравнениях: заменить страну оригинала на страну целевой аудитории, остальные регионы оставить или адаптировать логично (например, «Europe» → «übriges Europa»)
+Культурные события и примеры: заменять на НЕЙТРАЛЬНЫЕ или УНИВЕРСАЛЬНЫЕ (Рождество, Пасха, Новый год), а НЕ на специфические национальные праздники целевой страны, если это не уместно по контексту
+Адаптировать форматы дат, валют (например, AUD → €), единиц измерения
+Актуальные годы: начиная с 2026 (и далее - если того требует дата будущего события (например, чемпионат мира в 2027 или любом другом году после 2026)
+
+Требования к формату вывода:
+
+Готовый HTML-файл с реальными HTML-тегами (НЕ псевдоразметка в квадратных скобках)
+Название выходного файла: перевод названия оригинального файла на целевой язык с сохранением структуры и смысла, без добавления элементов, отсутствующих в оригинале
+Структура тегов:
+• Заголовок статьи → <h1>
+• Подзаголовки → <h2> или <h3>
+• Абзацы → <p>
+• Списки → <ul> / <ol> с <li>
+• Места для изображений → <div class="img-placeholder">[IMG: краткое описание]</div> (описание прописывается на целевом языке - на который переводится статья)
+• Теги должны быть чистыми, без атрибутов (id, class, style и т.д.), кроме случаев, явно указанных выше (img-placeholder)
+• НЕ добавлять: декоративные линии, цветные заголовки, цветные рамки, тени, градиенты или любые другие визуальные украшения
+CSS-стили НЕ добавлять — использовать только стандартные браузерные стили
+Игнорировать все мета-элементы, навигацию, виджеты, ссылки и другие технические веб-атрибуты исходника
+
+Выходные данные: HTML-файл с переведённой и локализованной статьёй, готовый к просмотру в браузере.`, chatBreakAfter: true },
+            { number: "3", title: "Создание промптов под изображения", content: `СОЗДАНИЕ ФАЙЛА С ПРОМПТАМИ НА ОСНОВАНИИ И В СООТВЕТСТВИИ С ИСХОДНОЙ СТАТЬЁЙ
+-------------------------------------------------------------------
+Для каждого из представленных в html-файле изображений (анализировать ТОЛЬКО изображения, включенные непосредственно в текст основной статьи, игнорируя все мета-элементы, навигацию, виджеты, ссылки и другие технические веб-атрибуты исходника) создай детальное описание:
+
+Формат:
+
+ПРОМПТ:
+Детальное описание для генерации изображения, максимально точно передающее (копирующее) содержание исходного изображения (но с поправкой на пункт "ОБРАТИТЬ ОТДЕЛЬНОЕ ВНИМАНИЕ" из текущего промпта), 
+Включи: стиль, композицию, объекты, освещение, цветовую палитру, настроение.
+Если в исходном изображении содержатся надписи на английском, укажи их в сгенерированном промпте на следующем языке: example
+Любые миниатюры игр (картинки со ссылками и без) в тексте статей по провайдерам - ИГНОРИРОВАТЬ
+
+Имя файла: [seo-optimized-name].png
+Размер: [ширина]x[высота] px
+
+═══════════════════════════════════════════════════════════════════
+ПРАВИЛА ДЛЯ ПРОМПТОВ ИЗОБРАЖЕНИЙ
+═══════════════════════════════════════════════════════════════════
+
+ОБЩИЕ ТРЕБОВАНИЯ:
+-------------------------------------------------------------------
+
+Название изображения в готовом промпте должны быть представлены на следующем языке: example
+Остальная часть промпта: на английском
+
+ДА:
+- Реалистичный или гиперреалистичный стиль
+- Понятно с первого взгляда — без абстракции
+- Логическая связь с контекстом секции статьи
+- Все надписи внутри изображения — на языке статьи
+- Чистая композиция, современный дизайн
+
+НЕТ — КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО:
+- Абстрактные изображения
+- Футуристичные сцены без логики
+- Искаженные пропорции
+- Калькуляторы (любые: цифровые, бумажные, интерфейсные)
+- Календари (любые: настенные, мобильные, UI-календари)
+- Реальные деньги и банковские карты
+- Перегруженные диаграммы с мелкими элементами
+- Сложные интерфейсы
+- Визуальный шум и хаос
+
+Все изображения могут включать:
+- Упрощенные графики (чистые, понятные)
+- Минималистичные интерфейсы
+- Прикладные визуализации по теме секции
+- Умеренное количество надписей (крупно, читаемо)
+- Людей в контексте темы статьи
+
+ЗАМЕНЫ ДЛЯ ЗАПРЕЩЕННЫХ ЭЛЕМЕНТОВ:
+-------------------------------------------------------------------
+Вместо калькулятора:
+- человек, делающий расчеты за столом
+- рука с ручкой над документом
+- простой понятный график
+- человек за ноутбуком
+
+Вместо календаря:
+- человек, планирующий задачи в блокноте
+- часы или таймлайн
+- дорожная карта / план
+- список дел (без календарной сетки)
+
+Вместо денег:
+- символическая иконка валюты
+- графический элемент роста
+- человек с документом/контрактом
+- нейтральный знак валюты без контекста
+
+Вместо любых других запрещенных элементов:
+- Действуй по аналогии — заменяй на нейтральную альтернативу
+- Альтернатива должна передавать тот же смысл
+- Используй реалистичные объекты, людей, простые визуализации
+- Ни в коем случае не допускай прямого изображения запрещенного элемента
+
+-------------------------------------------------------------------
+
+В случае если на изображении в исходной статье содержится логотип реально существующей компании, в описании промпта под это изображение необходимо указать (на русском языке), что "Отдельная генерация изображения не требуется. Используйте логотип [название реально существующей компании, чей логотип подразумевается].
+
+ОБРАТИТЬ ОТДЕЛЬНОЕ ВНИМАНИЕ: все атрибуты внутри изображения, связанные с Австралией (если таковые имеются) в промпте необходимо заменять на нейтральные (европейские).
+
+═══════════════════════════════════════════════════════════════════
+ФОРМАТ ВЫВОДА
+═══════════════════════════════════════════════════════════════════
+
+ФАЙЛ: prompts.txt
+
+Включает в себя:
+
+- Номер и тип изображения
+- Место размещения в статье (указывается лишь числовая позиция изображения в исходнике - по типу Img1, Img2, Img3 и так далее - в зависимости от количества изображений), никаких дополнительных комментариев по поводу раздела статьи не требуется
+- Детальный промпт для последующей генерации изображения
+- Имя файла
+- Размер в пикселях` }
+        ];
+        
         // Конвертируем старые массивы в структуру вкладок
         function convertToTabStructure(id, name, order, blocks, chatBreakAfter) {
             const items = [];
+            // Поддержка нескольких chatBreak через запятую: '1,2' или '3'
+            const chatBreakNumbers = chatBreakAfter ? chatBreakAfter.split(',') : [];
             
             blocks.forEach(b => {
                 // Добавляем блок
@@ -4018,8 +4259,8 @@ Hero-изображение (№1):
                     instruction: b.instruction ? b.instruction : (b.note ? { type: "info", text: b.note } : null)
                 });
                 
-                // Добавляем chatBreak после указанного блока
-                if (chatBreakAfter && b.number === chatBreakAfter) {
+                // Добавляем chatBreak после указанных блоков или если у блока есть chatBreakAfter
+                if (chatBreakNumbers.includes(b.number) || b.chatBreakAfter) {
                     items.push({
                         type: 'chatBreak',
                         id: generateItemId()
@@ -4048,9 +4289,15 @@ Hero-изображение (№1):
             PROMPTS_DATA_TASK4[0].instruction = { type: "info", icon: "paperclip", text: "Прикрепить html-файл сайта" };
             PROMPTS_DATA_TASK4[2].instruction = { type: "info", icon: "paperclip", text: "Прикрепить файлы index1-30.md" };
             
+            // Добавляем инструкции для PROMPTS_DATA_ADAPTATION
+            PROMPTS_DATA_ADAPTATION[0].instruction = { type: "info", icon: "paperclip", text: "К промту в Claude добавляется файл HTML" };
+            PROMPTS_DATA_ADAPTATION[1].instruction = { type: "input", icon: "edit", text: "Смена целевых языка и аудитории", fields: [{ label: "Введите целевой язык", placeholder: "", prefix: "Задача: Перевести статью с английского на ", optional: false }, { label: "Введите целевую аудиторию", placeholder: "", prefix: "с культурной адаптацией для ", optional: false }] };
+            PROMPTS_DATA_ADAPTATION[2].instruction = { type: "input", icon: "edit", text: "Смена целевого языка (в двух позициях)", fields: [{ label: "Целевой язык (позиция 1)", placeholder: "", prefix: "Если в исходном изображении содержатся надписи на английском, укажи их в сгенерированном промпте на следующем языке: ", optional: false }, { label: "Целевой язык (позиция 2)", placeholder: "", prefix: "Название изображения в готовом промпте должны быть представлены на следующем языке: ", optional: false }] };
+            
             const defaultTabs = {
                 'default': convertToTabStructure('default', 'PILLAR-PICS', 1, PROMPTS_DATA, '3'),
-                'task4': convertToTabStructure('task4', 'CLUSTERS-PICS', 2, PROMPTS_DATA_TASK4, '2')
+                'task4': convertToTabStructure('task4', 'CLUSTERS-PICS', 2, PROMPTS_DATA_TASK4, '2'),
+                'adaptation': convertToTabStructure('adaptation', 'ADAPTATION', 3, PROMPTS_DATA_ADAPTATION, '1,2')
             };
             
             saveAllTabs(defaultTabs);
@@ -4075,6 +4322,13 @@ Hero-изображение (№1):
                 '3': { type: "info", icon: "paperclip", text: "Прикрепить файлы index1-30.md" }
             };
             
+            // Дефолтные инструкции для ADAPTATION вкладки
+            const adaptationInstructions = {
+                '1': { type: "info", icon: "paperclip", text: "К промту в Claude добавляется файл HTML" },
+                '2': { type: "input", icon: "edit", text: "Смена целевых языка и аудитории", fields: [{ label: "Введите целевой язык", placeholder: "", prefix: "Задача: Перевести статью с английского на ", optional: false }, { label: "Введите целевую аудиторию", placeholder: "", prefix: "с культурной адаптацией для ", optional: false }] },
+                '3': { type: "input", icon: "edit", text: "Смена целевого языка (в двух позициях)", fields: [{ label: "Целевой язык (позиция 1)", placeholder: "", prefix: "Если в исходном изображении содержатся надписи на английском, укажи их в сгенерированном промпте на следующем языке: ", optional: false }, { label: "Целевой язык (позиция 2)", placeholder: "", prefix: "Название изображения в готовом промпте должны быть представлены на следующем языке: ", optional: false }] }
+            };
+            
             if (tabs.default && tabs.default.blocks) {
                 tabs.default.blocks.forEach(block => {
                     if (!block.instruction && defaultInstructions[block.number]) {
@@ -4088,6 +4342,15 @@ Hero-изображение (№1):
                 tabs.task4.blocks.forEach(block => {
                     if (!block.instruction && task4Instructions[block.number]) {
                         block.instruction = task4Instructions[block.number];
+                        needsSave = true;
+                    }
+                });
+            }
+            
+            if (tabs.adaptation && tabs.adaptation.blocks) {
+                tabs.adaptation.blocks.forEach(block => {
+                    if (!block.instruction && adaptationInstructions[block.number]) {
+                        block.instruction = adaptationInstructions[block.number];
                         needsSave = true;
                     }
                 });
@@ -4130,7 +4393,11 @@ Hero-изображение (№1):
          * Возвращает ключ localStorage для текущей вкладки
          */
         function getCurrentStorageKey() {
-            return currentTab === 'task4' ? LOCAL_STORAGE_KEY_TASK4 : LOCAL_STORAGE_KEY;
+            // Обратная совместимость для встроенных вкладок
+            if (currentTab === 'default') return LOCAL_STORAGE_KEY;
+            if (currentTab === 'task4') return LOCAL_STORAGE_KEY_TASK4;
+            // Для кастомных вкладок — уникальный ключ
+            return `ai-prompts-manager-data-${currentTab}`;
         }
 
         /**
@@ -4913,6 +5180,7 @@ Hero-изображение (№1):
         }
         
         function saveBlocksOrder() {
+            saveToUndoStack(); // Сохраняем состояние перед изменением порядка
             const container = document.getElementById('cards-container');
             if (!container) return;
             
@@ -4959,11 +5227,13 @@ Hero-изображение (№1):
         
         // --- ИНСТРУКЦИИ БЛОКОВ (wrappers) ---
         function removeBlockInstruction(blockNumber) {
+            // saveToUndoStack вызывается внутри updateBlockInstruction
             updateBlockInstruction(currentTab, blockNumber, null);
             loadPrompts();
         }
         
         function addBlockInstruction(blockNumber, type = 'info') {
+            // saveToUndoStack вызывается внутри updateBlockInstruction
             const instruction = {
                 type: type,
                 text: type === 'keyword-replace' ? 'Заменить ключевое слово' : 'Инструкция'
@@ -6058,7 +6328,7 @@ Hero-изображение (№1):
                 window.__TAURI__.core.invoke('plugin:app|version').then(v => {
                     versionSpan.textContent = v;
                 }).catch(() => {
-                    versionSpan.textContent = '3.4.1';
+                    versionSpan.textContent = '3.4.2';
                 });
             }
             

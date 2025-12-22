@@ -1,0 +1,19 @@
+# Приватный ключ подписи - НИКОГДА не загружать!
+.tauri/keys
+src-tauri/target/
+
+# Rust build
+target/
+
+# Node
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

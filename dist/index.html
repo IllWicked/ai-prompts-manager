@@ -1530,7 +1530,7 @@
             <!-- Версия и кнопка закрытия -->
             <div class="pt-3 border-t border-gray-200 flex items-center justify-between">
                 <span id="version-label" class="text-xs text-gray-400 cursor-default select-none">
-                    Версия: <span id="settings-version">3.4.6</span>
+                    Версия: <span id="settings-version">3.4.7</span>
                 </span>
                 <button onclick="hideSettingsModal()" class="px-4 py-2 text-sm font-medium text-white bg-claude-accent rounded-lg hover:opacity-90 transition-colors">
                     Закрыть
@@ -4451,13 +4451,8 @@ CSS-стили НЕ добавлять — использовать только
                 
                 const savedAppVersion = localStorage.getItem(APP_VERSION_KEY) || '0.0.0';
                 
-                // Сравниваем мажорную и минорную версии (2.9.x)
-                const currentParts = currentAppVersion.split('.').map(Number);
-                const savedParts = savedAppVersion.split('.').map(Number);
-                
-                // Сброс если изменилась мажорная или минорная версия
-                const needsReset = (currentParts[0] > savedParts[0]) || 
-                                   (currentParts[0] === savedParts[0] && currentParts[1] > savedParts[1]);
+                // Сброс если версия изменилась (любой компонент: мажор, минор или патч)
+                const needsReset = currentAppVersion !== savedAppVersion;
                 
                 if (needsReset && savedAppVersion !== '0.0.0') {
                     console.log(`App updated: ${savedAppVersion} → ${currentAppVersion}, resetting data...`);
@@ -6365,7 +6360,7 @@ CSS-стили НЕ добавлять — использовать только
                 window.__TAURI__.core.invoke('plugin:app|version').then(v => {
                     versionSpan.textContent = v;
                 }).catch(() => {
-                    versionSpan.textContent = '3.4.6';
+                    versionSpan.textContent = '3.4.7';
                 });
             }
             

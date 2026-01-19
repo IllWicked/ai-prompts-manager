@@ -5,8 +5,18 @@
   "tabs": {
     "bet-clusters": {
       "name": "BET-CLUSTERS",
-      "version": "1.0.7",
-      "order": 1
+      "version": "1.0.8",
+      "order": 2
+    },
+    "bet-pillar-clkeys": {
+      "name": "BET-PILLAR-CLKEYS",
+      "version": "1.0.0",
+      "order": 2
+    },
+    "bet-pillar": {
+      "name": "BET-PILLAR",
+      "version": "1.0.0",
+      "order": 3
     }
   }
 }

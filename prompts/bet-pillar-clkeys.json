@@ -3,6 +3,7 @@
     "id": "bet-pillar-clkeys",
     "name": "BET-PILLAR-CLKEYS",
     "order": 2,
+    "version": "1.0.2",
     "items": [
       {
         "type": "block",

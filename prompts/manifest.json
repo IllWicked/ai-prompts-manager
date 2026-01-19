@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-01-19",
+  "release_notes": "Обновление промптов\n\n- Первая версия промптов с удалённым обновлением",
+  "tabs": {
+    "bet-clusters": {
+      "name": "BET-CLUSTERS",
+      "version": "1.0.7",
+      "order": 1
+    }
+  }
+}

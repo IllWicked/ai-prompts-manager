@@ -2,7 +2,7 @@
   "id": "bet-clusters",
   "name": "BET-CLUSTERS",
   "order": 2,
-  "version": "1.0.9",
+  "version": "1.0.1",
   "items": [
     {
       "type": "block",

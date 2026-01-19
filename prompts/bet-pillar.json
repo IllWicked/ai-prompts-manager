@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "exportDate": "2026-01-19T15:00:54.546Z",
+  "exportDate": "2026-01-19T15:17:52.039Z",
   "tab": {
     "id": "bet-pillar",
     "name": "BET-PILLAR",
     "order": 1,
-    "version": "1.0.4",
+    "version": "1.0.5",
     "items": [
       {
         "type": "block",
@@ -205,7 +205,7 @@
         "y": 2440
       },
       "item_1768308167100_m76iw505z": {
-        "x": 1800,
+        "x": 1840,
         "y": 2440
       },
       "item_1768308167100_rzyet14er": {

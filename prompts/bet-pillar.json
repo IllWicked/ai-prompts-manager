@@ -2,8 +2,8 @@
   "tab": {
     "id": "bet-pillar",
     "name": "BET-PILLAR",
-    "order": 1,
-    "version": "1.0.2",
+    "order": 3,
+    "version": "1.0.3",
     "items": [
       {
         "type": "block",
@@ -158,8 +158,7 @@
         "instruction": null,
         "collapsed": true
       }
-    ],
-    "version": "1.0.2"
+    ]
   },
   "workflow": {
     "positions": {

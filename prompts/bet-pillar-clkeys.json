@@ -1,9 +1,11 @@
 {
+  "version": 2,
+  "exportDate": "2026-01-19T15:52:42.430Z",
   "tab": {
     "id": "bet-pillar-clkeys",
     "name": "BET-PILLAR-CLKEYS",
     "order": 2,
-    "version": "1.0.2",
+    "version": "1.0.3",
     "items": [
       {
         "type": "block",
@@ -41,13 +43,17 @@
         "instruction": null,
         "scripts": [
           "count"
-        ]
+        ],
+        "hasAttachments": true,
+        "automation": {
+          "newChat": true
+        }
       },
       {
         "type": "block",
         "id": "item_1768308167100_jy6qrq89b",
         "title": "Pillar-дизайн",
-        "content": "Create an HTML design template for pillar-article content.\n\nTemplate Marker:\nInside <main>, place only the marker <!-- {{CONTENT}} -->.\nDo not include actual article text.\nExample:\n<main>\n    <!-- {{CONTENT}} -->\n</main>\n\nSemantic Markup:\nUse only one <main> tag.\nUse only one main <footer> after <main>.\nUse <nav> for navigation elements if needed.\nUse semantic tags instead of divs wherever possible.\n\nMeta tags:\nOnly charset, viewport.\n<header></header> — empty.\n<footer></footer> — empty.\n<title></title> — empty.\n<meta name=\"description\"> — empty.\n\nPerformance Optimization:\nMinimize DOM nesting (maximum 3-4 levels where possible).\nAvoid \"div soup\" - every element should have semantic meaning.\nUse CSS Grid and Flexbox for layout instead of multiple wrappers.\nApply CSS variables for repeated values.\n\nVisual Design:\nSmooth hover animations (use transform and opacity for GPU acceleration).\nResponsive typography with clamp() for fluid scaling.\nSubtle shadows and gradients for depth.\nAccent colors for important elements.\nMicro-animations for interactive elements.\nEnsure excellent readability with proper spacing and line heights.\nAdd dark theme support via CSS variables and prefers-color-scheme.\n\nCSS Selectors for Content:\nStyle article elements that will be inserted: h1, h2, h3, p, ul, ol, li, strong, em, blockquote, figure, figcaption.\nPrepare styles for .hero-image and .article-image classes (for images).\n\nAccessibility and Resilience:\nDocument must be fully readable without CSS and JavaScript.\nUse proper heading hierarchy (h1 → h2 → h3, no skipping).\nAdd aria-labels where necessary for screen readers.\nEnsure contrast ratio of at least 4.5:1 for regular text.\nAdd :focus styles for keyboard navigation.\n\nMachine Readability:\nStructure content to be understandable by search engines and AI agents.\nUse Schema.org microdata where appropriate.\n\nTechnical Details:\nNo emojis.\nAll code in a single HTML file.\nUse modern CSS (Grid, Flexbox, Custom Properties, clamp()).\nAdd smooth transitions for all interactive elements.\nMake design fully responsive (mobile-first approach).\n\nSave as design.html.",
+        "content": "Create an HTML design template for pillar-article content.\n\nTemplate Marker:\nInside <main>, place only the marker {{CONTENT}}.\nDo not include actual article text.\nExample:\n<main>\n    {{CONTENT}}\n</main>\n\nSemantic Markup:\nUse only one <main> tag.\nUse only one main <footer> after <main>.\nUse <nav> for navigation elements if needed.\nUse semantic tags instead of divs wherever possible.\n\nMeta tags:\nOnly charset, viewport.\n<header></header> — empty.\n<footer></footer> — empty.\n<title></title> — empty.\n<meta name=\"description\"> — empty.\n\nPerformance Optimization:\nMinimize DOM nesting (maximum 3-4 levels where possible).\nAvoid \"div soup\" - every element should have semantic meaning.\nUse CSS Grid and Flexbox for layout instead of multiple wrappers.\nApply CSS variables for repeated values.\n\nVisual Design:\nSmooth hover animations (use transform and opacity for GPU acceleration).\nResponsive typography with clamp() for fluid scaling.\nSubtle shadows and gradients for depth.\nAccent colors for important elements.\nMicro-animations for interactive elements.\nEnsure excellent readability with proper spacing and line heights.\nAdd dark theme support via CSS variables and prefers-color-scheme.\n\nCSS Selectors for Content:\nStyle article elements that will be inserted: h1, h2, h3, p, ul, ol, li, strong, em, blockquote, figure, figcaption.\nPrepare styles for .hero-image and .article-image classes (for images).\n\nAccessibility and Resilience:\nDocument must be fully readable without CSS and JavaScript.\nUse proper heading hierarchy (h1 → h2 → h3, no skipping).\nAdd aria-labels where necessary for screen readers.\nEnsure contrast ratio of at least 4.5:1 for regular text.\nAdd :focus styles for keyboard navigation.\n\nMachine Readability:\nStructure content to be understandable by search engines and AI agents.\nUse Schema.org microdata where appropriate.\n\nTechnical Details:\nNo emojis.\nAll code in a single HTML file.\nUse modern CSS (Grid, Flexbox, Custom Properties, clamp()).\nAdd smooth transitions for all interactive elements.\nMake design fully responsive (mobile-first approach).\n\nSave as design.html.",
         "instruction": null
       },
       {
@@ -126,7 +132,7 @@
         "type": "block",
         "id": "item_1768308167100_d2q3oayvj",
         "title": "Фактчекинг",
-        "content": "Проверь статью на фактические ошибки через веб-поиск. Каждый факт — отдельный запрос. Исправь при обнаружении.",
+        "content": "Проверь статью на фактические ошибки через веб-поиск. Каждый факт — отдельный запрос. Исправь при обнаружении. Не меняй название файла.",
         "instruction": null,
         "collapsed": true
       },
@@ -134,7 +140,7 @@
         "type": "block",
         "id": "item_1768308167100_79vec12s6",
         "title": "Фактчекинг",
-        "content": "Проверь каждую статью из .md на фактические ошибки через веб-поиск. Каждый факт — отдельный запрос. Исправь при обнаружении.",
+        "content": "Проверь каждую статью из .md на фактические ошибки через веб-поиск. Каждый факт — отдельный запрос. Исправь при обнаружении. Не меняй названия файлов.",
         "instruction": null,
         "hasAttachments": true,
         "collapsed": true,
@@ -158,8 +164,7 @@
         "instruction": null,
         "collapsed": true
       }
-    ],
-    "version": "1.0.2"
+    ]
   },
   "workflow": {
     "positions": {

@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "exportDate": "2026-01-20T12:12:08.429Z",
+  "exportDate": "2026-01-20T12:46:51.723Z",
   "tab": {
     "id": "bet-pillar-clkeys",
     "name": "BET-PILLAR-CLKEYS",
     "order": 2,
-    "version": "1.0.4",
+    "version": "1.0.5",
     "items": [
       {
         "type": "block",
@@ -122,7 +122,7 @@
         "type": "block",
         "id": "item_1768308167100_tnsbethzj",
         "title": "Экспорт",
-        "content": "Упакуй все файлы в архив .zip.\n\nМетод:\nСоздай python-скрипт для упаковки на основе нижеуказанной структуры.\n\nСтруктура архива:\nНазвание: BET-XX-PILLAR-PICS-ключевое слово. XX — код языка, и он, и ключ указаны в конце content-plan.md.\nСодержимое:\n├── ADD PAGES/        → технические страницы (названия локализированы под язык)\n├── CL1/              → index1.html + prompts1.txt\n├── CL2/              → index2.html + prompts2.txt\n├── CL3/              → index3.html + prompts3.txt\n├── CL4/              → index4.html + prompts4.txt\n├── CL5/              → index5.html + prompts5.txt\n├── CL6/              → index6.html + prompts6.txt\n├── CL7/              → index7.html + prompts7.txt\n├── CL8/              → index8.html + prompts8.txt\n├── CL9/              → index9.html + prompts9.txt\n├── CL10/              → index10.html + prompts10.txt\n├── CL11/              → index11.html + prompts11.txt\n└── PILLAR/           → index.html + prompts.txt + images-styles.css\n\nContent-plan.md не нужен в архиве, он только для тебя.",
+        "content": "Упакуй все файлы в архив .zip.\n\nМетод:\nСоздай python-скрипт для упаковки на основе нижеуказанной структуры.\n\nСтруктура архива:\nНазвание: BET-XX-PILLAR-ключевое слово. XX — код языка, и он, и ключ указаны в конце content-plan.md.\nСодержимое:\n├── ADD PAGES/        → технические страницы (названия локализированы под язык)\n├── CL1/              → index1.html + prompts1.txt\n├── CL2/              → index2.html + prompts2.txt\n├── CL3/              → index3.html + prompts3.txt\n├── CL4/              → index4.html + prompts4.txt\n├── CL5/              → index5.html + prompts5.txt\n├── CL6/              → index6.html + prompts6.txt\n├── CL7/              → index7.html + prompts7.txt\n├── CL8/              → index8.html + prompts8.txt\n├── CL9/              → index9.html + prompts9.txt\n├── CL10/              → index10.html + prompts10.txt\n├── CL11/              → index11.html + prompts11.txt\n└── PILLAR/           → index.html + prompts.txt + images-styles.css\n\nContent-plan.md не нужен в архиве, он только для тебя.",
         "instruction": {
           "type": "info",
           "icon": "paperclip",

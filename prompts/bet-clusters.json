@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "exportDate": "2026-01-20T12:15:53.844Z",
+  "exportDate": "2026-01-20T12:46:48.229Z",
   "tab": {
     "id": "bet-clusters",
     "name": "BET-CLUSTERS",
     "order": 3,
-    "version": "1.0.3",
+    "version": "1.0.4",
     "items": [
       {
         "type": "block",
@@ -54,7 +54,7 @@
         "type": "block",
         "id": "item_1768308268305_elvk176hm",
         "title": "Экспорт",
-        "content": "Упакуй все файлы в архив .zip.\n\nМетод:\nСоздай python-скрипт для упаковки на основе нижеуказанной структуры.\n\nСтруктура архива:\nНазвание: BET-XX-CLUSTERS-PICS-домен. XX — код языка. Домен — без https://. И то и другое указано в конце content-plan.md.\nСодержимое: 30 папок CL1-CL30, в каждой index[N].html + prompts[N].txt.\n\nContent-plan.md не нужен в архиве, он только для тебя.",
+        "content": "Упакуй все файлы в архив .zip.\n\nМетод:\nСоздай python-скрипт для упаковки на основе нижеуказанной структуры.\n\nСтруктура архива:\nНазвание: BET-XX-CLUSTERS-домен. XX — код языка. Домен — без https://. И то и другое указано в конце content-plan.md.\nСодержимое: 30 папок CL1-CL30, в каждой index[N].html + prompts[N].txt.\n\nContent-plan.md не нужен в архиве, он только для тебя.",
         "instruction": {
           "type": "info",
           "icon": "paperclip",

@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "exportDate": "2026-01-21T09:48:49.326Z",
+  "exportDate": "2026-01-21T15:22:47.765Z",
   "tab": {
     "id": "bet-pillar",
     "name": "BET-PILLAR",
     "order": 1,
-    "version": "1.0.13",
+    "version": "1.0.14",
     "items": [
       {
         "type": "block",
@@ -161,15 +161,15 @@
       {
         "id": "item_1768930091685_u6m12j5cz",
         "type": "block",
-        "title": "+2",
-        "content": "Напиши следующие две статьи.",
+        "title": "№3-4",
+        "content": "Напиши статьи №3-4.",
         "collapsed": true
       },
       {
         "id": "item_1768930091685_xvzy9tq9u",
         "type": "block",
-        "title": "+1",
-        "content": "Напиши следующую статью.",
+        "title": "№5",
+        "content": "Напиши статью №5.",
         "collapsed": true
       }
     ]
@@ -213,11 +213,11 @@
         "y": 1240
       },
       "item_1768308167100_79vec12s6": {
-        "x": 2080,
+        "x": 2120,
         "y": 2440
       },
       "item_1768930091685_u6m12j5cz": {
-        "x": 1760,
+        "x": 1720,
         "y": 2440
       },
       "item_1768930091685_xvzy9tq9u": {

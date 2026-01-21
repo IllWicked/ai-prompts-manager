@@ -60,13 +60,6 @@ cargo tauri build
 python project-manager.py
 ```
 
-### Релиз новой версии
-
-1. Запусти `python project-manager.py`
-2. Выбери "Релизы" → "Изменить версию"
-3. Отредактируй Release Notes
-4. Выбери "Создать релиз"
-
 ## Лицензия
 
 MIT

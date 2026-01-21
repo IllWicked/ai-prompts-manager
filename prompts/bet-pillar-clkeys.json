@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "exportDate": "2026-01-21T09:19:50.038Z",
+  "exportDate": "2026-01-21T15:23:17.601Z",
   "tab": {
     "id": "bet-pillar-clkeys",
     "name": "BET-PILLAR-CLKEYS",
     "order": 2,
-    "version": "1.0.8",
+    "version": "1.0.9",
     "items": [
       {
         "type": "block",
@@ -161,15 +161,15 @@
       {
         "id": "item_1768929864631_4t98al6oy",
         "type": "block",
-        "title": "+2",
-        "content": "Напиши следующие две статьи.",
+        "title": "№3-4",
+        "content": "Напиши статьи №3-4.",
         "collapsed": true
       },
       {
         "id": "item_1768929902721_4i87qudu6",
         "type": "block",
-        "title": "+1",
-        "content": "Напиши следующую статью.",
+        "title": "№5",
+        "content": "Напиши статью №5.",
         "collapsed": true
       }
     ]
@@ -213,11 +213,11 @@
         "y": 1240
       },
       "item_1768308167100_79vec12s6": {
-        "x": 2080,
+        "x": 2120,
         "y": 2440
       },
       "item_1768929864631_4t98al6oy": {
-        "x": 1760,
+        "x": 1720,
         "y": 2440
       },
       "item_1768929902721_4i87qudu6": {

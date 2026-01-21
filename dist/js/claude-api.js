@@ -1271,10 +1271,7 @@ function initProjectUrlTracking() {
     if (!window.__TAURI__?.event?.listen) {
         projectUrlTrackingRetryCount++;
         if (projectUrlTrackingRetryCount < MAX_PROJECT_URL_RETRIES) {
-            // Быстрый ретрай (50мс) для минимизации пропущенных событий
             setTimeout(initProjectUrlTracking, 50);
-        } else {
-            console.warn('[APM] Tauri event API not available for project URL tracking');
         }
         return;
     }

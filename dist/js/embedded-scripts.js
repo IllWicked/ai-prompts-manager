@@ -87,7 +87,14 @@ def md_to_html(md_text):
         header_match = re.match(r'^(#{1,6})\\s+(.+)$', stripped)
         if header_match:
             flush_paragraph(); flush_blockquote(); close_lists()
-            result.append(f'<h{len(header_match.group(1))}>{process_inline(header_match.group(2))}</h{len(header_match.group(1))}>')
+            level, text = len(header_match.group(1)), header_match.group(2)
+            # Поддержка {#id} синтаксиса для якорей
+            id_match = re.match(r'^(.+?)\\s*\\{#([a-zA-Z0-9_-]+)\\}\\s*$', text)
+            if id_match:
+                text, header_id = id_match.group(1).strip(), id_match.group(2)
+                result.append(f'<h{level} id="{header_id}">{process_inline(text)}</h{level}>')
+            else:
+                result.append(f'<h{level}>{process_inline(text)}</h{level}>')
             i += 1; continue
 
         if stripped.startswith('>'): flush_paragraph(); close_lists(); in_blockquote = True; blockquote_content.append(stripped[1:].strip()) if stripped[1:].strip() else None; i += 1; continue

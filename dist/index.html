@@ -700,7 +700,7 @@
             <!-- Версия и кнопка закрытия -->
             <div class="pt-3 border-t border-gray-200 flex items-center justify-between">
                 <span id="version-label" class="text-xs text-gray-400 cursor-default select-none">
-                    Версия: <span id="settings-version">4.0.1</span>
+                    Версия: <span id="settings-version">4.0.2</span>
                 </span>
                 <button id="settings-close-btn" class="btn btn-primary">
                     Закрыть
@@ -775,7 +775,7 @@
 
         /**
          * ╔═══════════════════════════════════════════════════════════════════════════╗
-         * ║                    AI PROMPTS MANAGER v4.0.1                              ║
+         * ║                    AI PROMPTS MANAGER v4.0.2                              ║
          * ║                                                                           ║
          * ║  Tauri 2.0 приложение для управления промптами с интеграцией Claude AI   ║
          * ╚═══════════════════════════════════════════════════════════════════════════╝
@@ -2213,24 +2213,7 @@
          * Показывает уведомление о смене языка
          */
         function showLanguageToast(langName) {
-            const toast = document.getElementById('toast');
-            toast.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                Язык изменён: ${langName}
-            `;
-            toast.classList.add('show');
-            setTimeout(() => {
-                toast.classList.remove('show');
-                // Возвращаем исходный текст
-                toast.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Скопировано в буфер
-                `;
-            }, 2500);
+            showToast(`Язык изменён: ${langName}`, 2500);
         }
 
 
@@ -4802,10 +4785,7 @@
                 if (!window.__TAURI__?.event?.listen) {
                     downloadListenersRetryCount++;
                     if (downloadListenersRetryCount < MAX_DOWNLOAD_LISTENER_RETRIES) {
-                        // Быстрый ретрай (50мс) для минимизации пропущенных событий
                         setTimeout(setupDownloadListeners, 50);
-                    } else {
-                        console.warn('[APM] Tauri event API not available after retries');
                     }
                     return;
                 }

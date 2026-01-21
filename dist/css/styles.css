@@ -497,6 +497,7 @@ body {
     opacity: 0;
     transition: opacity 0.3s, transform 0.3s;
     transform: translateY(20px) translateX(-50%);
+    z-index: 999999; /* Выше всех элементов включая context menu (100000) */
 }
 .toast.show {
     visibility: visible;

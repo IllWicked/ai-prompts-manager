@@ -983,9 +983,9 @@ async fn navigate_claude_tab(app: AppHandle, tab: u8, url: String) -> Result<(),
             .map_err(|e| format!("Invalid URL '{}': {}", url, e))?;
         webview.navigate(parsed_url).map_err(|e| e.to_string())?;
         
-        // Эмитим событие о навигации (on_page_load сработает при загрузке,
-        // но для SPA навигации внутри Claude нужен дополнительный сигнал)
-        let _ = app.emit("claude-page-loaded", serde_json::json!({
+        // Эмитим событие о начале навигации (on_page_load сработает при загрузке)
+        // source: "navigate" — для SPA навигации, "page_load" — реальная загрузка
+        let _ = app.emit("claude-navigation-started", serde_json::json!({
             "tab": tab,
             "url": url
         }));

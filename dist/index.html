@@ -700,7 +700,7 @@
             <!-- Версия и кнопка закрытия -->
             <div class="pt-3 border-t border-gray-200 flex items-center justify-between">
                 <span id="version-label" class="text-xs text-gray-400 cursor-default select-none">
-                    Версия: <span id="settings-version">4.0.2</span>
+                    Версия: <span id="settings-version">4.0.3</span>
                 </span>
                 <button id="settings-close-btn" class="btn btn-primary">
                     Закрыть
@@ -775,7 +775,7 @@
 
         /**
          * ╔═══════════════════════════════════════════════════════════════════════════╗
-         * ║                    AI PROMPTS MANAGER v4.0.2                              ║
+         * ║                    AI PROMPTS MANAGER v4.0.3                              ║
          * ║                                                                           ║
          * ║  Tauri 2.0 приложение для управления промптами с интеграцией Claude AI   ║
          * ╚═══════════════════════════════════════════════════════════════════════════╝
@@ -3893,6 +3893,7 @@
                 existingTabs = [1];
                 tabUrls = {};
                 generatingTabs = {};
+                activeProject = null;
                 
                 // Очищаем JS переменные workflow
                 workflowPositions = {};
@@ -3919,8 +3920,9 @@
                 localStorage.removeItem(STORAGE_KEYS.BLOCK_SCRIPTS);
                 localStorage.removeItem(STORAGE_KEYS.BLOCK_AUTOMATION);
                 
-                // Сбрасываем Claude чаты (но не auto_send - это настройка)
+                // Сбрасываем Claude чаты и активный проект (но не auto_send - это настройка)
                 localStorage.removeItem('claudeSettings');
+                localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROJECT);
                 
                 // Очищаем весь localStorage связанный с приложением (кроме настроек)
                 const keysToRemove = [];

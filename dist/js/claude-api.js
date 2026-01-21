@@ -93,13 +93,19 @@ function invalidateOrgCache() {
  * Использует eval_in_claude_with_result для получения данных напрямую
  */
 async function getOrganizationId(tab) {
-    if (cachedOrgId) return cachedOrgId;
+    if (cachedOrgId) {
+        return cachedOrgId;
+    }
     
     // Скрипт который вернёт org_id из cookie (быстрая синхронная операция)
     const script = `
         (function() {
-            const match = document.cookie.match(/lastActiveOrg=([a-f0-9-]+)/i);
-            return match ? match[1] : null;
+            try {
+                const match = document.cookie.match(/lastActiveOrg=([a-f0-9-]+)/i);
+                return match ? match[1] : null;
+            } catch (e) {
+                return null;
+            }
         })();
     `;
     
@@ -113,7 +119,8 @@ async function getOrganizationId(tab) {
         // Результат приходит как JSON string, парсим
         const orgId = JSON.parse(result);
         
-        if (orgId) {
+        // Проверяем что это строка UUID, а не объект ошибки
+        if (orgId && typeof orgId === 'string' && /^[a-f0-9-]+$/i.test(orgId)) {
             cachedOrgId = orgId;
             return cachedOrgId;
         }
@@ -218,7 +225,7 @@ async function createProjectViaAPI(tab) {
                 const data = await response.json();
                 return { success: true, uuid: data.uuid };
             } catch (e) {
-                return { success: false, uuid: null };
+                return { success: false, uuid: null, error: e.message };
             }
         })();
     `;
@@ -318,11 +325,44 @@ async function evalInClaude(tab, script) {
 
 /**
  * Навигация Claude на URL
+ * Ждёт реальной загрузки страницы через событие page-loaded
  */
 async function navigateClaude(tab, url) {
+    // Создаём Promise который разрешится когда страница РЕАЛЬНО загрузится
+    // Событие claude-page-loaded эмитится из on_page_load callback в Rust
+    let unlisten = null;
+    let resolved = false;
+    
+    const pageLoadPromise = new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            if (!resolved) {
+                resolved = true;
+                if (unlisten) unlisten();
+                resolve(false);
+            }
+        }, 15000);
+        
+        window.__TAURI__.event.listen('claude-page-loaded', (event) => {
+            // Проверяем что это наш таб
+            if (!resolved && event.payload?.tab === tab) {
+                resolved = true;
+                clearTimeout(timeout);
+                if (unlisten) unlisten();
+                resolve(true);
+            }
+        }).then(fn => {
+            unlisten = fn;
+        });
+    });
+    
     await window.__TAURI__.core.invoke('navigate_claude_tab', { tab, url });
-    // Ждём загрузки страницы после навигации
+    
+    // Ждём события загрузки страницы (от on_page_load в Rust)
+    await pageLoadPromise;
+    
+    // Ждём появления input (страница загрузилась, но React может ещё рендериться)
     await waitForClaudeInput(tab);
+    
     // Переинжектим монитор (и интерсептор загрузки файлов)
     await injectGenerationMonitor(tab);
 }
@@ -433,7 +473,6 @@ async function waitForClaudeInput(tab, timeout = 15000) {
     
     while (Date.now() - startTime < timeout) {
         try {
-            // Таймаут 5 сек — это простая проверка DOM
             const result = await window.__TAURI__.core.invoke('eval_in_claude_with_result', { 
                 tab, 
                 script,
@@ -556,6 +595,10 @@ async function sendNodeToClaude(index, chatTab) {
         const result = await createNewProject(targetTab);
         if (result.success && result.uuid) {
             startProject(result.uuid, result.name, currentTab);
+        } else {
+            // Не удалось создать проект — прерываем отправку
+            showToast('Ошибка: не удалось создать проект');
+            return;
         }
     } else if (automation.newChat) {
         await newChatInTab(targetTab);
@@ -809,7 +852,7 @@ async function newChatInTab(tab) {
                 const currentUrl = await window.__TAURI__.core.invoke('get_tab_url', { tab });
                 projectUuid = getProjectUUIDFromUrl(currentUrl);
             } catch (e) {
-                // Игнорируем
+                // Ignore
             }
         }
         

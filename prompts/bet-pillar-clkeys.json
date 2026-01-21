@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "exportDate": "2026-01-20T17:27:22.068Z",
+  "exportDate": "2026-01-21T04:39:13.600Z",
   "tab": {
     "id": "bet-pillar-clkeys",
     "name": "BET-PILLAR-CLKEYS",
     "order": 2,
-    "version": "1.0.6",
+    "version": "1.0.7",
     "items": [
       {
         "type": "block",
@@ -333,6 +333,12 @@
         "from": "item_1768308167100_c67xd0tep",
         "fromSide": "bottom",
         "to": "item_1768929864631_4t98al6oy",
+        "toSide": "top"
+      },
+      {
+        "from": "item_1768308167100_c67xd0tep",
+        "fromSide": "bottom",
+        "to": "item_1768929902721_4i87qudu6",
         "toSide": "top"
       }
     ]

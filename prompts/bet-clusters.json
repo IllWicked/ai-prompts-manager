@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "exportDate": "2026-01-21T09:51:02.300Z",
+  "exportDate": "2026-01-21T17:29:06.048Z",
   "tab": {
     "id": "bet-clusters",
     "name": "BET-CLUSTERS",
     "order": 3,
-    "version": "1.0.5",
+    "version": "1.0.6",
     "items": [
       {
         "type": "block",

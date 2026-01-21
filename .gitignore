@@ -1,0 +1,43 @@
+# Приватный ключ подписи - НИКОГДА не загружать!
+.tauri/keys
+
+# JSON файлы в корне (экспортированные вкладки для импорта)
+/*.json
+
+# Разрешаем JSON в папке prompts
+!prompts/*.json
+
+# Бэкапы
+.backups/
+
+# Документация (только для локального использования)
+docs/
+
+# Rust / Tauri
+target/
+Cargo.lock
+
+# Node
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.exe
+*.msi
+*.dmg
+*.AppImage
+*.deb
+*.zip

@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            background: transparent;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 13px;
+        }
+        
+        .downloads-popup {
+            width: 100%;
+            height: 100%;
+            background: #2D2D2D;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .downloads-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .downloads-title {
+            color: #E5E5E5;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .send-selected-btn {
+            background: #4A9EFF;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            transition: all 0.15s;
+            display: none;
+        }
+        
+        .send-selected-btn:hover {
+            background: #3A8EEF;
+        }
+        
+        .send-selected-btn.visible {
+            display: block;
+        }
+        
+        .delete-all-btn {
+            background: transparent;
+            border: none;
+            color: #E57373;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+        
+        .delete-all-btn:hover {
+            background: rgba(229, 115, 115, 0.15);
+        }
+        
+        .downloads-list {
+            flex: 1;
+            overflow-y: auto;
+            max-height: 310px;
+        }
+        
+        .downloads-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .downloads-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .downloads-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+        
+        .download-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 10px 8px 10px;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.15s;
+            cursor: pointer;
+        }
+        
+        .download-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .download-item.selected {
+            background: rgba(74, 158, 255, 0.15);
+        }
+        
+        .download-item.selected:hover {
+            background: rgba(74, 158, 255, 0.2);
+        }
+        
+        .download-item:last-child {
+            border-bottom: none;
+        }
+        
+        .file-icon {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: #888;
+        }
+        
+        .file-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .file-icon.archive { color: #B388FF; }
+        .file-icon.document { color: #64B5F6; }
+        .file-icon.text { color: #A5D6A7; }
+        .file-icon.image { color: #81C784; }
+        .file-icon.code { color: #FFB74D; }
+        .file-icon.data { color: #4DD0E1; }
+        .file-icon.other { color: #BDBDBD; }
+        
+        .file-info {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .file-name {
+            color: #E5E5E5;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+            display: inline;
+            width: fit-content;
+            max-width: 100%;
+        }
+        
+        .file-name:hover {
+            color: #64B5F6;
+            text-decoration: underline;
+        }
+        
+        .file-meta {
+            color: #888;
+            font-size: 11px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .empty-state {
+            padding: 30px 20px;
+            text-align: center;
+            color: #888;
+        }
+        
+        .item-actions {
+            display: flex;
+            gap: 2px;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        
+        .download-item:hover .item-actions {
+            opacity: 1;
+        }
+        
+        .action-btn {
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #AAA;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+        
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #FFF;
+        }
+        
+        .action-btn.attach-btn:hover {
+            color: #64B5F6;
+        }
+        
+        .action-btn.delete-btn:hover {
+            color: #E57373;
+            background: rgba(229, 115, 115, 0.15);
+        }
+        
+        .action-btn.delete-btn.confirm {
+            color: #E57373;
+            background: rgba(229, 115, 115, 0.2);
+        }
+        
+        .action-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="downloads-popup">
+        <div class="downloads-header">
+            <span class="downloads-title">Загрузки</span>
+            <div class="header-actions">
+                <button class="send-selected-btn" id="send-selected">Отправить</button>
+                <button class="delete-all-btn" id="delete-all">Очистить всё</button>
+            </div>
+        </div>
+        <div class="downloads-list" id="downloads-list"></div>
+    </div>
+
+    <script type="module">
+        const { invoke } = window.__TAURI__.core;
+        const { listen } = window.__TAURI__.event;
+        
+        let downloads = [];
+        let selectedPaths = new Set();
+        let lastClickedIndex = -1;
+        let deleteConfirmPath = null;
+        let deleteConfirmTimeout = null;
+        
+        const listEl = document.getElementById('downloads-list');
+        const deleteAllBtn = document.getElementById('delete-all');
+        const sendSelectedBtn = document.getElementById('send-selected');
+        
+        // SVG Icons
+        const icons = {
+            archive: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8M1 3h22v5H1z"/><path d="M10 12h4"/></svg>`,
+            document: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>`,
+            text: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg>`,
+            image: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>`,
+            code: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg>`,
+            data: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3M21 5v14c0 1.66-4 3-9 3s-9-1.34-9-3V5"/></svg>`,
+            other: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/></svg>`,
+            attach: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h10m-4-4 4 4-4 4"/><path d="M19 5v14"/></svg>`,
+            delete: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
+            check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>`
+        };
+        
+        function getFileType(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const types = {
+                archive: ['zip', 'rar', '7z', 'tar', 'gz', 'bz2'],
+                document: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt'],
+                text: ['txt', 'md', 'rtf', 'log'],
+                image: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp', 'ico'],
+                code: ['js', 'ts', 'py', 'java', 'c', 'cpp', 'h', 'css', 'html', 'jsx', 'tsx', 'rs', 'go'],
+                data: ['json', 'xml', 'csv', 'yaml', 'yml', 'sql', 'db']
+            };
+            for (const [type, exts] of Object.entries(types)) {
+                if (exts.includes(ext)) return type;
+            }
+            return 'other';
+        }
+        
+        function updateSendButton() {
+            const count = selectedPaths.size;
+            if (count > 0) {
+                sendSelectedBtn.textContent = `Отправить (${count})`;
+                sendSelectedBtn.classList.add('visible');
+            } else {
+                sendSelectedBtn.classList.remove('visible');
+            }
+        }
+        
+        function toggleSelection(path, index, shiftKey) {
+            const sorted = [...downloads].reverse();
+            
+            if (shiftKey && lastClickedIndex >= 0) {
+                // Shift+клик - выделяем диапазон
+                const start = Math.min(lastClickedIndex, index);
+                const end = Math.max(lastClickedIndex, index);
+                for (let i = start; i <= end; i++) {
+                    selectedPaths.add(sorted[i].file_path);
+                }
+            } else {
+                // Обычный клик - переключаем
+                if (selectedPaths.has(path)) {
+                    selectedPaths.delete(path);
+                } else {
+                    selectedPaths.add(path);
+                }
+                lastClickedIndex = index;
+            }
+            
+            updateUI();
+        }
+        
+        function updateUI() {
+            // Обновляем визуальное состояние строк
+            listEl.querySelectorAll('.download-item').forEach(item => {
+                const path = item.dataset.path;
+                if (selectedPaths.has(path)) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+            updateSendButton();
+        }
+        
+        function renderDownloads() {
+            if (downloads.length === 0) {
+                listEl.innerHTML = '<div class="empty-state">Нет загруженных файлов</div>';
+                selectedPaths.clear();
+                updateSendButton();
+                return;
+            }
+            
+            // Показываем новые сверху
+            const sorted = [...downloads].reverse();
+            
+            listEl.innerHTML = sorted.map((d, index) => {
+                const fileType = getFileType(d.filename);
+                const isSelected = selectedPaths.has(d.file_path);
+                const meta = d.timestamp;
+                return `
+                    <div class="download-item ${isSelected ? 'selected' : ''}" data-path="${d.file_path}" data-index="${index}">
+                        <div class="file-icon ${fileType}">${icons[fileType]}</div>
+                        <div class="file-info">
+                            <div class="file-name" data-path="${d.file_path}">${d.filename}</div>
+                            <div class="file-meta">${meta}</div>
+                        </div>
+                        <div class="item-actions">
+                            <button class="action-btn attach-btn" title="Отправить в чат">${icons.attach}</button>
+                            <button class="action-btn delete-btn" title="Удалить">${icons.delete}</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Event listeners
+            listEl.querySelectorAll('.download-item').forEach(item => {
+                const path = item.dataset.path;
+                const index = parseInt(item.dataset.index);
+                
+                // Клик по строке - выделение
+                item.onclick = (e) => {
+                    // Игнорируем клики по кнопкам и названию файла
+                    if (e.target.closest('.action-btn') || e.target.closest('.file-name')) return;
+                    toggleSelection(path, index, e.shiftKey);
+                };
+            });
+            
+            // Клик по названию файла - открыть файл
+            listEl.querySelectorAll('.file-name').forEach(el => {
+                el.onclick = (e) => {
+                    e.stopPropagation();
+                    const path = el.dataset.path;
+                    if (path) invoke('open_file', { filePath: path });
+                };
+            });
+            
+            listEl.querySelectorAll('.attach-btn').forEach(btn => {
+                btn.onclick = async (e) => {
+                    e.stopPropagation();
+                    const path = btn.closest('.download-item').dataset.path;
+                    if (path) {
+                        const activeTab = await invoke('get_active_tab');
+                        await invoke('attach_file_to_claude', { tab: activeTab, path });
+                        invoke('hide_downloads');
+                    }
+                };
+            });
+            
+            listEl.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    const path = btn.closest('.download-item').dataset.path;
+                    
+                    if (deleteConfirmPath === path) {
+                        // Второй клик - удаляем
+                        deleteEntry(path);
+                        deleteConfirmPath = null;
+                        if (deleteConfirmTimeout) clearTimeout(deleteConfirmTimeout);
+                    } else {
+                        // Первый клик - показываем подтверждение
+                        if (deleteConfirmTimeout) clearTimeout(deleteConfirmTimeout);
+                        
+                        // Сбрасываем предыдущую кнопку
+                        listEl.querySelectorAll('.delete-btn.confirm').forEach(b => {
+                            b.classList.remove('confirm');
+                            b.innerHTML = icons.delete;
+                        });
+                        
+                        deleteConfirmPath = path;
+                        btn.classList.add('confirm');
+                        btn.innerHTML = icons.check;
+                        
+                        // Таймаут сброса
+                        deleteConfirmTimeout = setTimeout(() => {
+                            btn.classList.remove('confirm');
+                            btn.innerHTML = icons.delete;
+                            deleteConfirmPath = null;
+                        }, 2000);
+                    }
+                };
+            });
+            
+            updateSendButton();
+        }
+        
+        async function loadDownloads() {
+            try {
+                downloads = await invoke('get_downloads_log');
+                // Очищаем выделение для несуществующих путей
+                const existingPaths = new Set(downloads.map(d => d.file_path));
+                selectedPaths = new Set([...selectedPaths].filter(p => existingPaths.has(p)));
+                renderDownloads();
+            } catch (e) {
+                console.error('Failed to load downloads:', e);
+            }
+        }
+        
+        async function deleteEntry(path) {
+            try {
+                await invoke('delete_download', { filePath: path });
+                selectedPaths.delete(path);
+                await loadDownloads();
+            } catch (e) {
+                console.error('Failed to delete entry:', e);
+            }
+        }
+        
+        async function deleteAll() {
+            try {
+                await invoke('delete_all_downloads');
+                selectedPaths.clear();
+                await loadDownloads();
+            } catch (e) {
+                console.error('Failed to delete downloads:', e);
+            }
+        }
+        
+        async function sendSelected() {
+            if (selectedPaths.size === 0) return;
+            
+            const activeTab = await invoke('get_active_tab');
+            const paths = [...selectedPaths];
+            
+            // Отправляем файлы последовательно
+            for (const path of paths) {
+                await invoke('attach_file_to_claude', { tab: activeTab, path });
+                // Небольшая задержка между файлами
+                await new Promise(r => setTimeout(r, 100));
+            }
+            
+            // Очищаем выделение после отправки
+            selectedPaths.clear();
+            updateUI();
+            
+            // Закрываем менеджер
+            invoke('hide_downloads');
+        }
+        
+        // Close on blur (click outside)
+        window.addEventListener('blur', () => {
+            selectedPaths.clear();
+            invoke('hide_downloads');
+        });
+        
+        // Close on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                selectedPaths.clear();
+                invoke('hide_downloads');
+            }
+        });
+        
+        // Клик на заголовок или пустое место - снять выделение
+        document.querySelector('.downloads-header').onclick = (e) => {
+            if (!e.target.closest('button')) {
+                selectedPaths.clear();
+                updateUI();
+            }
+        };
+        
+        listEl.onclick = (e) => {
+            // Если клик был на пустом месте списка (не на item)
+            if (e.target === listEl || e.target.classList.contains('empty-state')) {
+                selectedPaths.clear();
+                updateUI();
+            }
+        };
+        
+        // Listen for close command from toolbar
+        listen('close-downloads', () => {
+            selectedPaths.clear();
+            invoke('hide_downloads');
+        });
+        
+        deleteAllBtn.onclick = deleteAll;
+        sendSelectedBtn.onclick = sendSelected;
+        
+        // Listen for new downloads - только обновляем список (запись в лог делает Rust)
+        listen('download-finished', async (event) => {
+            await loadDownloads();
+        });
+        
+        // Listen for refresh
+        listen('refresh-downloads', async () => {
+            await loadDownloads();
+        });
+        
+        // Initial load
+        loadDownloads();
+    </script>
+</body>
+</html>

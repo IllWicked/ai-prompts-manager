@@ -17,7 +17,8 @@ const delay = ms => new Promise(r => setTimeout(r, ms));
 async function getAppVersion() {
     if (!window.__TAURI__) return 'dev';
     try {
-        return await window.__TAURI__.app.getVersion();
+        // Tauri 2.0 API
+        return await window.__TAURI__.core.invoke('plugin:app|version');
     } catch {
         return 'unknown';
     }

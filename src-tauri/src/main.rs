@@ -1262,10 +1262,10 @@ async fn insert_text_to_claude(app: AppHandle, tab: u8, text: String, auto_send:
                 const editor = pmElement.editor;
                 
                 if (editor && editor.commands && typeof editor.commands.insertContent === 'function') {{
-                    // Tiptap способ
+                    // Tiptap способ - вставляем как plain text чтобы HTML-теги не парсились
                     editor.commands.focus();
                     editor.commands.clearContent();
-                    editor.commands.insertContent(text);
+                    editor.commands.insertContent({{ type: 'text', text: text }});
                     
                 }} else if (editor && editor.editorView) {{
                     // Прямой ProseMirror способ

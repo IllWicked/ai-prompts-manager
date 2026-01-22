@@ -287,13 +287,10 @@ async function applyPromptsUpdate(tabs, remoteManifest, isNewTabs = false) {
         // Добавляем/обновляем вкладку
         allTabs[tabId] = appTabData;
         
-        // Сохраняем workflow данные
+        // Сохраняем workflow данные (всегда перезаписываем при обновлении)
         if (tabData.workflow) {
             const workflowKey = `workflow-${tabId}`;
-            // Для новых вкладок или если workflow нет - устанавливаем
-            if (isNewTabs || !localStorage.getItem(workflowKey)) {
-                localStorage.setItem(workflowKey, JSON.stringify(tabData.workflow));
-            }
+            localStorage.setItem(workflowKey, JSON.stringify(tabData.workflow));
         }
         
         updated.push(tabId);

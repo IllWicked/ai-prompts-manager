@@ -977,6 +977,26 @@ def fetch_github_manifest() -> Optional[Dict]:
         except:
             return None
 
+def fetch_github_app_version() -> Optional[str]:
+    """Загружает версию последнего релиза с GitHub"""
+    import urllib.request
+    import json
+    
+    url = "https://api.github.com/repos/IllWicked/ai-prompts-manager/releases/latest"
+    
+    try:
+        req = urllib.request.Request(url, headers={
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'ai-prompts-manager'
+        })
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            tag = data.get('tag_name', '')
+            # Убираем 'v' в начале если есть
+            return tag.lstrip('v') if tag else None
+    except:
+        return None
+
 def display_tabs_with_github(local_tabs: List[Dict], github_data: Optional[Dict]):
     """Отображает список вкладок с сравнением GitHub"""
     W = 59
@@ -1531,17 +1551,25 @@ def menu_release(script_dir: Path):
     while True:
         clear_screen()
         app_version = get_current_app_version(script_dir)
+        github_version = fetch_github_app_version()
         
         print("\n  ═══════════════════════════════════════════════════════")
         print("                     РЕЛИЗЫ ПРИЛОЖЕНИЯ")
         print("  ═══════════════════════════════════════════════════════\n")
         
-        print(f"  Текущая версия: v{app_version}")
+        print(f"  Локальная версия:  v{app_version}")
+        if github_version:
+            if github_version == app_version:
+                print(f"  Последний релиз:   v{github_version} ✓")
+            else:
+                print(f"  Последний релиз:   v{github_version} ≠")
+        else:
+            print(f"  Последний релиз:   не удалось загрузить")
         
         notes = get_release_notes(script_dir)
         if notes:
             preview = notes.split('\n')[0][:50]
-            print(f"  Release notes: {preview}...")
+            print(f"\n  Release notes: {preview}...")
         
         print("\n  ─────────────────────────────────────")
         print("  1. Изменить версию")

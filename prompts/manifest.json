@@ -10,12 +10,12 @@
     },
     "bet-pillar-clkeys": {
       "name": "BET-PILLAR-CLKEYS",
-      "version": "1.0.11",
+      "version": "1.0.12",
       "order": 2
     },
     "bet-pillar": {
       "name": "BET-PILLAR",
-      "version": "1.0.16",
+      "version": "1.0.17",
       "order": 1
     }
   }

@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "exportDate": "2026-01-23T16:09:13.829Z",
+  "exportDate": "2026-01-23T17:02:31.051Z",
   "tab": {
     "id": "bet-pillar-clkeys",
     "name": "BET-PILLAR-CLKEYS",
     "order": 2,
-    "version": "1.0.13",
+    "version": "1.0.14",
     "items": [
       {
         "id": "item_1769180061973_4z3hwz6yi",
@@ -193,7 +193,8 @@
         "collapsed": true,
         "automation": {
           "newChat": true
-        }
+        },
+        "hasAttachments": true
       }
     ]
   },

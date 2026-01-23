@@ -99,7 +99,7 @@ function renameTab(oldId, newName) {
     }
     
     // Создаём новую запись с новым ID
-    const tabData = { ...tabs[oldId], name: newName };
+    const tabData = { ...tabs[oldId], id: finalId, name: newName };
     tabs[finalId] = tabData;
     
     // Удаляем старую запись

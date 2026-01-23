@@ -7,7 +7,7 @@
  * 
  * Зависимости:
  *   - window.AppState (shared state)
- *   - isClaudeVisible, activeClaudeTab, existingTabs, panelRatio, generatingTabs (алиасы)
+ *   - isClaudeVisible, activeClaudeTab, existingTabs, panelRatio, generatingTabs, tabNames (алиасы)
  *   - resizer, isResizing, startX, startRatio, windowWidth, lastAppliedRatio, updateScheduled (алиасы)
  *   - workflowMode, currentTab, activeProject (алиасы)
  *   - Tauri API: window.__TAURI__.core.invoke
@@ -167,9 +167,13 @@ function updateClaudeUI() {
         toggleBtn.classList.toggle('active', isClaudeVisible);
     }
     
-    // Обновляем все табы (1, 2, 3)
-    const hasOtherTabs = existingTabs.length > 1;
+    // Вторая строка хедера с табами - показываем только когда Claude открыт
+    const tabsRow = document.getElementById('claude-tabs-row');
+    if (tabsRow) {
+        tabsRow.classList.toggle('hidden', !isClaudeVisible);
+    }
     
+    // Обновляем все табы (1, 2, 3)
     for (let i = 1; i <= 3; i++) {
         const tabBtn = document.getElementById(`claude-tab-${i}`);
         if (!tabBtn) continue;
@@ -177,20 +181,23 @@ function updateClaudeUI() {
         const exists = existingTabs.includes(i);
         const isActive = activeClaudeTab === i;
         const isGenerating = generatingTabs[i] || false;
+        const tabName = tabNames[i] || `Чат ${i}`;
         
-        // Tab 1 видна только если есть другие табы, остальные — если существуют
-        const isVisible = i === 1 ? hasOtherTabs : exists;
+        // Чат 1 виден всегда (через CSS), для остальных управляем через .visible
+        if (i > 1) {
+            tabBtn.classList.toggle('visible', exists);
+        }
         
-        tabBtn.classList.toggle('visible', isVisible);
         tabBtn.classList.toggle('active', isActive);
         tabBtn.classList.toggle('exists', exists);
         tabBtn.classList.toggle('generating', isGenerating);
         
-        if (isVisible) {
+        // Обновляем содержимое (Чат 1 всегда, остальные если существуют)
+        if (i === 1 || exists) {
             const generatingHtml = isGenerating ? `<span class="generating-indicator" style="animation-delay: ${getSyncedAnimationDelay()}"></span>` : '';
-            // Tab 1 без крестика, остальные с крестиком
+            // Чат 1 без крестика, остальные с крестиком
             const closeBtn = i > 1 ? `<span class="tab-close-btn" data-tab="${i}"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1L9 9M9 1L1 9"/></svg></span>` : '';
-            tabBtn.innerHTML = `${generatingHtml}<span class="tab-text">Чат ${i}</span>${closeBtn}`;
+            tabBtn.innerHTML = `${generatingHtml}<span class="tab-text">${tabName}</span>${closeBtn}`;
         }
     }
     

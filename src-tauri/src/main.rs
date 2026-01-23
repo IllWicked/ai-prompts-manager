@@ -58,6 +58,90 @@ fn get_downloads_log_path() -> Option<std::path::PathBuf> {
     dirs::data_local_dir().map(|d| d.join("com.ai.prompts.manager").join("downloads_log.json"))
 }
 
+// Получить путь к файлу настроек загрузок
+fn get_downloads_settings_path() -> Option<std::path::PathBuf> {
+    dirs::data_local_dir().map(|d| d.join("com.ai.prompts.manager").join("downloads_settings.json"))
+}
+
+// Структура настроек загрузок
+#[derive(Serialize, Deserialize, Clone, Default)]
+struct DownloadsSettings {
+    #[serde(default)]
+    custom_path: Option<String>,
+}
+
+// Получить кастомный путь загрузок
+fn get_custom_downloads_path() -> Option<String> {
+    let settings_path = get_downloads_settings_path()?;
+    if settings_path.exists() {
+        let content = fs::read_to_string(&settings_path).ok()?;
+        let settings: DownloadsSettings = serde_json::from_str(&content).ok()?;
+        // Проверяем что путь существует
+        if let Some(ref path) = settings.custom_path {
+            if std::path::Path::new(path).exists() {
+                return settings.custom_path;
+            }
+        }
+    }
+    None
+}
+
+// Сохранить кастомный путь загрузок
+fn save_custom_downloads_path(path: Option<String>) -> Result<(), String> {
+    let settings_path = get_downloads_settings_path().ok_or("Cannot get settings path")?;
+    
+    // Создаём директорию если нет
+    if let Some(parent) = settings_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    
+    let settings = DownloadsSettings { custom_path: path };
+    let json = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
+    fs::write(&settings_path, json).map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+#[tauri::command]
+fn get_downloads_path() -> Result<String, String> {
+    // Возвращаем кастомный путь или пустую строку (означает "по умолчанию")
+    Ok(get_custom_downloads_path().unwrap_or_default())
+}
+
+#[tauri::command]
+fn set_downloads_path(path: String) -> Result<(), String> {
+    if path.is_empty() {
+        // Сброс на путь по умолчанию
+        save_custom_downloads_path(None)
+    } else {
+        // Проверяем что путь существует
+        if !std::path::Path::new(&path).exists() {
+            return Err("Указанная папка не существует".to_string());
+        }
+        save_custom_downloads_path(Some(path))
+    }
+}
+
+#[tauri::command]
+async fn pick_downloads_folder(app: AppHandle) -> Result<String, String> {
+    use tauri_plugin_dialog::DialogExt;
+    
+    let folder = app.dialog()
+        .file()
+        .set_title("Выберите папку для загрузок")
+        .blocking_pick_folder();
+    
+    match folder {
+        Some(path) => {
+            let path_str = path.to_string();
+            // Сохраняем выбранный путь
+            save_custom_downloads_path(Some(path_str.clone()))?;
+            Ok(path_str)
+        }
+        None => Err("Папка не выбрана".to_string())
+    }
+}
+
 // Записать в лог скачиваний
 fn write_archive_log(entry: ArchiveLogEntry) -> Result<(), String> {
     let log_path = get_archive_log_path().ok_or("Cannot get log path")?;
@@ -368,16 +452,26 @@ fn reset_app_data() -> Result<(), String> {
                 None
             };
             
+            // Сохраняем downloads_settings.json перед удалением
+            let downloads_settings_path = app_folder.join("downloads_settings.json");
+            let downloads_settings_backup = if downloads_settings_path.exists() {
+                fs::read(&downloads_settings_path).ok()
+            } else {
+                None
+            };
+            
             // Удаляем папку
             match fs::remove_dir_all(&app_folder) {
                 Ok(_) => {},
                 Err(_) => {
                     
-                    // Пробуем удалить содержимое по отдельности, кроме archive_log
+                    // Пробуем удалить содержимое по отдельности, кроме защищённых файлов
                     if let Ok(entries) = fs::read_dir(&app_folder) {
                         for entry in entries.flatten() {
                             let path = entry.path();
-                            if path.file_name().map(|n| n != "archive_log.json").unwrap_or(true) {
+                            let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                            // Не удаляем archive_log.json и downloads_settings.json
+                            if filename != "archive_log.json" && filename != "downloads_settings.json" {
                                 let _ = if path.is_dir() {
                                     fs::remove_dir_all(&path)
                                 } else {
@@ -398,6 +492,12 @@ fn reset_app_data() -> Result<(), String> {
                 } else {
                     
                 }
+            }
+            
+            // Восстанавливаем downloads_settings.json
+            if let Some(backup) = downloads_settings_backup {
+                let _ = fs::create_dir_all(&app_folder);
+                let _ = fs::write(&downloads_settings_path, &backup);
             }
         }
     }
@@ -591,7 +691,7 @@ fn resize_webviews(app: &AppHandle) -> Result<(), String> {
 
 /// Возвращает JS скрипт для инициализации Claude WebView
 /// Выполняется автоматически при каждой загрузке/перезагрузке страницы
-fn get_claude_init_script() -> String {
+fn get_claude_init_script(tab: u8) -> String {
     // Централизованные селекторы - единый источник правды
     // При обновлении Claude.ai править ТОЛЬКО здесь!
     // Используем одинарные кавычки в JS для избежания проблем с экранированием
@@ -622,6 +722,9 @@ fn get_claude_init_script() -> String {
         if (!location.hostname.includes("claude.ai")) return;
         
         window.__tauriInitialized = true;
+        
+        // Номер таба для этого webview
+        window.__CLAUDE_TAB__ = {tab};
         
         // Селекторы доступны глобально для helpers
         window.__SEL__ = {selectors};
@@ -681,7 +784,7 @@ fn get_claude_init_script() -> String {
             checkGenerating();
         }}
     }})();
-    "##, selectors = selectors_json, helpers = CLAUDE_HELPERS_JS)
+    "##, tab = tab, selectors = selectors_json, helpers = CLAUDE_HELPERS_JS)
 }
 
 fn ensure_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Result<(), String> {
@@ -704,7 +807,7 @@ fn ensure_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Result<
             .map_err(|e| format!("Invalid URL '{}': {}", target_url, e))?;
         
         // Скрипт который выполняется при каждой загрузке страницы
-        let init_script = get_claude_init_script();
+        let init_script = get_claude_init_script(tab);
         
         window.add_child(
             WebviewBuilder::new(&label, WebviewUrl::External(url_parsed))
@@ -722,8 +825,8 @@ fn ensure_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Result<
                 })
                 .on_download(move |webview, event| {
                     use tauri::webview::DownloadEvent;
-                    match &event {
-                        DownloadEvent::Requested { url, destination: _ } => {
+                    match event {
+                        DownloadEvent::Requested { url, destination } => {
                             let url_str = url.as_str();
                             
                             // Извлекаем имя файла из URL
@@ -743,6 +846,12 @@ fn ensure_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Result<
                                     .to_string()
                             };
                             
+                            // Устанавливаем кастомный путь загрузки если указан
+                            if let Some(custom_path) = get_custom_downloads_path() {
+                                let full_path = std::path::PathBuf::from(&custom_path).join(&filename);
+                                *destination = full_path;
+                            }
+                            
                             // Отправляем событие во все webview
                             let _ = app_handle.emit("download-started", &filename);
                         }
@@ -760,7 +869,7 @@ fn ensure_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Result<
                             // Получаем текущий URL страницы Claude
                             let claude_url = webview.url().map(|u| u.to_string()).unwrap_or_default();
                             
-                            if *success {
+                            if success {
                                 // Добавляем в лог загрузок напрямую (только если ещё нет)
                                 if let Some(log_path) = get_downloads_log_path() {
                                     let mut entries: Vec<DownloadEntry> = if log_path.exists() {
@@ -976,6 +1085,15 @@ async fn new_chat_in_tab(app: AppHandle, tab: u8) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn reload_claude_tab(app: AppHandle, tab: u8) -> Result<(), String> {
+    let label = format!("claude_{}", tab);
+    if let Some(webview) = app.get_webview(&label) {
+        webview.eval("location.reload()").map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 async fn navigate_claude_tab(app: AppHandle, tab: u8, url: String) -> Result<(), String> {
     let label = format!("claude_{}", tab);
     if let Some(webview) = app.get_webview(&label) {
@@ -994,9 +1112,10 @@ async fn navigate_claude_tab(app: AppHandle, tab: u8, url: String) -> Result<(),
 }
 
 #[tauri::command]
-async fn notify_url_change(app: AppHandle, url: String) -> Result<(), String> {
+async fn notify_url_change(app: AppHandle, tab: u8, url: String) -> Result<(), String> {
     // Эмитим событие о изменении URL (для SPA навигации внутри Claude)
     let _ = app.emit("claude-url-changed", serde_json::json!({
+        "tab": tab,
         "url": url
     }));
     Ok(())
@@ -1773,10 +1892,7 @@ fn forward_click(app: AppHandle, x: f64, y: f64) -> Result<(), String> {
             (function() {{
                 const el = document.elementFromPoint({x}, {y});
                 if (el) {{
-                    console.log('[CLICK] Forwarding to:', el.tagName, el.className, 'at', {x}, {y});
                     el.click();
-                }} else {{
-                    console.log('[CLICK] No element at', {x}, {y});
                 }}
             }})();
         "#, x = claude_click_x, y = claude_click_y);
@@ -1805,6 +1921,7 @@ fn main() {
             close_claude_tab,
             get_claude_state,
             new_chat_in_tab,
+            reload_claude_tab,
             navigate_claude_tab,
             notify_url_change,
             eval_in_claude,
@@ -1827,6 +1944,9 @@ fn main() {
             add_archive_log_entry,
             get_downloads_log,
             add_download_entry,
+            get_downloads_path,
+            set_downloads_path,
+            pick_downloads_folder,
             toolbar_back,
             toolbar_forward,
             toolbar_reload,

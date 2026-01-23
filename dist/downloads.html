@@ -300,8 +300,10 @@
             if (count > 0) {
                 sendSelectedBtn.textContent = `Отправить (${count})`;
                 sendSelectedBtn.classList.add('visible');
+                deleteAllBtn.textContent = `Удалить (${count})`;
             } else {
                 sendSelectedBtn.classList.remove('visible');
+                deleteAllBtn.textContent = 'Очистить всё';
             }
         }
         
@@ -474,6 +476,29 @@
             }
         }
         
+        async function deleteSelected() {
+            if (selectedPaths.size === 0) return;
+            
+            try {
+                const paths = [...selectedPaths];
+                for (const path of paths) {
+                    await invoke('delete_download', { filePath: path });
+                }
+                selectedPaths.clear();
+                await loadDownloads();
+            } catch (e) {
+                console.error('Failed to delete selected:', e);
+            }
+        }
+        
+        async function handleDeleteClick() {
+            if (selectedPaths.size > 0) {
+                await deleteSelected();
+            } else {
+                await deleteAll();
+            }
+        }
+        
         async function sendSelected() {
             if (selectedPaths.size === 0) return;
             
@@ -531,7 +556,7 @@
             invoke('hide_downloads');
         });
         
-        deleteAllBtn.onclick = deleteAll;
+        deleteAllBtn.onclick = handleDeleteClick;
         sendSelectedBtn.onclick = sendSelected;
         
         // Listen for new downloads - только обновляем список (запись в лог делает Rust)

@@ -223,6 +223,7 @@ function setupUrlChangeDetection() {
             // Уведомляем через postMessage в Tauri
             if (window.__TAURI__?.core?.invoke) {
                 window.__TAURI__.core.invoke('notify_url_change', { 
+                    tab: window.__CLAUDE_TAB__ || 1,
                     url: location.href 
                 }).catch(() => {});
             }

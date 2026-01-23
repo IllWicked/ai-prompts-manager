@@ -70,6 +70,9 @@ let urlSaveInterval = null;
 // Флаг защиты от двойной инициализации отслеживания URL
 let projectUrlTrackingInitialized = false;
 
+// Флаг программной навигации (не сбрасывать название при переходе на /new)
+let programmaticNavigation = false;
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CLAUDE INTERNAL API (fetch-based)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -321,6 +324,38 @@ async function createProjectViaAPI(tab) {
  */
 async function evalInClaude(tab, script) {
     return await window.__TAURI__.core.invoke('eval_in_claude', { tab, script });
+}
+
+/**
+ * Ожидание загрузки страницы в табе
+ * @param {number} tab - номер таба
+ * @param {number} timeoutMs - таймаут в мс (по умолчанию 10 сек)
+ * @returns {Promise<boolean>} - true если загрузилась, false если таймаут
+ */
+async function waitForTabLoad(tab, timeoutMs = 10000) {
+    let unlisten = null;
+    let resolved = false;
+    
+    return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            if (!resolved) {
+                resolved = true;
+                if (unlisten) unlisten();
+                resolve(false);
+            }
+        }, timeoutMs);
+        
+        window.__TAURI__.event.listen('claude-page-loaded', (event) => {
+            if (!resolved && event.payload?.tab === tab) {
+                resolved = true;
+                clearTimeout(timeout);
+                if (unlisten) unlisten();
+                resolve(true);
+            }
+        }).then(fn => {
+            unlisten = fn;
+        });
+    });
 }
 
 /**
@@ -601,7 +636,7 @@ async function sendNodeToClaude(index, chatTab) {
             return;
         }
     } else if (automation.newChat) {
-        await newChatInTab(targetTab);
+        await newChatInTab(targetTab, false); // false — название присвоится от блока
     }
     
     // Прикрепляем скрипты и файлы
@@ -653,6 +688,12 @@ async function sendNodeToClaude(index, chatTab) {
     
     // Отправляем текст
     await sendTextToClaude(text, targetTab);
+    
+    // Запоминаем название блока для этого таба (макс. 30 символов)
+    const blockName = block.title || `Блок ${index + 1}`;
+    tabNames[targetTab] = blockName.length > 30 ? blockName.slice(0, 30) : blockName;
+    updateClaudeUI();
+    saveClaudeSettings();
     
     // Очищаем прикреплённые файлы (скрипты постоянные)
     if (files.length > 0) {
@@ -735,13 +776,26 @@ async function toggleClaude() {
  */
 async function switchClaudeTab(tab) {
     try {
+        const isNewTab = !existingTabs.includes(tab);
         await window.__TAURI__.core.invoke('switch_claude_tab', { tab });
         activeClaudeTab = tab;
-        if (!existingTabs.includes(tab)) {
+        
+        if (isNewTab) {
             existingTabs.push(tab);
+            
+            // Retry механизм для новых табов: 3 попытки по 10 сек
+            let loaded = false;
+            for (let attempt = 1; attempt <= 3 && !loaded; attempt++) {
+                loaded = await waitForTabLoad(tab, 10000);
+                if (!loaded && attempt < 3) {
+                    await window.__TAURI__.core.invoke('reload_claude_tab', { tab });
+                }
+            }
+            
             // Инжектим монитор генерации в новый таб
             await injectGenerationMonitor(tab);
         }
+        
         updateClaudeUI();
         await saveClaudeSettings();
     } catch (e) {
@@ -835,8 +889,20 @@ function stopGenerationMonitor() {
  * Создать новый чат в табе
  * Использует внутренний API Claude
  */
-async function newChatInTab(tab) {
+async function newChatInTab(tab, clearName = true) {
     try {
+        // Очищаем название таба при ручном создании нового чата
+        // При автоматизации (флаг N) название присвоится от блока
+        if (clearName) {
+            delete tabNames[tab];
+            updateClaudeUI();
+            saveClaudeSettings();
+        }
+        
+        // Устанавливаем флаг программной навигации
+        // чтобы обработчик claude-page-loaded не сбросил название
+        programmaticNavigation = true;
+        
         // Определяем куда навигировать
         let targetUrl = 'https://claude.ai/new';
         let projectUuid = null;
@@ -891,7 +957,11 @@ async function newChatInTab(tab) {
         // Навигируем
         await navigateClaude(tab, targetUrl);
         
+        // Сбрасываем флаг после небольшой задержки (чтобы событие успело обработаться)
+        setTimeout(() => { programmaticNavigation = false; }, 2000);
+        
     } catch (e) {
+        programmaticNavigation = false;
         // Fallback
         await navigateClaude(tab, 'https://claude.ai/new');
     }
@@ -910,6 +980,7 @@ async function closeClaudeTab(tab) {
         // Обновляем состояние
         existingTabs = existingTabs.filter(t => t !== tab);
         activeClaudeTab = newActive;
+        delete tabNames[tab]; // Очищаем название закрытого таба
         
         updateClaudeUI();
         await saveClaudeSettings();
@@ -970,9 +1041,17 @@ async function restoreClaudeState() {
                             if (!tabUrl || tabUrl === 'about:blank' || !tabUrl.startsWith('https://claude.ai')) {
                                 tabUrl = 'https://claude.ai/new';
                             }
-                            await window.__TAURI__.core.invoke('switch_claude_tab_with_url', { tab, url: tabUrl });
-                            // Задержка между табами
-                            await delay(300);
+                            
+                            // Retry механизм: 3 попытки по 10 сек
+                            let loaded = false;
+                            for (let attempt = 1; attempt <= 3 && !loaded; attempt++) {
+                                await window.__TAURI__.core.invoke('switch_claude_tab_with_url', { tab, url: tabUrl });
+                                loaded = await waitForTabLoad(tab, 10000);
+                                if (!loaded && attempt < 3) {
+                                    await window.__TAURI__.core.invoke('reload_claude_tab', { tab });
+                                }
+                            }
+                            
                             await injectGenerationMonitor(tab);
                         }
                     }
@@ -981,6 +1060,11 @@ async function restoreClaudeState() {
                 // Переключаемся на сохранённый активный таб
                 if (saved.activeTab) {
                     await window.__TAURI__.core.invoke('switch_claude_tab', { tab: saved.activeTab });
+                }
+                
+                // Восстанавливаем названия табов
+                if (saved.tabNames) {
+                    Object.assign(tabNames, saved.tabNames);
                 }
                 
                 await updateClaudeState();
@@ -1323,6 +1407,18 @@ function initProjectUrlTracking() {
     
     // Слушаем событие загрузки страницы Claude (полная навигация)
     window.__TAURI__.event.listen('claude-page-loaded', (event) => {
+        const { tab, url } = event.payload || {};
+        
+        // Сбрасываем название таба при ручной навигации на новый чат
+        if (!programmaticNavigation && url && tab) {
+            const isNewChat = url.includes('/new') || url.endsWith('/project/') || url.match(/\/project\/[a-f0-9-]+$/i);
+            if (isNewChat && tabNames[tab]) {
+                delete tabNames[tab];
+                updateClaudeUI();
+                saveClaudeSettings();
+            }
+        }
+        
         setTimeout(() => {
             checkForContinueProject();
         }, 500);
@@ -1330,6 +1426,18 @@ function initProjectUrlTracking() {
     
     // Слушаем событие SPA-навигации внутри Claude (pushState/replaceState)
     window.__TAURI__.event.listen('claude-url-changed', (event) => {
+        const { tab, url } = event.payload || {};
+        
+        // Сбрасываем название таба при ручной навигации на новый чат
+        if (!programmaticNavigation && url && tab) {
+            const isNewChat = url.includes('/new') || url.endsWith('/project/') || url.match(/\/project\/[a-f0-9-]+$/i);
+            if (isNewChat && tabNames[tab]) {
+                delete tabNames[tab];
+                updateClaudeUI();
+                saveClaudeSettings();
+            }
+        }
+        
         setTimeout(() => {
             checkForContinueProject();
         }, 300);

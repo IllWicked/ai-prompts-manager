@@ -1037,8 +1037,11 @@ function showBlockEditModal(block, index) {
             <div class="modal-content workflow-edit-modal-content" onclick="event.stopPropagation(); hideContextMenu()">
                 <h3 id="workflow-edit-header" class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Редактировать блок</h3>
                 <div class="mb-3">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Название</label>
-                    <input type="text" id="workflow-edit-title" 
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Название</label>
+                        <span id="workflow-edit-title-counter" class="text-xs text-gray-400">0/30</span>
+                    </div>
+                    <input type="text" id="workflow-edit-title" maxlength="30"
                            class="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:outline-none">
                 </div>
                 <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
@@ -1074,6 +1077,17 @@ function showBlockEditModal(block, index) {
         // Обработчики кнопок модального окна
         modal.querySelector('#workflow-modal-cancel-btn')?.addEventListener('click', hideWorkflowEditModal);
         modal.querySelector('#workflow-modal-save-btn')?.addEventListener('click', saveWorkflowEdit);
+        
+        // Обработчик счётчика символов в названии
+        const titleInput = modal.querySelector('#workflow-edit-title');
+        const titleCounter = modal.querySelector('#workflow-edit-title-counter');
+        if (titleInput && titleCounter) {
+            titleInput.addEventListener('input', () => {
+                const len = titleInput.value.length;
+                titleCounter.textContent = `${len}/30`;
+                titleCounter.style.color = len >= 30 ? '#ef4444' : '';
+            });
+        }
         
         // Обработчик кнопки языка в модальном окне
         const modalLangBtn = modal.querySelector('#modal-lang-btn');
@@ -1177,9 +1191,17 @@ function showBlockEditModal(block, index) {
     }
     
     // Заполняем данными
-    getEditTitle().value = block.title || '';
+    const titleValue = block.title || '';
+    getEditTitle().value = titleValue;
     getEditContent().value = block.content || '';
     modal.dataset.editIndex = index;
+    
+    // Обновляем счётчик символов названия
+    const titleCounter = modal.querySelector('#workflow-edit-title-counter');
+    if (titleCounter) {
+        titleCounter.textContent = `${titleValue.length}/30`;
+        titleCounter.style.color = titleValue.length >= 30 ? '#ef4444' : '';
+    }
     
     // Инициализируем undo стек для textarea модалки
     modalState.undoStack = [{

@@ -41,6 +41,7 @@
     <script src="js/remote-prompts.js"></script>
     <script src="js/languages.js"></script>
     <script src="js/embedded-scripts.js"></script>
+    <script src="js/embedded-scripts-spellcheck.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/toast.js"></script>
     <script src="js/storage.js"></script>
@@ -73,6 +74,7 @@
 
     <!-- Header -->
     <header class="flex-shrink-0 z-50" style="background-color: var(--bg-header);">
+        <!-- Первая строка: селекторы, кнопка Claude, кнопки управления -->
         <div class="w-full px-3 py-2 flex justify-between items-center gap-2 flex-wrap">
             <!-- Левая часть: селектор вкладок и селектор языка -->
             <div class="flex items-center gap-2 flex-wrap">
@@ -135,7 +137,7 @@
                 </div>
             </div>
             <div class="flex items-center gap-1 flex-wrap">
-                <!-- Claude: главная кнопка + табы -->
+                <!-- Claude: главная кнопка + Auto -->
                 <div class="claude-controls">
                     <button id="claude-toggle-btn" class="claude-toggle-btn" title="Открыть/закрыть Claude">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -144,17 +146,6 @@
                         <span>Claude</span>
                         <span class="claude-dot"></span>
                     </button>
-                    <div class="claude-tabs">
-                        <button id="claude-tab-1" class="claude-tab-btn" title="Чат 1 (ПКМ: новый чат)">Чат 1</button>
-                        <button id="claude-tab-2" class="claude-tab-btn" title="ЛКМ: переключить, ПКМ: новый чат">Чат 2 ×</button>
-                        <button id="claude-tab-3" class="claude-tab-btn" title="ЛКМ: переключить, ПКМ: новый чат">Чат 3 ×</button>
-                        <button id="claude-add-tab" class="claude-tab-btn claude-add-btn" title="Добавить чат">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/>
-                            </svg>
-                            <span>Чат</span>
-                        </button>
-                    </div>
                     <label class="auto-send-toggle" title="Автоматически отправлять после вставки">
                         <input type="checkbox" id="auto-send-checkbox" class="sr-only">
                         <svg class="auto-send-check" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -194,6 +185,20 @@
                         </svg>
                     </button>
                 </div>
+            </div>
+        </div>
+        <!-- Вторая строка: табы чатов Claude (появляется когда Claude открыт) -->
+        <div id="claude-tabs-row" class="claude-tabs-row hidden">
+            <div class="claude-tabs">
+                <button id="claude-tab-1" class="claude-tab-btn" title="Чат 1 (ПКМ: новый чат)">Чат 1</button>
+                <button id="claude-tab-2" class="claude-tab-btn" title="ЛКМ: переключить, ПКМ: новый чат">Чат 2 ×</button>
+                <button id="claude-tab-3" class="claude-tab-btn" title="ЛКМ: переключить, ПКМ: новый чат">Чат 3 ×</button>
+                <button id="claude-add-tab" class="claude-tab-btn claude-add-btn" title="Добавить чат">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/>
+                    </svg>
+                    <span>Чат</span>
+                </button>
             </div>
         </div>
     </header>
@@ -683,6 +688,15 @@
                 </button>
                 <div id="advanced-settings-content" class="hidden mt-3 space-y-3">
                     <div class="flex items-center justify-between">
+                        <div class="flex flex-col justify-center min-w-0 flex-1 mr-3">
+                            <span class="text-sm text-gray-600">Загрузки</span>
+                            <p id="downloads-path-display" class="text-xs text-gray-400 truncate" title="">По умолчанию</p>
+                        </div>
+                        <button id="set-downloads-path-btn" class="btn btn-secondary text-xs flex-shrink-0">
+                            Указать
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between">
                         <span class="text-sm text-gray-600">Данные приложения</span>
                         <button id="open-app-data-btn" class="btn btn-secondary text-xs">
                             Открыть
@@ -700,7 +714,7 @@
             <!-- Версия и кнопка закрытия -->
             <div class="pt-3 border-t border-gray-200 flex items-center justify-between">
                 <span id="version-label" class="text-xs text-gray-400 cursor-default select-none">
-                    Версия: <span id="settings-version">4.0.6</span>
+                    Версия: <span id="settings-version">4.1.0</span>
                 </span>
                 <button id="settings-close-btn" class="btn btn-primary">
                     Закрыть
@@ -748,7 +762,7 @@
         <div class="modal-content">
             <h3 class="text-lg font-semibold mb-1 text-gray-800">Новая вкладка</h3>
             <p id="add-tab-error" class="text-sm mb-3 hidden" class="text-danger">Введите название вкладки</p>
-            <input type="text" id="new-tab-name" placeholder="Название вкладки" 
+            <input type="text" id="new-tab-name" placeholder="Название вкладки" maxlength="30"
                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none mb-4">
             <div class="flex justify-end gap-3">
                 <button id="cancel-add-tab-btn" class="btn btn-secondary">
@@ -775,7 +789,7 @@
 
         /**
          * ╔═══════════════════════════════════════════════════════════════════════════╗
-         * ║                    AI PROMPTS MANAGER v4.0.6                              ║
+         * ║                    AI PROMPTS MANAGER v4.1.0                              ║
          * ║                                                                           ║
          * ║  Tauri 2.0 приложение для управления промптами с интеграцией Claude AI   ║
          * ╚═══════════════════════════════════════════════════════════════════════════╝
@@ -831,6 +845,7 @@
                 existingTabs: [1],
                 generatingTabs: {},
                 tabUrls: {},
+                tabNames: {}, // Названия табов (из последнего отправленного блока)
                 panelRatio: 50,
                 isResetting: false,
                 project: null // { uuid: string, name: string, ownerTab: string } | null
@@ -957,6 +972,10 @@
         Object.defineProperty(window, 'tabUrls', {
             get() { return window.AppState.claude.tabUrls; },
             set(v) { window.AppState.claude.tabUrls = v; }
+        });
+        Object.defineProperty(window, 'tabNames', {
+            get() { return window.AppState.claude.tabNames; },
+            set(v) { window.AppState.claude.tabNames = v; }
         });
         Object.defineProperty(window, 'panelRatio', {
             get() { return window.AppState.claude.panelRatio; },
@@ -1162,16 +1181,6 @@
             if (!from || !to) return text;
             
             let result = text;
-            
-            // Диакритические ошибки - добавляем/убираем в зависимости от языка
-            // Английский (en) не требует диакритики, все остальные требуют
-            if (toLang === 'en') {
-                // Убираем диакритические при переключении на английский
-                result = result.replace(/орфографические, пунктуационные, диакритические/g, 'орфографические, пунктуационные');
-            } else {
-                // Добавляем диакритические при переключении с английского
-                result = result.replace(/орфографические, пунктуационные(?!, диакритические)/g, 'орфографические, пунктуационные, диакритические');
-            }
             
             // Названия технических страниц (точная замена)
             result = result.split(from.privacyPolicy).join(to.privacyPolicy);
@@ -1434,16 +1443,28 @@
                     });
                 });
                 
-                // Обработчики переименования (inline)
-                menu.querySelectorAll('.tab-rename-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
+                // Обработчик переименования через делегирование событий
+                // (навешивается один раз, не внутри renderTabMenu)
+                if (!menu._renameHandlerAttached) {
+                    menu._renameHandlerAttached = true;
+                    menu.addEventListener('click', (e) => {
+                        const btn = e.target.closest('.tab-rename-btn');
+                        if (!btn) return;
+                        
                         e.stopPropagation();
                         const tabId = btn.dataset.tabId;
                         const tabOption = btn.closest('.tab-option');
                         const span = tabOption.querySelector('.tab-name');
                         if (!span) return;
                         
-                        const originalName = getAllTabs()[tabId]?.name || '';
+                        // Проверяем что таб существует
+                        const tabData = getAllTabs()[tabId];
+                        if (!tabData) {
+                            renderTabMenu();
+                            return;
+                        }
+                        
+                        const originalName = tabData.name || '';
                         const spanStyle = getComputedStyle(span);
                         const paddingLeft = spanStyle.paddingLeft;
                         
@@ -1453,6 +1474,7 @@
                         // Создаём input внутри span
                         const input = document.createElement('input');
                         input.type = 'text';
+                        input.maxLength = 30;
                         input.className = 'tab-name-input';
                         input.style.cssText = `
                             position: absolute;
@@ -1472,8 +1494,6 @@
                             box-sizing: border-box;
                         `;
                         input.value = originalName;
-                        input.dataset.tabId = tabId;
-                        input.dataset.original = originalName;
                         
                         // Делаем span relative для позиционирования input
                         span.style.position = 'relative';
@@ -1488,7 +1508,11 @@
                             if (input.parentNode) input.remove();
                         };
                         
+                        let saveRenameCalled = false;
                         const saveRename = () => {
+                            if (saveRenameCalled) return;
+                            saveRenameCalled = true;
+                            
                             const newName = input.value.trim();
                             cleanup();
                             if (newName && newName !== originalName) {
@@ -1513,7 +1537,7 @@
                         
                         pendingDeleteTabId = null;
                     });
-                });
+                }
                 
                 // Обработчики удаления (первый клик - показать подтверждение)
                 menu.querySelectorAll('.tab-delete-btn').forEach(btn => {
@@ -4351,7 +4375,7 @@
                         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                         .replace(/`(.+?)`/g, '<code class="bg-gray-200 px-1 rounded text-xs">$1</code>')
                         .replace(/\n\n/g, '<br><br>')
-                        .replace(/\n/g, '');
+                        .replace(/\n/g, '<br>');
                     notesContent.innerHTML = formattedNotes;
                     notesContainer.classList.remove('hidden');
                 } else {
@@ -4453,6 +4477,14 @@
                 text.textContent = item.label;
                 menuItem.appendChild(text);
                 
+                // Галочка для checked пунктов (справа, не submenu)
+                if (item.checked && !item.submenu) {
+                    const check = document.createElement('span');
+                    check.className = 'check-icon';
+                    check.textContent = '✓';
+                    menuItem.appendChild(check);
+                }
+                
                 // Подменю
                 if (item.submenu) {
                     const arrow = document.createElement('span');
@@ -4465,18 +4497,19 @@
                     
                     item.submenu.forEach(subItem => {
                         const subMenuItem = document.createElement('div');
-                        subMenuItem.className = 'context-menu-item' + (subItem.checked ? ' checked' : '');
-                        
-                        if (subItem.checked) {
-                            const check = document.createElement('span');
-                            check.className = 'submenu-check';
-                            check.textContent = '✓';
-                            subMenuItem.appendChild(check);
-                        }
+                        subMenuItem.className = 'context-menu-item';
                         
                         const subText = document.createElement('span');
                         subText.textContent = subItem.label;
                         subMenuItem.appendChild(subText);
+                        
+                        // Галочка для checked пунктов submenu (справа)
+                        if (subItem.checked) {
+                            const check = document.createElement('span');
+                            check.className = 'check-icon';
+                            check.textContent = '✓';
+                            subMenuItem.appendChild(check);
+                        }
                         
                         if (subItem.action) {
                             subMenuItem.addEventListener('click', (e) => {
@@ -4537,11 +4570,13 @@
             if (!titleElement) return;
             
             const currentTitle = titleElement.textContent;
+            const maxLength = 30;
             
             // Создаём input для редактирования
             const input = document.createElement('input');
             input.type = 'text';
             input.value = currentTitle;
+            input.maxLength = maxLength;
             input.className = 'workflow-title-edit-input';
             input.draggable = false;
             input.style.cssText = `
@@ -4604,7 +4639,7 @@
             
             // Глобальный обработчик для клика вне input
             const handleGlobalClick = (e) => {
-                if (!input.contains(e.target)) {
+                if (e.target !== input) {
                     saveTitle();
                 }
             };
@@ -5086,18 +5121,11 @@
                             {
                                 label: 'Скрипт',
                                 icon: CONTEXT_ICONS.script,
-                                submenu: [
-                                    {
-                                        label: EMBEDDED_SCRIPTS.convert.label,
-                                        checked: hasBlockScript(blockId, 'convert'),
-                                        action: () => toggleBlockScript(blockId, 'convert')
-                                    },
-                                    {
-                                        label: EMBEDDED_SCRIPTS.count.label,
-                                        checked: hasBlockScript(blockId, 'count'),
-                                        action: () => toggleBlockScript(blockId, 'count')
-                                    }
-                                ]
+                                submenu: Object.entries(EMBEDDED_SCRIPTS).map(([key, script]) => ({
+                                    label: script.label,
+                                    checked: hasBlockScript(blockId, key),
+                                    action: () => toggleBlockScript(blockId, key)
+                                }))
                             },
                             {
                                 label: 'Автоматизация',
@@ -5935,6 +5963,50 @@
                 } catch (e) {
                     
                     showToast('Не удалось открыть папку');
+                }
+            });
+            
+            // Инициализация отображения пути загрузок
+            async function updateDownloadsPathDisplay() {
+                const display = document.getElementById('downloads-path-display');
+                if (!display) return;
+                
+                try {
+                    if (window.__TAURI__) {
+                        const path = await window.__TAURI__.core.invoke('get_downloads_path');
+                        if (path) {
+                            display.textContent = path;
+                            display.title = path;
+                        } else {
+                            display.textContent = 'По умолчанию';
+                            display.title = '';
+                        }
+                    }
+                } catch (e) {
+                    display.textContent = 'По умолчанию';
+                }
+            }
+            
+            // Вызываем при открытии настроек
+            updateDownloadsPathDisplay();
+            
+            // Кнопка выбора папки загрузок
+            document.getElementById('set-downloads-path-btn')?.addEventListener('click', async () => {
+                try {
+                    if (window.__TAURI__) {
+                        const path = await window.__TAURI__.core.invoke('pick_downloads_folder');
+                        if (path) {
+                            await updateDownloadsPathDisplay();
+                            showToast('Папка загрузок изменена');
+                        }
+                    } else {
+                        showToast('Доступно только в десктопном приложении');
+                    }
+                } catch (e) {
+                    // Пользователь отменил выбор - это нормально
+                    if (!e.toString().includes('не выбрана')) {
+                        showToast('Не удалось выбрать папку');
+                    }
                 }
             });
             

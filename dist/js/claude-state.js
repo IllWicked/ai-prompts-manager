@@ -51,7 +51,8 @@ async function saveClaudeSettings() {
             activeTab: activeClaudeTab,
             existingTabs: existingTabs,
             panelRatio: panelRatio,
-            tabUrls: tabUrls
+            tabUrls: tabUrls,
+            tabNames: tabNames
         };
         localStorage.setItem('claudeSettings', JSON.stringify(claudeSettings));
     } catch (e) {

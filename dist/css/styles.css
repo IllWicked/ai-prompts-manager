@@ -227,6 +227,7 @@ textarea,
     align-items: center;
     gap: 10px;
     transition: background 0.1s;
+    white-space: nowrap;
 }
 
 .context-menu-item:hover {
@@ -303,14 +304,11 @@ textarea,
     border-color: var(--border-light);
 }
 
-.context-submenu .context-menu-item.checked {
-    background: rgba(236, 116, 65, 0.1);
-}
-
-.submenu-check {
+.context-menu-item .check-icon {
     color: var(--claude-primary);
     font-size: 12px;
-    width: 16px;
+    margin-left: auto;
+    flex-shrink: 0;
 }
 
 /* Для textarea и других элементов */
@@ -1288,7 +1286,21 @@ header .flex {
 .claude-tabs {
     display: flex;
     gap: 4px;
-    flex-shrink: 0;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+/* Вторая строка хедера с табами чатов */
+.claude-tabs-row {
+    display: flex;
+    align-items: center;
+    padding: 0 12px 8px 12px;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.claude-tabs-row.hidden {
+    display: none;
 }
 
 /* Разделитель в тулбаре */
@@ -1401,10 +1413,21 @@ header .flex {
     border-radius: 0.5rem;
     cursor: pointer;
     transition: var(--transition-fast);
-    display: none; /* Скрыты по умолчанию */
+    display: none; /* Скрыты по умолчанию (Чат 2, 3, + Чат) */
     white-space: nowrap;
+    max-width: 200px; /* Ограничение ширины */
+    min-width: 0; /* Позволяет сжиматься */
+    flex-shrink: 1; /* Позволяет сжиматься */
 }
 
+/* Чат 1 всегда виден */
+#claude-tab-1 {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+/* Чат 2, 3, + Чат — показываются через .visible */
 .claude-tab-btn.visible {
     display: inline-flex;
     align-items: center;
@@ -1419,6 +1442,9 @@ header .flex {
 .claude-tab-btn .tab-text {
     line-height: 12px;
     transform: translateY(-1px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .claude-tab-btn:hover {
@@ -1901,7 +1927,8 @@ header .flex {
 }
 
 .workflow-container.edit-mode .workflow-node:hover {
-    border-color: var(--claude-primary);
+    outline: 2px solid var(--claude-primary);
+    outline-offset: -2px;
 }
 
 .workflow-node.selected {
@@ -2000,7 +2027,8 @@ header .flex {
 }
 
 .dark .workflow-node:hover {
-    border-color: var(--claude-primary);
+    outline: 2px solid var(--claude-primary);
+    outline-offset: -2px;
 }
 
 .dark .workflow-node.selected {
@@ -2342,14 +2370,18 @@ header .flex {
 }
 
 .script-badge[data-script="convert"] {
-    background: rgba(100, 200, 255, 0.4);
+    background: rgba(16, 185, 129, 0.7); /* Изумрудный */
 }
 
 .script-badge[data-script="count"] {
-    background: rgba(100, 255, 150, 0.4);
+    background: rgba(59, 130, 246, 0.7); /* Синий */
 }
 
-/* Automation badges (P, T) */
+.script-badge[data-script="spellcheck"] {
+    background: rgba(236, 72, 153, 0.7); /* Розовый */
+}
+
+/* Automation badges (P, N) */
 .automation-badge {
     display: flex;
     align-items: center;
@@ -2370,11 +2402,11 @@ header .flex {
 }
 
 .automation-badge[data-automation="newProject"] {
-    background: rgba(147, 51, 234, 0.5); /* Фиолетовый */
+    background: rgba(139, 92, 246, 0.7); /* Фиолетовый */
 }
 
 .automation-badge[data-automation="newChat"] {
-    background: rgba(234, 179, 8, 0.5); /* Жёлтый */
+    background: rgba(250, 204, 21, 0.7); /* Жёлтый */
 }
 
 /* Специфичные стили кнопки удаления */

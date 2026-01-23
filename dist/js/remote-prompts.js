@@ -384,10 +384,10 @@ function showPromptsUpdateAvailable(newTabs, updatedTabs, releaseNotes = '') {
     if (notesContainer && notesContent) {
         if (releaseNotes && releaseNotes.trim()) {
             let formattedNotes = releaseNotes
+                .replace(/\r\n/g, '\n')
                 .replace(/^### (.+)$/gm, '<strong class="block mt-2 mb-1">$1</strong>')
                 .replace(/^- (.+)$/gm, '<div class="flex gap-2"><span class="text-claude-accent">•</span><span>$1</span></div>')
                 .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\n\n/g, '<br><br>')
                 .replace(/\n/g, '<br>');
             notesContent.innerHTML = formattedNotes;
             notesContainer.classList.remove('hidden');
@@ -601,10 +601,10 @@ function showPromptsReleaseNotes(newTabs, updatedTabs, releaseNotes = '') {
     if (notesContainer && notesContent) {
         if (releaseNotes && releaseNotes.trim()) {
             let formattedNotes = releaseNotes
+                .replace(/\r\n/g, '\n')
                 .replace(/^### (.+)$/gm, '<strong class="block mt-2 mb-1">$1</strong>')
                 .replace(/^- (.+)$/gm, '<div class="flex gap-2"><span class="text-claude-accent">•</span><span>$1</span></div>')
                 .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\n\n/g, '<br><br>')
                 .replace(/\n/g, '<br>');
             notesContent.innerHTML = formattedNotes;
             notesContainer.classList.remove('hidden');

@@ -830,14 +830,18 @@ fn ensure_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Result<
                             let url_str = url.as_str();
                             
                             // Извлекаем имя файла из URL
-                            // Формат: .../download-file?path=%2Fmnt%2F...%2Ffilename.ext
+                            // Формат одиночного: .../download-file?path=%2Fmnt%2F...%2Ffilename.ext
+                            // Формат архива: .../download-files?paths=...
                             let filename = if url_str.contains("path=") {
-                                // Извлекаем параметр path и декодируем
+                                // Одиночный файл - извлекаем параметр path и декодируем
                                 url_str.split("path=").nth(1)
                                     .and_then(|s| s.split('&').next())
                                     .map(|s| urlencoding::decode(s).unwrap_or_default().to_string())
                                     .and_then(|s| s.split('/').last().map(|s| s.to_string()))
                                     .unwrap_or_else(|| "file".to_string())
+                            } else if url_str.contains("download-files") {
+                                // Архив из нескольких файлов - Claude генерирует .zip
+                                "claude_files.zip".to_string()
                             } else {
                                 // Fallback: берём последний сегмент пути
                                 url_str.split('/').last()

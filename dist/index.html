@@ -714,7 +714,7 @@
             <!-- Версия и кнопка закрытия -->
             <div class="pt-3 border-t border-gray-200 flex items-center justify-between">
                 <span id="version-label" class="text-xs text-gray-400 cursor-default select-none">
-                    Версия: <span id="settings-version">4.1.0</span>
+                    Версия: <span id="settings-version">4.1.1</span>
                 </span>
                 <button id="settings-close-btn" class="btn btn-primary">
                     Закрыть
@@ -789,7 +789,7 @@
 
         /**
          * ╔═══════════════════════════════════════════════════════════════════════════╗
-         * ║                    AI PROMPTS MANAGER v4.1.0                              ║
+         * ║                    AI PROMPTS MANAGER v4.1.1                              ║
          * ║                                                                           ║
          * ║  Tauri 2.0 приложение для управления промптами с интеграцией Claude AI   ║
          * ╚═══════════════════════════════════════════════════════════════════════════╝
@@ -4370,11 +4370,11 @@
                 if (releaseNotes && releaseNotes.trim()) {
                     // Простое форматирование markdown-подобного текста
                     let formattedNotes = releaseNotes
+                        .replace(/\r\n/g, '\n')
                         .replace(/^### (.+)$/gm, '<strong class="block mt-2 mb-1">$1</strong>')
                         .replace(/^- (.+)$/gm, '<div class="flex gap-2"><span class="text-claude-accent">•</span><span>$1</span></div>')
                         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/`(.+?)`/g, '<code class="bg-gray-200 px-1 rounded text-xs">$1</code>')
-                        .replace(/\n\n/g, '<br><br>')
+                        .replace(/`(.+?)`/g, '<code class="bg-gray-200 dark:bg-gray-600 px-1 rounded text-xs">$1</code>')
                         .replace(/\n/g, '<br>');
                     notesContent.innerHTML = formattedNotes;
                     notesContainer.classList.remove('hidden');
@@ -5066,9 +5066,11 @@
                                     });
                                 }
                                 
+                                // Сначала сохраняем workflow (с соединениями) без undo
+                                saveWorkflowState(true);
+                                // Потом saveAllTabs которая запишет полное состояние в undo
                                 saveAllTabs(tabs);
                                 renderWorkflow(true);
-                                saveWorkflowState(true);
                                 
                                 newBlockIds.forEach(id => {
                                     selectedNodes.add(id);
@@ -5395,9 +5397,11 @@
                             });
                         }
                         
+                        // Сначала сохраняем workflow (с соединениями) без undo
+                        saveWorkflowState(true);
+                        // Потом saveAllTabs которая запишет полное состояние в undo
                         saveAllTabs(tabs);
                         renderWorkflow(true);
-                        saveWorkflowState(true); // skipUndo - saveAllTabs уже записала
                         
                         newBlockIds.forEach(id => {
                             selectedNodes.add(id);

@@ -714,7 +714,7 @@
             <!-- Версия и кнопка закрытия -->
             <div class="pt-3 border-t border-gray-200 flex items-center justify-between">
                 <span id="version-label" class="text-xs text-gray-400 cursor-default select-none">
-                    Версия: <span id="settings-version">4.1.1</span>
+                    Версия: <span id="settings-version">4.1.2</span>
                 </span>
                 <button id="settings-close-btn" class="btn btn-primary">
                     Закрыть
@@ -789,7 +789,7 @@
 
         /**
          * ╔═══════════════════════════════════════════════════════════════════════════╗
-         * ║                    AI PROMPTS MANAGER v4.1.1                              ║
+         * ║                    AI PROMPTS MANAGER v4.1.2                              ║
          * ║                                                                           ║
          * ║  Tauri 2.0 приложение для управления промптами с интеграцией Claude AI   ║
          * ╚═══════════════════════════════════════════════════════════════════════════╝
@@ -3397,7 +3397,8 @@
                 const storageKey = `field-value-${currentTab}-${blockId}-${fieldIndex}`;
                 
                 if (isOptional && isHidden) {
-                    // Опциональное поле скрыто — удаляем из текста
+                    // Опциональное поле скрыто — удаляем из текста, но сохраняем позицию
+                    const positionKey = `field-position-${currentTab}-${blockId}-${fieldIndex}`;
                     if (originalValue) {
                         const spacer = prefix.endsWith(' ') ? '' : ' ';
                         const spacers = [spacer, '\n', '\r\n', ''];
@@ -3418,8 +3419,11 @@
                             );
                         }
                         for (const pattern of patterns) {
-                            if (content.includes(pattern)) {
-                                content = content.replace(pattern, '');
+                            const patternIndex = content.indexOf(pattern);
+                            if (patternIndex !== -1) {
+                                // Сохраняем позицию перед удалением
+                                localStorage.setItem(positionKey, patternIndex.toString());
+                                content = content.substring(0, patternIndex) + content.substring(patternIndex + pattern.length);
                                 // Убираем двойные пробелы если остались
                                 content = content.replace(/  +/g, ' ');
                                 changed = true;
@@ -3433,24 +3437,39 @@
                     if (newValue) {
                         const spacer = prefix.endsWith(' ') ? '' : ' ';
                         const insertText = ' ' + prefix + spacer + newValue;
+                        const positionKey = `field-position-${currentTab}-${blockId}-${fieldIndex}`;
+                        const savedPosition = localStorage.getItem(positionKey);
                         
-                        // Ищем место вставки - перед первой точкой в первой строке
-                        const firstLineEnd = content.indexOf('\n');
-                        const firstLine = firstLineEnd > 0 ? content.substring(0, firstLineEnd) : content;
-                        const dotIndex = firstLine.indexOf('.');
-                        
-                        if (dotIndex > 0) {
-                            // Вставляем перед точкой
-                            content = content.substring(0, dotIndex) + insertText + content.substring(dotIndex);
+                        if (savedPosition !== null) {
+                            // Используем сохранённую позицию
+                            let insertPos = parseInt(savedPosition, 10);
+                            // Корректируем позицию если она выходит за границы текста
+                            if (insertPos > content.length) {
+                                insertPos = content.length;
+                            }
+                            content = content.substring(0, insertPos) + insertText + content.substring(insertPos);
                             changed = true;
-                        } else if (firstLineEnd > 0) {
-                            // Вставляем в конец первой строки
-                            content = firstLine + insertText + content.substring(firstLineEnd);
-                            changed = true;
+                            // Удаляем сохранённую позицию после использования
+                            localStorage.removeItem(positionKey);
                         } else {
-                            // Вставляем в конец
-                            content = content + insertText;
-                            changed = true;
+                            // Fallback: ищем место вставки - в конец первой строки перед точкой
+                            const firstLineEnd = content.indexOf('\n');
+                            const firstLine = firstLineEnd > 0 ? content.substring(0, firstLineEnd) : content;
+                            const dotIndex = firstLine.lastIndexOf('.');
+                            
+                            if (dotIndex > 0) {
+                                // Вставляем перед последней точкой в первой строке
+                                content = content.substring(0, dotIndex) + insertText + content.substring(dotIndex);
+                                changed = true;
+                            } else if (firstLineEnd > 0) {
+                                // Вставляем в конец первой строки
+                                content = firstLine + insertText + content.substring(firstLineEnd);
+                                changed = true;
+                            } else {
+                                // Вставляем в конец
+                                content = content + insertText;
+                                changed = true;
+                            }
                         }
                         localStorage.setItem(storageKey, newValue);
                     }

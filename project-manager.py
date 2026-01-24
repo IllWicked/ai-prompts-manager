@@ -720,6 +720,10 @@ def git_push(script_dir: Path, force: bool = False) -> Tuple[bool, str]:
     success, branch, _ = run_git(['rev-parse', '--abbrev-ref', 'HEAD'], script_dir)
     branch = branch.strip() if success else 'main'
     
+    # Если detached HEAD, используем main
+    if branch == 'HEAD':
+        branch = 'main'
+    
     args = ['push']
     if force:
         args.append('-f')

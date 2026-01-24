@@ -86,6 +86,39 @@ fn get_custom_downloads_path() -> Option<String> {
     None
 }
 
+// Генерирует уникальное имя файла, добавляя (1), (2) и т.д. если файл существует
+fn get_unique_filepath(dir: &std::path::Path, filename: &str) -> std::path::PathBuf {
+    let full_path = dir.join(filename);
+    
+    if !full_path.exists() {
+        return full_path;
+    }
+    
+    // Разбиваем на имя и расширение
+    let path = std::path::Path::new(filename);
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or(filename);
+    let extension = path.extension().and_then(|s| s.to_str());
+    
+    // Ищем свободный номер
+    let mut counter = 1;
+    loop {
+        let new_filename = match extension {
+            Some(ext) => format!("{} ({}).{}", stem, counter, ext),
+            None => format!("{} ({})", stem, counter),
+        };
+        let new_path = dir.join(&new_filename);
+        if !new_path.exists() {
+            return new_path;
+        }
+        counter += 1;
+        
+        // Защита от бесконечного цикла
+        if counter > 9999 {
+            return full_path;
+        }
+    }
+}
+
 // Сохранить кастомный путь загрузок
 fn save_custom_downloads_path(path: Option<String>) -> Result<(), String> {
     let settings_path = get_downloads_settings_path().ok_or("Cannot get settings path")?;
@@ -850,14 +883,23 @@ fn ensure_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Result<
                                     .to_string()
                             };
                             
-                            // Устанавливаем кастомный путь загрузки если указан
+                            // Устанавливаем путь загрузки с уникальным именем
                             if let Some(custom_path) = get_custom_downloads_path() {
-                                let full_path = std::path::PathBuf::from(&custom_path).join(&filename);
-                                *destination = full_path;
+                                let dir = std::path::PathBuf::from(&custom_path);
+                                *destination = get_unique_filepath(&dir, &filename);
+                            } else {
+                                // Для пути по умолчанию тоже делаем уникальным
+                                if let Some(dir) = destination.parent() {
+                                    *destination = get_unique_filepath(dir, &filename);
+                                }
                             }
                             
-                            // Отправляем событие во все webview
-                            let _ = app_handle.emit("download-started", &filename);
+                            // Отправляем событие во все webview с итоговым именем файла
+                            let final_filename = destination.file_name()
+                                .and_then(|n| n.to_str())
+                                .unwrap_or(&filename)
+                                .to_string();
+                            let _ = app_handle.emit("download-started", &final_filename);
                         }
                         DownloadEvent::Finished { url: _, path, success } => {
                             let filename = path.as_ref()

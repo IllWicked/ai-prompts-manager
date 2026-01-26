@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "exportDate": "2026-01-24T07:23:00.982Z",
+  "exportDate": "2026-01-26T06:27:38.037Z",
   "tab": {
     "id": "bet-pillar",
     "name": "BET-PILLAR",
     "order": 1,
-    "version": "1.0.22",
+    "version": "1.0.23",
     "items": [
       {
         "type": "block",
@@ -128,7 +128,7 @@
         "type": "block",
         "id": "item_1768308167100_tnsbethzj",
         "title": "Экспорт",
-        "content": "Упакуй все файлы в архив .zip.\n\nМетод:\nСоздай python-скрипт для упаковки на основе нижеуказанной структуры.\n\nСтруктура архива:\nНазвание: BET-XX-PILLAR-ключевое слово. XX — код языка, и он, и ключ указаны в конце content-plan.md.\nСодержимое:\n├── ADD PAGES/        → технические страницы (названия локализированы под язык)\n├── CL1/              → index1.html + prompts1.txt\n├── CL2/              → index2.html + prompts2.txt\n├── CL3/              → index3.html + prompts3.txt\n├── CL4/              → index4.html + prompts4.txt\n├── CL5/              → index5.html + prompts5.txt\n└── PILLAR/           → index.html + prompts.txt + images-styles.css\n\nContent-plan.md не нужен в архиве, он только для тебя.",
+        "content": "Упакуй все файлы в архив .zip.\n\nМетод:\nСоздай python-скрипт для упаковки на основе нижеуказанной структуры.\n\nСтруктура архива:\nНазвание: BET-XX-PILLAR-ключевое-слово. XX — код языка, и он, и ключ указаны в конце content-plan.md.\nСодержимое:\n├── ADD PAGES/        → технические страницы (названия локализированы под язык)\n├── CL1/              → index1.html + prompts1.txt\n├── CL2/              → index2.html + prompts2.txt\n├── CL3/              → index3.html + prompts3.txt\n├── CL4/              → index4.html + prompts4.txt\n├── CL5/              → index5.html + prompts5.txt\n└── PILLAR/           → index.html + prompts.txt + images-styles.css\n\nContent-plan.md не нужен в архиве, он только для тебя.",
         "instruction": {
           "type": "info",
           "icon": "paperclip",

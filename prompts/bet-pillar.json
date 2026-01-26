@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "exportDate": "2026-01-26T09:09:43.876Z",
+  "exportDate": "2026-01-26T09:21:58.435Z",
   "tab": {
     "id": "bet-pillar",
     "name": "BET-PILLAR",
     "order": 1,
-    "version": "1.0.26",
+    "version": "1.0.27",
     "items": [
       {
         "type": "block",

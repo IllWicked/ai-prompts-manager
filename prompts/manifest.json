@@ -1,21 +1,21 @@
 {
   "version": "1.0.0",
-  "updated": "2026-01-26",
+  "updated": "2026-01-27",
   "release_notes": "ЧТО НОВОГО:\n- Новый метод проверки орфографии\n- Более эффективный подход к генерации статей\n- Обновлен пайплайн",
   "tabs": {
     "bet-clusters": {
       "name": "BET-CLUSTERS",
-      "version": "1.0.9",
+      "version": "1.0.10",
       "order": 3
     },
     "bet-pillar-clkeys": {
       "name": "BET-PILLAR-CLKEYS",
-      "version": "1.0.18",
+      "version": "1.0.19",
       "order": 2
     },
     "bet-pillar": {
       "name": "BET-PILLAR",
-      "version": "1.0.27",
+      "version": "1.0.28",
       "order": 1
     }
   }

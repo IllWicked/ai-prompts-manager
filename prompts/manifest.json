@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "updated": "2026-01-28",
-  "release_notes": "ЧТО НОВОГО:\n- Новый метод проверки орфографии\n- Более эффективный подход к генерации статей\n- Обновлен пайплайн",
+  "updated": "2026-01-29",
+  "release_notes": "ЧТО НОВОГО:\n- Теперь в кластерах только по одному Hero-изображению",
   "tabs": {
     "bet-clusters": {
       "name": "BET-CLUSTERS",
@@ -22,6 +22,11 @@
       "name": "SPORTWETTEN",
       "version": "1.0.1",
       "order": 4
+    },
+    "bet-sportwetten": {
+      "name": "BET-SPORTWETTEN",
+      "version": "1.0.0",
+      "order": 5
     }
   }
 }

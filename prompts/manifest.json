@@ -18,15 +18,10 @@
       "version": "1.0.28",
       "order": 1
     },
-    "sportwetten": {
-      "name": "SPORTWETTEN",
-      "version": "1.0.1",
-      "order": 4
-    },
     "bet-sportwetten": {
       "name": "BET-SPORTWETTEN",
       "version": "1.0.0",
-      "order": 5
+      "order": 4
     }
   }
 }

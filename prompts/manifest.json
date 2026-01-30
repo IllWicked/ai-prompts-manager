@@ -1,26 +1,26 @@
 {
   "version": "1.0.0",
-  "updated": "2026-01-29",
+  "updated": "2026-01-30",
   "release_notes": "ЧТО НОВОГО:\n- Теперь в кластерах только по одному Hero-изображению",
   "tabs": {
     "bet-clusters": {
       "name": "BET-CLUSTERS",
-      "version": "1.0.10",
+      "version": "1.0.11",
       "order": 3
     },
     "bet-pillar-clkeys": {
       "name": "BET-PILLAR-CLKEYS",
-      "version": "1.0.19",
+      "version": "1.0.20",
       "order": 2
     },
     "bet-pillar": {
       "name": "BET-PILLAR",
-      "version": "1.0.28",
+      "version": "1.0.29",
       "order": 1
     },
     "bet-sportwetten": {
       "name": "BET-SPORTWETTEN",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "order": 4
     }
   }

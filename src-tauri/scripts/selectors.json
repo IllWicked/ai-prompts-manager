@@ -1,0 +1,61 @@
+{
+  "_meta": {
+    "version": "1.0.0",
+    "description": "Централизованные селекторы для Claude.ai. При изменении UI Claude править ТОЛЬКО этот файл!",
+    "updated": "2026-01-29"
+  },
+
+  "generation": {
+    "_comment": "Индикаторы генерации ответа",
+    "stopButton": [
+      "button[aria-label='Stop Response']",
+      "button[aria-label='Stop']",
+      "[data-testid='stop-button']"
+    ],
+    "streamingIndicator": "[data-is-streaming='true']",
+    "thinkingIndicator": "[class*='thinking']"
+  },
+
+  "input": {
+    "_comment": "Элементы ввода сообщений",
+    "proseMirror": ".ProseMirror",
+    "contentEditable": "[contenteditable='true']",
+    "textarea": "textarea",
+    "sendButton": [
+      "button[aria-label='Send message']",
+      "button[aria-label='Send Message']",
+      "button[aria-label='Send']",
+      "[data-testid='send-button']"
+    ],
+    "fileInput": "input[type='file']"
+  },
+
+  "attachments": {
+    "_comment": "Кнопки и элементы для прикрепления файлов",
+    "attachButtonAriaPattern": "attach"
+  },
+
+  "navigation": {
+    "_comment": "Навигационные элементы",
+    "leftNav": "body > div.root > div > div.shrink-0 > div > nav",
+    "pinSidebarButton": "button[data-testid='pin-sidebar-toggle']",
+    "scrollContainer": [
+      ".overflow-y-scroll.flex-1",
+      "[class*='overflow-y-scroll'][class*='flex-1']"
+    ]
+  },
+
+  "project": {
+    "_comment": "Элементы страниц проектов",
+    "projectLinkInHeader": "div.text-text-300 a[href^='/project/']",
+    "projectLinkGeneric": "a[href*='/project/']",
+    "pageTitle": "h1"
+  },
+
+  "ui": {
+    "_comment": "Косметические UI элементы",
+    "ghostButtonIndicator": "svg style",
+    "titleContainer": "div.flex.min-w-0.flex-1.shrink.md\\:items-center.font-base-bold",
+    "artifactControls": "[data-testid='wiggle-controls-actions']"
+  }
+}

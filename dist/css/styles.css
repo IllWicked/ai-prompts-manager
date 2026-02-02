@@ -1,0 +1,3722 @@
+/* Определение пользовательских цветов на основе var(--claude-primary) */
+:root {
+    --claude-primary: #ec7441;
+    --claude-light: #fff7f0; /* Очень светлый фон для инструкций */
+    --claude-code: #fef0e6;  /* Чуть темнее для фона <code> */
+    --claude-shadow: rgba(236, 116, 65, 0.3); /* Для тени при наведении */
+    --claude-selection: rgba(236, 116, 65, 0.35); /* Для выделения текста */
+    --claude-selection-dark: rgba(236, 116, 65, 0.45); /* Для выделения в тёмной теме */
+    --claude-dark: #b15730;  /* Тёмный оттенок Claude orange */
+    --claude-darker: #7c2d12; /* Самый тёмный оттенок */
+    
+    /* Акценты */
+    --color-success: #228c46;
+    --color-danger: #c83c32;
+    --color-danger-light: #ff6b6b;
+    
+    /* Transitions */
+    --transition-fast: all 0.15s ease;
+    --transition-normal: all 0.2s ease;
+    --transition-slow: all 0.3s ease;
+    
+    /* Border radius */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-full: 9999px;
+    
+    /* Layout */
+    --header-height: 68px;
+    
+    /* Workflow nodes */
+    --node-default-width: 680px;
+    --node-min-width: 480px;
+    --node-min-height: 440px;
+    --node-header-icon-size: 28px;
+    
+    /* Светлая тема (по умолчанию) */
+    --bg-primary: #ebebed;
+    --bg-secondary: #f7f7f8;
+    --bg-tertiary: #e2e2e4;
+    --bg-hover: rgba(0, 0, 0, 0.03);
+    --bg-inset: rgba(128, 128, 128, 0.08);
+    --bg-muted: #c8c8cc;
+    --bg-elevated: #f7f7f8;
+    --bg-header: #dcdcde;
+    --text-primary: #27272a;
+    --text-secondary: #52525b;
+    --text-tertiary: #5f5f67;
+    --text-muted: #a1a1aa;
+    --border-color: rgba(0, 0, 0, 0.05);
+    --border-light: #d4d4d8;
+    --border-medium: #b0b0b6;
+}
+
+/* Тёмная тема */
+.dark {
+    /* Фоны */
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3d3d3d;
+    --bg-hover: rgba(255, 255, 255, 0.05);
+    --bg-inset: rgba(128, 128, 128, 0.06); /* Для вложенных контейнеров */
+    --bg-muted: #333333;
+    --bg-elevated: #4a4a4a;
+    --bg-header: #242424;
+    
+    /* Текст */
+    --text-primary: #f3f4f6;
+    --text-secondary: #d1d5db;
+    --text-tertiary: #888888;
+    --text-muted: #6b7280;
+    
+    /* Бордеры */
+    --border-color: rgba(255, 255, 255, 0.1);
+    --border-light: #404040;
+    --border-medium: #606060;
+    
+    /* Акценты */
+    --color-success: #228c46;
+    --color-danger: #c83c32;
+    --color-danger-light: #ff6b6b;
+    
+    /* Claude orange */
+    --claude-light: #37190c;
+    --claude-code: #4e2310;
+    --claude-dark: #b15730;
+    --claude-darker: #7c2d12;
+    
+    /* Кнопки */
+    --btn-bg: #3d3d3d;
+    --btn-border: #505050;
+    --btn-text: #ccc;
+    --btn-hover-bg: #4a4a4a;
+    --btn-hover-border: #606060;
+}
+
+/* Глобальные стили скроллбаров */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.2);
+    border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,0.3);
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+/* Глобальная блокировка выделения для всех интерактивных элементов */
+button,
+[role="button"],
+[onclick],
+[class*="-btn"],
+[class*="-toggle"],
+[class*="-option"],
+label,
+select,
+svg,
+header,
+nav,
+.modal-overlay,
+.resize-zone,
+.workflow-port,
+.workflow-node-header,
+.workflow-node-footer,
+.workflow-node-instruction {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Глобальный сброс focus/ring стилей */
+*:focus,
+*:focus-visible {
+    outline: none !important;
+    --tw-ring-shadow: none !important;
+    --tw-ring-offset-shadow: none !important;
+}
+
+*::-moz-focus-inner {
+    border: 0 !important;
+}
+
+/* Убираем box-shadow с кнопок при фокусе (Tailwind ring) */
+button:focus,
+button:focus-visible,
+button:active,
+[class*="ring-"] {
+    box-shadow: var(--tw-shadow, none) !important;
+}
+
+/* Кастомный цвет выделения текста */
+::selection {
+    background: var(--claude-selection);
+    color: inherit;
+}
+
+::-moz-selection {
+    background: var(--claude-selection);
+    color: inherit;
+}
+
+/* В тёмной теме чуть ярче */
+.dark ::selection {
+    background: var(--claude-selection-dark);
+}
+
+.dark ::-moz-selection {
+    background: var(--claude-selection-dark);
+}
+
+/* Разрешаем выделение текста в полях ввода */
+input[type="text"],
+input[type="number"],
+input[type="search"],
+textarea,
+.workflow-node-body,
+[contenteditable="true"] {
+    -webkit-user-select: text !important;
+    user-select: text !important;
+}
+
+/* Стили кастомного контекстного меню */
+.custom-context-menu {
+    position: fixed;
+    background: white;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    z-index: 100000;
+    min-width: 160px;
+    padding: 4px 0;
+    animation: contextMenuFadeIn 0.1s ease-out;
+}
+
+@keyframes contextMenuFadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.dark .custom-context-menu {
+    background: var(--bg-secondary);
+    border-color: var(--border-light);
+}
+
+.context-menu-item {
+    padding: 8px 16px;
+    margin: 0 6px;
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+.context-menu-item:hover {
+    background: var(--bg-hover);
+}
+
+.dark .context-menu-item {
+    color: var(--text-primary);
+}
+
+.dark .context-menu-item:hover {
+    background: var(--bg-hover);
+}
+
+.context-menu-item.disabled {
+    color: var(--text-muted);
+    cursor: default;
+}
+
+.context-menu-item.disabled:hover {
+    background: transparent;
+}
+
+.dark .context-menu-item.disabled {
+    color: var(--text-muted);
+}
+
+.context-menu-separator {
+    height: 1px;
+    background: var(--border-light);
+    margin: 4px 0;
+}
+
+.dark .context-menu-separator {
+    background: var(--border-light);
+}
+
+.context-menu-item svg {
+    width: 16px;
+    height: 16px;
+    opacity: 0.7;
+}
+
+/* Подменю */
+.context-menu-item.has-submenu {
+    position: relative;
+}
+
+.context-menu-item .submenu-arrow {
+    margin-left: auto;
+    width: 12px;
+    height: 12px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.context-menu-item .submenu-arrow svg {
+    width: 12px;
+    height: 12px;
+}
+
+.context-submenu {
+    display: none;
+    position: absolute;
+    left: 100%;
+    top: -4px;
+    background: white;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    min-width: 140px;
+    padding: 4px 0;
+}
+
+.context-menu-item.has-submenu:hover .context-submenu {
+    display: block;
+}
+
+.dark .context-submenu {
+    background: var(--bg-secondary);
+    border-color: var(--border-light);
+}
+
+.context-menu-item .check-icon {
+    color: var(--claude-primary);
+    font-size: 12px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* Для textarea и других элементов */
+textarea::-webkit-scrollbar,
+input::-webkit-scrollbar {
+    width: 6px;
+}
+
+textarea::-webkit-scrollbar-track,
+input::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.05);
+    border-radius: 3px;
+}
+
+textarea::-webkit-scrollbar-thumb,
+input::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+    border-radius: 3px;
+}
+
+.dark textarea::-webkit-scrollbar-track,
+.dark input::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+}
+
+.dark textarea::-webkit-scrollbar-thumb,
+.dark input::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+}
+
+/* Пользовательские классы Tailwind для интеграции нового цвета */
+.claude-accent { color: var(--claude-primary); }
+.bg-claude-accent { background-color: var(--claude-primary); }
+.text-claude-accent { color: var(--claude-primary); }
+
+/* Унифицированные стили кнопок */
+/* Базовый класс кнопок */
+.btn {
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 16px;
+    border-radius: var(--radius-md);
+    transition: var(--transition-normal);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.btn svg {
+    flex-shrink: 0;
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+.btn span {
+    color: inherit;
+}
+
+/* SVG в кнопках опциональных полей */
+.show-optional-field svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Модификаторы кнопок */
+.btn-primary {
+    background: var(--claude-primary);
+    color: white;
+    border: 1px solid var(--claude-primary);
+}
+.btn-primary:hover {
+    filter: brightness(1.15);
+}
+
+.btn-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-light);
+}
+.btn-secondary:hover {
+    background: #e5e7eb;
+    color: #404040;
+}
+
+.btn-danger {
+    background: var(--color-danger);
+    color: white;
+    border: 1px solid var(--color-danger);
+}
+.btn-danger:hover {
+    filter: brightness(1.15);
+}
+
+.dark .btn-secondary {
+    background: var(--border-light);
+    color: var(--text-secondary);
+    border-color: var(--border-light);
+}
+.dark .btn-secondary:hover {
+    background: #525252;
+    color: #f3f4f6;
+}
+
+/* === Утилитарные классы скроллбаров === */
+
+/* Скрытый скроллбар */
+.scrollbar-hidden {
+    scrollbar-width: none; /* Firefox */
+}
+.scrollbar-hidden::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+}
+
+/* Тонкий скроллбар */
+.scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+}
+.dark .scrollbar-thin {
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+}
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* Основной контейнер */
+#scroll-container {
+    overflow-y: scroll;
+}
+
+/* Кастомный скроллбар для основного контейнера - под шапкой */
+.main-scrollbar {
+    position: fixed;
+    right: 4px;
+    top: var(--header-height);
+    bottom: 4px;
+    width: 6px;
+    background: transparent;
+    transition: width 0.2s ease;
+    z-index: 100;
+}
+
+.main-scrollbar.active {
+    width: 8px;
+}
+
+.main-scrollbar-thumb {
+    position: absolute;
+    right: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.main-scrollbar-thumb:hover,
+.main-scrollbar-thumb.dragging {
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.toast {
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    transform: translateY(20px) translateX(-50%);
+    z-index: 999999; /* Выше всех элементов включая context menu (100000) */
+}
+.toast.show {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0) translateX(-50%);
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    font-weight: 500;
+}
+.spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-top: 4px solid var(--claude-primary); /* Использование нового цвета */
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Вращение и пульсация иконки при проверке обновлений */
+#manual-update-check-btn.checking svg {
+    animation: spin-mirrored 1s linear infinite, pulse-icon 0.8s ease-in-out infinite;
+}
+
+/* Пульсация иконки при проверке промптов */
+#manual-prompts-check-btn.checking svg {
+    animation: pulse-icon 0.8s ease-in-out infinite;
+}
+
+@keyframes pulse-icon {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Вращение для отзеркаленной иконки (scaleX(-1) + rotate против часовой) */
+@keyframes spin-mirrored {
+    0% { transform: scaleX(-1) rotate(0deg); }
+    100% { transform: scaleX(-1) rotate(-360deg); }
+}
+
+/* Кнопка добавления блока */
+.add-block-btn {
+    transition: var(--transition-normal);
+    cursor: pointer;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+.add-block-btn:hover {
+    background: var(--claude-light) !important;
+    color: var(--claude-primary);
+}
+.dark .add-block-btn:hover {
+    background: var(--claude-darker) !important;
+    color: var(--claude-dark);
+}
+.add-block-btn:hover svg {
+    stroke: var(--claude-primary);
+}
+.dark .add-block-btn:hover svg {
+    stroke: var(--claude-dark);
+}
+.add-block-btn:active {
+    transform: scale(0.95);
+}
+
+/* Универсальный акцентный цвет для иконки и нумерации — UNUSED, kept for reference */
+
+/* Селекторы в хедере с оранжевой подложкой */
+.header-selector-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--claude-primary) !important;
+    color: white !important;
+    border: 1px solid var(--claude-primary);
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-normal);
+    white-space: nowrap;
+}
+
+.header-selector-btn span {
+    color: white !important;
+    line-height: 12px;
+    transform: translateY(-1px);
+}
+
+.header-selector-btn:hover {
+    filter: brightness(1.15);
+}
+
+.header-selector-btn svg {
+    stroke: white !important;
+    transition: stroke 0.2s ease;
+    flex-shrink: 0;
+    display: block;
+}
+
+/* Разделитель между селекторами */
+.header-separator {
+    width: 1px;
+    height: 24px;
+    background: var(--bg-muted);
+    margin: 0 4px;
+}
+
+.dark .header-separator {
+    background: #525252;
+}
+
+/* Стили для кастомного селектора языка */
+#language-menu {
+    position: absolute;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   УНИФИЦИРОВАННЫЕ СТИЛИ ДЛЯ DROPDOWN МЕНЮ
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Базовые стили пункта меню */
+.dropdown-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    margin-left: 6px;
+    margin-right: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.dropdown-option:hover {
+    background: var(--bg-hover);
+}
+
+.dropdown-option.submenu-open {
+    background: var(--bg-tertiary);
+}
+
+.dropdown-option.selected,
+.country-option.selected {
+    background: rgba(236, 116, 65, 0.9);
+    color: white;
+    font-weight: 500;
+}
+
+.dropdown-option.selected:hover,
+.country-option.selected:hover {
+    background: rgba(236, 116, 65, 0.9);
+    filter: brightness(1.15);
+}
+
+.dropdown-option.selected.submenu-open {
+    background: var(--bg-muted);
+    color: var(--text-primary);
+    filter: none;
+}
+
+.dropdown-option-text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.dropdown-option .submenu-arrow {
+    width: 12px;
+    height: 12px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+/* Разделитель */
+.dropdown-separator {
+    height: 1px;
+    background: var(--border-light);
+    margin: 6px 0;
+}
+
+/* Анимации для выпадающих меню */
+#tab-arrow,
+#language-arrow {
+    transition: transform 0.2s ease;
+}
+
+/* Унифицированная анимация для ВСЕХ dropdown меню */
+.dropdown-animated {
+    transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
+    transform-origin: top center;
+}
+
+.dropdown-animated.hidden {
+    display: block !important;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-8px);
+}
+
+.dropdown-animated:not(.hidden) {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Внутренний контейнер меню вкладок со скроллбаром */
+#tab-menu > div {
+    max-height: 400px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
+}
+
+#tab-menu > div::-webkit-scrollbar {
+    width: 6px;
+}
+
+#tab-menu > div::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 8px 0;
+}
+
+#tab-menu > div::-webkit-scrollbar-thumb {
+    background: rgba(150, 150, 150, 0.3);
+    border-radius: 3px;
+}
+
+#tab-menu > div::-webkit-scrollbar-thumb:hover {
+    background: rgba(150, 150, 150, 0.5);
+}
+
+.dark #tab-menu > div {
+    scrollbar-color: rgba(200, 200, 200, 0.25) transparent;
+}
+
+.dark #tab-menu > div::-webkit-scrollbar-thumb {
+    background: rgba(200, 200, 200, 0.25);
+}
+
+.dark #tab-menu > div::-webkit-scrollbar-thumb:hover {
+    background: rgba(200, 200, 200, 0.4);
+}
+
+#tab-dropdown.open #tab-arrow {
+    transform: rotate(180deg);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCORDION МЕНЮ ВКЛАДОК
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Контейнер списка вкладок с фиксированной высотой (5 пунктов) */
+.tab-menu-list {
+    max-height: 200px; /* ~5 пунктов по 40px */
+    overflow-y: auto;
+    padding-top: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
+}
+
+.tab-menu-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.tab-menu-list::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 8px 0;
+}
+
+.tab-menu-list::-webkit-scrollbar-thumb {
+    background: rgba(150, 150, 150, 0.3);
+    border-radius: 3px;
+}
+
+.tab-menu-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(150, 150, 150, 0.5);
+}
+
+.dark .tab-menu-list {
+    scrollbar-color: rgba(200, 200, 200, 0.25) transparent;
+}
+
+.dark .tab-menu-list::-webkit-scrollbar-thumb {
+    background: rgba(200, 200, 200, 0.25);
+}
+
+.dark .tab-menu-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(200, 200, 200, 0.4);
+}
+
+/* Группа вкладок */
+.tab-group {
+    margin: 2px 0;
+}
+
+/* Заголовок группы (раскрывающийся) */
+.tab-group-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    padding-right: 12px;
+    margin-left: 6px;
+    margin-right: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    gap: 8px;
+}
+
+.tab-group-header:hover {
+    background: var(--bg-hover);
+}
+
+/* Группа, содержащая выбранную вкладку */
+.tab-group-header.contains-selected {
+    color: var(--claude-primary);
+}
+
+/* Шеврон (стрелка раскрытия) */
+.tab-group-chevron {
+    width: 12px;
+    height: 12px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.tab-group-header.expanded .tab-group-chevron {
+    transform: rotate(90deg);
+}
+
+/* Название группы */
+.tab-group-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Счётчик вкладок в группе — сразу после названия */
+.tab-group-count {
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 50%;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-right: auto; /* Толкает tab-actions вправо */
+}
+
+/* Контент группы (скрываемый) */
+.tab-group-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.2s ease;
+}
+
+.tab-group-content.expanded {
+    max-height: 500px; /* Достаточно для любого количества вкладок */
+    background: var(--bg-inset);
+    border-radius: 8px;
+    margin: 4px 6px;
+    padding: 4px 0;
+}
+
+/* Пункт вкладки */
+.tab-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    margin-left: 6px;
+    margin-right: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.tab-option:hover {
+    background: var(--bg-hover);
+}
+
+/* Выбранная вкладка — оранжевая подсветка Claude */
+.tab-option.selected {
+    background: rgba(236, 116, 65, 0.9);
+    color: white;
+    font-weight: 500;
+}
+
+.tab-option.selected:hover {
+    filter: brightness(1.15);
+}
+
+.tab-option.selected .tab-rename-btn,
+.tab-option.selected .tab-delete-btn,
+.tab-option.selected .tab-confirm-delete-btn {
+    color: white;
+}
+
+.tab-option.selected .tab-rename-btn:hover,
+.tab-option.selected .tab-delete-btn:hover,
+.tab-option.selected .tab-confirm-delete-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.tab-option.selected .tab-confirm-delete-btn {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.tab-option-text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Кнопки действий (rename, delete) */
+.tab-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+/* Кнопки действий для групп — уже справа благодаря margin-right: auto на счётчике */
+.tab-actions.group-actions {
+    /* Позиция определяется flex-контейнером */
+}
+
+.tab-option:hover .tab-actions,
+.tab-group-header:hover .tab-actions,
+.tab-actions.visible {
+    opacity: 1;
+}
+
+.tab-actions button {
+    padding: 4px;
+    border-radius: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+
+.tab-actions button svg {
+    width: 12px;
+    height: 12px;
+}
+
+.tab-rename-btn {
+    color: var(--text-muted);
+}
+
+.tab-rename-btn:hover {
+    background: var(--bg-secondary);
+}
+
+.tab-delete-btn {
+    color: var(--color-danger);
+}
+
+.tab-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.tab-confirm-delete-btn {
+    color: var(--color-danger);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.tab-confirm-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.tab-actions .hidden {
+    display: none;
+}
+
+/* Разделитель */
+.tab-menu-separator {
+    height: 1px;
+    background: var(--border-light);
+    margin: 6px 0;
+}
+
+/* Блок кнопок действий (фиксированный внизу меню) */
+.tab-menu-actions {
+    flex-shrink: 0;
+    padding-bottom: 4px;
+}
+
+/* Кнопки действий (добавить, редактировать и т.д.) */
+.tab-action-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    margin-left: 6px;
+    margin-right: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.tab-action-option svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.tab-action-option:hover {
+    background: var(--bg-hover);
+}
+
+.tab-action-option.add-tab-option {
+    color: var(--claude-primary);
+}
+
+.tab-action-option.edit-tab-option.active {
+    color: var(--claude-primary);
+}
+
+/* Input для переименования */
+.tab-name-input {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0 4px;
+    margin: 0;
+    border: 1px solid var(--claude-primary);
+    border-radius: 4px;
+    outline: none;
+    background: var(--bg-secondary);
+    font-size: inherit;
+    font-family: inherit;
+    color: var(--text-primary);
+    box-sizing: border-box;
+}
+
+/* Превью переименования группы */
+.group-rename-preview {
+    position: absolute;
+    left: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 11px;
+    max-height: 120px;
+    overflow-y: auto;
+    z-index: 10001;
+    min-width: 200px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.group-rename-preview .preview-title {
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.group-rename-preview .preview-item {
+    color: var(--text-secondary);
+}
+
+.group-rename-preview .preview-item .old-name {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+.group-rename-preview .preview-item .new-name {
+    color: var(--claude-primary);
+}
+
+.group-rename-preview .preview-more {
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+#language-dropdown.open #language-arrow {
+    transform: rotate(180deg);
+}
+
+/* Пункты меню языков */
+.language-option {
+    border-radius: 8px;
+    margin-left: 6px;
+    margin-right: 6px;
+}
+
+/* Нативный CSS-скроллбар для меню языков */
+#language-menu-inner {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
+}
+
+#language-menu-inner::-webkit-scrollbar {
+    width: 6px;
+}
+
+#language-menu-inner::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 8px 0;
+}
+
+#language-menu-inner::-webkit-scrollbar-thumb {
+    background: rgba(150, 150, 150, 0.3);
+    border-radius: 3px;
+}
+
+#language-menu-inner::-webkit-scrollbar-thumb:hover {
+    background: rgba(150, 150, 150, 0.5);
+}
+
+.dark #language-menu-inner {
+    scrollbar-color: rgba(200, 200, 200, 0.25) transparent;
+}
+
+.dark #language-menu-inner::-webkit-scrollbar-thumb {
+    background: rgba(200, 200, 200, 0.25);
+}
+
+.dark #language-menu-inner::-webkit-scrollbar-thumb:hover {
+    background: rgba(200, 200, 200, 0.4);
+}
+
+.language-option.selected {
+    background: rgba(236, 116, 65, 0.9);
+    color: white;
+    font-weight: 500;
+}
+
+.language-option.selected:hover,
+.language-option.selected.submenu-open {
+    background: rgba(236, 116, 65, 0.9);
+    filter: brightness(1.15);
+}
+
+.language-option.selected svg {
+    color: white;
+    stroke: white;
+}
+
+/* Стили для подменю стран */
+.language-option:not(.selected):hover,
+.language-option.submenu-open:not(.selected) {
+    background-color: var(--bg-tertiary);
+}
+#language-country-submenu {
+    position: absolute;
+}
+
+/* Пункты подменю стран */
+/* Кастомный скроллбар для меню языков */
+/* ═══════════════════════════════════════════════════════════════════════════
+   УНИФИЦИРОВАННЫЙ СКРОЛЛБАР ДЛЯ DROPDOWN МЕНЮ
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Скроллбар для модальных окон */
+.modal-scroll-area {
+    overflow-y: auto;
+}
+
+/* Кнопки выбора иконки в конструкторе */
+.icon-option {
+    cursor: pointer;
+}
+.icon-option.selected {
+    border-color: var(--claude-primary);
+    background: rgba(236, 116, 65, 0.1);
+}
+.icon-option.selected svg {
+    color: var(--claude-primary);
+}
+.dark .icon-option {
+    border-color: var(--text-secondary);
+}
+.dark .icon-option:hover {
+    border-color: var(--claude-primary);
+}
+.dark .icon-option.selected {
+    border-color: var(--claude-primary);
+    background: rgba(236, 116, 65, 0.2);
+}
+
+/* Стили для модального окна */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: none; /* Скрыто по умолчанию */
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 400px;
+    transition: transform 0.3s ease-out;
+    transform: scale(0.95);
+}
+.modal-overlay.open {
+    display: flex;
+}
+.modal-overlay.open .modal-content {
+    transform: scale(1);
+}
+
+/* Стили для модального окна редактирования блока */
+.workflow-edit-modal-content {
+    max-width: 900px !important;
+    width: 90%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+}
+
+.workflow-edit-textarea {
+    flex: 1;
+    min-height: 300px;
+    resize: none !important;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow-y: auto !important;
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: rgba(0,0,0,0.2) transparent; /* Firefox */
+}
+
+.workflow-edit-textarea::-webkit-scrollbar {
+    width: 8px;
+}
+
+.workflow-edit-textarea::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.workflow-edit-textarea::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.2);
+    border-radius: var(--radius-sm);
+}
+
+.workflow-edit-textarea::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,0.35);
+}
+
+.dark .workflow-edit-textarea {
+    scrollbar-color: rgba(255,255,255,0.2) transparent; /* Firefox */
+    background: var(--bg-secondary) !important;
+    border-color: var(--border-light);
+    color: var(--text-primary) !important;
+}
+
+.dark .workflow-edit-textarea::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+}
+
+.dark .workflow-edit-textarea::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.35);
+}
+
+#edit-tab-btn.text-claude-accent {
+    color: var(--claude-primary);
+}
+
+/* Переключатель темы */
+.theme-btn,
+.auto-update-btn,
+.edit-mode-btn {
+    color: var(--text-muted);
+}
+.theme-btn.active,
+.auto-update-btn.active,
+.edit-mode-btn.active {
+    background: white;
+    color: var(--claude-primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.theme-btn:hover:not(.active),
+.auto-update-btn:hover:not(.active),
+.edit-mode-btn:hover:not(.active) {
+    background: rgba(255,255,255,0.5);
+}
+
+/* ===== ТЁМНАЯ ТЕМА ===== */
+.dark {
+    color-scheme: dark;
+}
+
+/* Хедер */
+.dark header {
+    background-color: var(--bg-header);
+}
+
+/* Панель инструментов редактирования */
+.dark #edit-toolbar {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-light);
+}
+
+/* Базовые стили кнопок edit-toolbar */
+.edit-toolbar-btn,
+.edit-done-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.edit-toolbar-btn svg,
+.edit-done-btn svg {
+    flex-shrink: 0;
+    display: block;
+}
+
+.edit-toolbar-btn span,
+.edit-done-btn span {
+    line-height: 14px;
+}
+
+/* Обычная кнопка */
+.edit-toolbar-btn {
+    color: var(--text-muted);
+    background: white;
+    border: 1px solid var(--border-light);
+}
+
+.edit-toolbar-btn:hover {
+    border-color: #d0d0d0;
+    background: #f5f5f5;
+}
+
+.dark .edit-toolbar-btn {
+    background: var(--btn-bg);
+    border-color: var(--btn-border);
+    color: var(--btn-text);
+}
+
+.dark .edit-toolbar-btn:hover {
+    background: var(--btn-hover-bg);
+    border-color: var(--btn-hover-border);
+}
+
+/* Кнопка Готово (primary) */
+.edit-done-btn {
+    color: white;
+    background: var(--claude-primary);
+    border: 1px solid var(--claude-primary);
+}
+
+.edit-done-btn:hover {
+    filter: brightness(1.15);
+}
+
+/* Scroll container */
+.dark #scroll-container {
+    background-color: var(--bg-primary);
+}
+
+/* Текст */
+.dark .text-gray-800,
+.dark .text-gray-700 {
+    color: var(--text-primary);
+}
+.dark .text-gray-600,
+.dark .text-gray-500 {
+    color: var(--text-secondary);
+}
+.dark .text-gray-400 {
+    color: var(--text-muted);
+}
+
+/* Модальные окна */
+.dark .modal-content {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+}
+.dark .modal-content h3 {
+    color: var(--text-primary);
+}
+.dark .modal-content p,
+.dark .modal-content span {
+    color: var(--text-secondary);
+}
+.dark .modal-content input[type="text"] {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-light);
+    color: var(--text-primary);
+}
+.dark .modal-content input[type="text"]::placeholder {
+    color: var(--text-muted);
+}
+.dark .modal-content input[type="checkbox"] {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-light);
+}
+.dark .modal-content .constructor-field {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-light);
+}
+.dark .modal-content .constructor-field input[type="text"],
+.dark .modal-content .constructor-field .field-prefix {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-light) !important;
+    color: var(--text-primary);
+}
+.dark .modal-content .constructor-field input[type="text"]::placeholder,
+.dark .modal-content .constructor-field .field-prefix::placeholder {
+    color: var(--text-muted);
+}
+.dark .modal-content .constructor-field .text-gray-500,
+.dark .modal-content .constructor-field .text-gray-600 {
+    color: var(--text-secondary) !important;
+}
+.dark .modal-content label {
+    color: var(--text-secondary);
+}
+.dark .modal-content #constructor-instruction-text {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-light) !important;
+    color: var(--text-primary);
+}
+.dark .modal-content #constructor-instruction-text::placeholder {
+    color: var(--text-muted);
+}
+
+/* Dropdown меню */
+.dark #tab-menu,
+.dark #language-menu {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-light);
+}
+/* Кнопки открытия dropdown */
+.dark #tab-btn,
+.dark #language-btn {
+    color: var(--text-secondary);
+}
+.dark #tab-btn:hover,
+.dark #language-btn:hover {
+    color: var(--text-primary);
+}
+.dark .tab-option,
+.dark .language-option {
+    color: var(--text-primary);
+}
+.dark .tab-option:hover {
+    background-color: var(--bg-hover);
+}
+/* Выбранная вкладка в тёмной теме */
+.dark .tab-option.selected {
+    background-color: rgba(236, 116, 65, 0.9);
+    color: white;
+}
+
+.dark .tab-option.selected .tab-rename-btn,
+.dark .tab-option.selected .tab-delete-btn,
+.dark .tab-option.selected .tab-confirm-delete-btn {
+    color: white;
+}
+
+/* Заголовок группы в тёмной теме */
+.dark .tab-group-header {
+    color: var(--text-primary);
+}
+.dark .tab-group-header:hover {
+    background-color: var(--bg-hover);
+}
+.dark .tab-group-header.contains-selected {
+    color: var(--claude-primary);
+}
+.dark .tab-group-count {
+    background: var(--bg-elevated);
+}
+.dark .group-rename-preview {
+    background: var(--bg-elevated);
+    border-color: var(--border-color);
+}
+/* Выбранная вкладка */
+.dark .bg-gray-50 {
+    background-color: var(--bg-tertiary);
+}
+/* Выбранный язык */
+.dark .language-option.selected {
+    background: rgba(236, 116, 65, 0.9);
+    color: white;
+}
+
+.dark .language-option.selected:hover,
+.dark .language-option.selected.submenu-open {
+    background: rgba(236, 116, 65, 0.9);
+    filter: brightness(1.15);
+}
+
+.dark .language-option.selected svg {
+    color: white;
+    stroke: white;
+}
+
+/* Тёмные стили для подменю стран */
+.dark .language-option:not(.selected):hover,
+.dark .language-option.submenu-open:not(.selected) {
+    background-color: var(--bg-tertiary);
+}
+.dark #language-country-submenu {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+/* Кнопки действий в меню вкладок */
+.dark .tab-action-option {
+    color: var(--text-secondary);
+}
+.dark .tab-action-option:hover {
+    background-color: var(--bg-tertiary);
+}
+.dark .tab-action-option.add-tab-option {
+    color: var(--claude-primary);
+}
+.dark .tab-action-option.edit-tab-option.active {
+    color: var(--claude-primary);
+    background-color: var(--bg-tertiary);
+}
+/* Патчноуты в модалке обновлений */
+.dark #update-notes-content {
+    background-color: var(--bg-tertiary);
+}
+.dark #update-notes-content code {
+    background-color: var(--bg-elevated);
+}
+
+/* Кнопки */
+.dark .bg-gray-100 {
+    background-color: var(--bg-tertiary);
+}
+.dark .hover\:bg-gray-100:hover {
+    background-color: var(--bg-tertiary);
+}
+.dark .hover\:bg-gray-200:hover {
+    background-color: var(--bg-elevated);
+}
+
+/* Loading overlay */
+.dark .loading-overlay {
+    background-color: var(--bg-primary);
+}
+.dark .loading-overlay .text-gray-700 {
+    color: var(--text-secondary);
+}
+
+/* Toast */
+.dark .toast {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+}
+
+/* Разделители */
+.dark .border-gray-200,
+.dark .border-gray-100 {
+    border-color: var(--border-light);
+}
+
+/* Переключатель темы и автообновлений в тёмном режиме */
+.dark .theme-btn,
+.dark .auto-update-btn {
+    color: var(--text-muted);
+}
+.dark .theme-btn span,
+.dark .theme-btn svg {
+    color: var(--text-muted);
+}
+.dark .theme-btn.active,
+.dark .auto-update-btn.active,
+.dark .edit-mode-btn.active {
+    background: var(--bg-elevated);
+    color: var(--claude-primary);
+}
+.dark .theme-btn.active span,
+.dark .theme-btn.active svg {
+    color: var(--claude-primary);
+}
+.dark .theme-btn:hover:not(.active),
+.dark .auto-update-btn:hover:not(.active),
+.dark .edit-mode-btn:hover:not(.active) {
+    background: rgba(255,255,255,0.1);
+}
+
+/* Инструкции */
+.dark .bg-claude-light {
+    background-color: var(--claude-light);
+}
+
+/* ============================================
+   SPLIT VIEW - Claude Integration
+   ============================================ */
+
+/* Кнопка открытия Claude в header */
+/* Claude controls */
+.claude-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+/* Компактный header */
+header {
+    min-width: 0;
+}
+
+header .flex {
+    min-width: 0;
+}
+
+/* Компактные кнопки в header */
+#tab-btn {
+    white-space: nowrap;
+}
+
+#language-btn {
+    white-space: nowrap;
+}
+
+/* Panel resizer - между UI и Claude */
+.panel-resizer {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background: var(--bg-secondary);
+    cursor: col-resize;
+    z-index: 9999;
+    display: none;
+    touch-action: none; /* для pointer capture */
+}
+
+.panel-resizer:hover {
+    background: var(--bg-tertiary);
+}
+
+.panel-resizer.active {
+    background: var(--claude-primary);
+}
+
+.claude-tabs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+/* Вторая строка хедера с табами чатов */
+.claude-tabs-row {
+    display: flex;
+    align-items: center;
+    padding: 0 12px 8px 12px;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.claude-tabs-row.hidden {
+    display: none;
+}
+
+/* Разделитель в тулбаре */
+.toolbar-separator {
+    width: 1px;
+    height: 20px;
+    background: var(--bg-muted);
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+.dark .toolbar-separator {
+    background: #525252;
+}
+
+/* Header toolbar buttons - не переносятся */
+.header-toolbar-btns {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+}
+
+.header-toolbar-btns button {
+    padding: 6px;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.header-toolbar-btns button:hover {
+    color: var(--text-secondary);
+}
+
+.header-toolbar-btns button:disabled {
+    color: #d1d5db;
+    cursor: not-allowed;
+}
+
+.dark .header-toolbar-btns button:hover {
+    color: #d1d5db;
+}
+
+.dark .header-toolbar-btns button:disabled {
+    color: #525252;
+}
+
+/* Auto-send toggle */
+.auto-send-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: white;
+    background: var(--claude-primary);
+    border: 1px solid var(--claude-primary);
+    transition: var(--transition-fast);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.auto-send-toggle:hover {
+    filter: brightness(1.15);
+}
+
+.auto-send-toggle .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+.auto-send-toggle .auto-send-check {
+    flex-shrink: 0;
+    color: var(--claude-dark);
+    transition: color 0.15s ease;
+}
+
+.auto-send-toggle:has(input:checked) .auto-send-check {
+    color: white;
+}
+
+.auto-send-toggle .auto-send-label {
+    line-height: 12px;
+    transform: translateY(-1px);
+}
+
+.claude-tab-btn {
+    padding: 8px 10px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: white;
+    border: 1px solid var(--border-light);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    display: none; /* Скрыты по умолчанию (Чат 2, 3, + Чат) */
+    white-space: nowrap;
+    max-width: 200px; /* Ограничение ширины */
+    min-width: 0; /* Позволяет сжиматься */
+    flex-shrink: 1; /* Позволяет сжиматься */
+}
+
+/* Чат 1 всегда виден */
+#claude-tab-1 {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+/* Чат 2, 3, + Чат — показываются через .visible */
+.claude-tab-btn.visible {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.claude-tab-btn svg {
+    flex-shrink: 0;
+    display: block;
+}
+
+.claude-tab-btn .tab-text {
+    line-height: 12px;
+    transform: translateY(-1px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.claude-tab-btn:hover {
+    border-color: #d0d0d0;
+    background: #f5f5f5;
+}
+
+.claude-tab-btn.active {
+    background: var(--claude-primary);
+    color: white;
+    border-color: var(--claude-primary);
+}
+
+.claude-tab-btn.active:hover {
+    filter: brightness(1.15);
+}
+
+.dark .claude-tab-btn {
+    background: var(--btn-bg);
+    border-color: var(--btn-border);
+    color: var(--btn-text);
+}
+
+.dark .claude-tab-btn:hover {
+    background: var(--btn-hover-bg);
+    border-color: var(--btn-hover-border);
+}
+
+.dark .claude-tab-btn.active {
+    background: var(--claude-primary) !important;
+    color: white !important;
+    border-color: var(--claude-primary) !important;
+}
+
+.dark .claude-tab-btn.active:hover {
+    filter: brightness(1.15);
+}
+
+.claude-add-btn {
+    display: none;
+    color: var(--text-muted);
+    border-color: var(--border-medium);
+    border-style: dashed;
+    background: transparent;
+}
+
+.claude-add-btn.visible {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.claude-add-btn svg {
+    flex-shrink: 0;
+    display: block;
+}
+
+.claude-add-btn span {
+    line-height: 12px;
+    transform: translateY(-1px);
+}
+
+.claude-add-btn:hover {
+    border-color: #aaa;
+    background-color: #f5f5f5;
+}
+
+.dark .claude-add-btn {
+    color: var(--btn-text);
+    border-color: var(--btn-border);
+    background: transparent;
+}
+
+.dark .claude-add-btn:hover {
+    border-color: var(--btn-hover-border);
+    background-color: var(--btn-hover-bg);
+}
+
+/* Индикатор генерации на табе */
+.claude-tab-btn.generating {
+    position: relative;
+}
+
+.generating-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse-generating 1s ease-in-out infinite;
+}
+
+@keyframes pulse-generating {
+    0%, 100% { opacity: 0.4; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+.claude-tab-btn.active .generating-indicator {
+    background: white;
+}
+
+/* Индикатор активного проекта в селекторе вкладок */
+.project-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: var(--claude-primary);
+    animation: pulse-generating 1s ease-in-out infinite;
+    vertical-align: middle;
+    position: relative;
+    top: -2px;
+}
+
+/* Индикатор в кнопке селектора - белый цвет как текст */
+.header-selector-btn .project-indicator {
+    background: white;
+    top: -1px;
+}
+
+/* Кнопка закрытия таба */
+.tab-close-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+    cursor: pointer;
+    transition: var(--transition-normal);
+    flex-shrink: 0;
+}
+
+.tab-close-btn svg {
+    display: block;
+}
+
+.tab-close-btn:hover {
+    opacity: 1;
+}
+
+.claude-tab-btn.active .tab-close-btn {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.claude-tab-btn.active .tab-close-btn:hover {
+    color: white;
+}
+
+.claude-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: white;
+    background: var(--claude-primary);
+    border: 1px solid var(--claude-primary);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.25s ease, border-color 0.25s ease;
+    outline: none !important;
+    -webkit-user-select: none;
+    user-select: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.claude-toggle-btn:focus,
+.claude-toggle-btn:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.claude-toggle-btn svg {
+    flex-shrink: 0;
+    display: block;
+    transition: transform 0.25s ease;
+}
+
+.claude-toggle-btn.active svg {
+    transform: rotate(180deg);
+}
+
+.claude-toggle-btn span:not(.claude-dot) {
+    line-height: 12px;
+    transform: translateY(-1px);
+}
+
+/* Кружочек индикатор */
+.claude-toggle-btn .claude-dot {
+    flex-shrink: 0;
+    width: 0;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease, width 0.2s ease;
+}
+
+.claude-toggle-btn.active .claude-dot {
+    width: 6px;
+    opacity: 1;
+}
+
+.claude-toggle-btn:hover {
+    filter: brightness(1.15);
+}
+
+.claude-toggle-btn.active {
+    background: var(--color-success);
+    border-color: var(--color-success);
+}
+
+/* ============================================
+   WORKFLOW CANVAS STYLES
+   ============================================ */
+
+/* Контейнер workflow */
+.workflow-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: var(--bg-primary);
+}
+
+/* Edit mode - скроллбар скрыт (panning через drag) */
+/* Используется класс scrollbar-hidden в HTML */
+
+/* View mode - кастомный овальный скроллбар */
+.workflow-container:not(.edit-mode) {
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: rgba(0,0,0,0.2) transparent; /* Firefox */
+}
+
+.workflow-container:not(.edit-mode)::-webkit-scrollbar {
+    width: 8px;
+}
+
+.workflow-container:not(.edit-mode)::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.workflow-container:not(.edit-mode)::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.2);
+    border-radius: var(--radius-sm);
+}
+
+.workflow-container:not(.edit-mode)::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,0,0,0.35);
+}
+
+.dark .workflow-container:not(.edit-mode) {
+    scrollbar-color: rgba(255,255,255,0.2) transparent; /* Firefox */
+}
+
+.dark .workflow-container:not(.edit-mode)::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+}
+
+.dark .workflow-container:not(.edit-mode)::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.35);
+}
+
+.dark .workflow-container {
+    background-color: var(--bg-primary);
+}
+
+/* Wrapper - задаёт размер scrollable области */
+.workflow-wrapper {
+    position: relative;
+}
+
+/* View mode - wrapper обрезает лишнее и центрируется */
+.workflow-container:not(.edit-mode) .workflow-wrapper {
+    overflow: hidden;
+    position: relative;
+    margin: 0 auto;
+}
+
+/* View mode - canvas абсолютный внутри wrapper */
+.workflow-container:not(.edit-mode) .workflow-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+/* Индикатор зума */
+.zoom-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 8px 14px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    pointer-events: none;
+    z-index: 9999;
+    font-family: system-ui, -apple-system, sans-serif;
+    backdrop-filter: blur(8px);
+    display: none;
+}
+
+.zoom-indicator.visible {
+    display: block;
+}
+
+.dark .zoom-indicator {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Canvas для блоков */
+.workflow-canvas {
+    position: relative;
+    padding: 20px;
+    transform-origin: top left;
+}
+
+/* Edit mode - большой холст, сетка точек, без transition для плавного zoom */
+.workflow-container.edit-mode .workflow-canvas {
+    min-width: 5000px;
+    min-height: 5000px;
+    transition: none;
+    background-image: radial-gradient(circle, rgba(150,150,150,0.3) 1.5px, transparent 1.5px);
+    background-size: 40px 40px;
+    background-position: 0px 0px;
+}
+
+/* View mode - блоки остаются на местах, только убираем возможность редактирования */
+.workflow-container:not(.edit-mode) .workflow-node {
+    cursor: default;
+}
+
+.dark .workflow-container.edit-mode .workflow-canvas {
+    background-image: radial-gradient(circle, rgba(100,100,100,0.4) 1.5px, transparent 1.5px);
+}
+
+/* Маркер центра холста */
+.canvas-center-marker {
+    position: absolute;
+    left: 2500px;
+    top: 2500px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.workflow-container:not(.edit-mode) .canvas-center-marker {
+    display: none;
+}
+
+.canvas-center-marker::before,
+.canvas-center-marker::after {
+    content: '';
+    position: absolute;
+    background: rgba(150, 150, 150, 0.5);
+    border-radius: 1px;
+}
+
+.canvas-center-marker::before {
+    width: 15px;
+    height: 3px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.canvas-center-marker::after {
+    width: 3px;
+    height: 15px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.dark .canvas-center-marker::before,
+.dark .canvas-center-marker::after {
+    background: rgba(120, 120, 120, 0.6);
+}
+
+/* Оверлей точек сетки */
+.grid-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Скрываем оверлей в view mode */
+.workflow-container:not(.edit-mode) .grid-overlay {
+    display: none;
+}
+
+.grid-dot {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    /* Ореол цвета фона перекрывает фоновую точку */
+    box-shadow: 0 0 0 4px var(--bg-primary);
+}
+
+.dark .grid-dot {
+    box-shadow: 0 0 0 4px var(--bg-primary);
+}
+
+/* SVG слой для линий */
+.workflow-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    min-width: 2000px;
+    min-height: 1500px;
+    z-index: 1;
+}
+
+/* При перетаскивании линии поверх точек */
+.workflow-container.dragging .workflow-svg {
+    z-index: 3;
+}
+
+/* Скрываем порты в view mode */
+.workflow-container:not(.edit-mode) .workflow-port {
+    display: none;
+}
+
+/* Скрываем resize зоны в view mode */
+.workflow-container:not(.edit-mode) .resize-zone {
+    display: none;
+}
+
+.workflow-svg path {
+    fill: none;
+}
+
+/* Блок workflow (нода) */
+.workflow-node {
+    position: absolute;
+    width: var(--node-default-width);
+    min-width: var(--node-min-width);
+    min-height: var(--node-min-height);
+    background: white;
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    z-index: 10;
+    cursor: default;
+    transition: box-shadow 0.15s, border-color 0.15s;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+}
+
+/* Курсор move только в режиме редактирования */
+.workflow-container.edit-mode .workflow-node {
+    cursor: move;
+}
+
+.workflow-container.edit-mode .workflow-node .workflow-node-header {
+    cursor: move;
+}
+
+/* Hover и selected состояния */
+.workflow-node:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.workflow-container.edit-mode .workflow-node:hover {
+    outline: 2px solid var(--claude-primary);
+    outline-offset: -2px;
+}
+
+.workflow-node.selected {
+    box-shadow: 0 0 20px 5px rgba(236, 116, 65, 0.35);
+}
+
+.workflow-node.dragging {
+    opacity: 0.9;
+    z-index: 100;
+    cursor: grabbing;
+}
+
+.workflow-node.resizing {
+    z-index: 100;
+}
+
+/* Невидимые зоны ресайза - масштабируются при зуме */
+.resize-zone {
+    position: absolute;
+    background: transparent;
+    z-index: 20;
+    display: none;
+}
+
+.workflow-container.edit-mode .resize-zone {
+    display: block;
+}
+
+.resize-zone-n {
+    top: calc(-6px * var(--zoom-inverse, 1));
+    left: 8px;
+    right: 8px;
+    height: calc(12px * var(--zoom-inverse, 1));
+    cursor: ns-resize;
+}
+
+.resize-zone-s {
+    bottom: calc(-6px * var(--zoom-inverse, 1));
+    left: 8px;
+    right: 8px;
+    height: calc(12px * var(--zoom-inverse, 1));
+    cursor: ns-resize;
+}
+
+.resize-zone-e {
+    top: 8px;
+    right: calc(-6px * var(--zoom-inverse, 1));
+    bottom: 8px;
+    width: calc(12px * var(--zoom-inverse, 1));
+    cursor: ew-resize;
+}
+
+.resize-zone-w {
+    top: 8px;
+    left: calc(-6px * var(--zoom-inverse, 1));
+    bottom: 8px;
+    width: calc(12px * var(--zoom-inverse, 1));
+    cursor: ew-resize;
+}
+
+.resize-zone-nw {
+    top: calc(-6px * var(--zoom-inverse, 1));
+    left: calc(-6px * var(--zoom-inverse, 1));
+    width: calc(16px * var(--zoom-inverse, 1));
+    height: calc(16px * var(--zoom-inverse, 1));
+    cursor: nwse-resize;
+}
+
+.resize-zone-ne {
+    top: calc(-6px * var(--zoom-inverse, 1));
+    right: calc(-6px * var(--zoom-inverse, 1));
+    width: calc(16px * var(--zoom-inverse, 1));
+    height: calc(16px * var(--zoom-inverse, 1));
+    cursor: nesw-resize;
+}
+
+.resize-zone-sw {
+    bottom: calc(-6px * var(--zoom-inverse, 1));
+    left: calc(-6px * var(--zoom-inverse, 1));
+    width: calc(16px * var(--zoom-inverse, 1));
+    height: calc(16px * var(--zoom-inverse, 1));
+    cursor: nesw-resize;
+}
+
+.resize-zone-se {
+    bottom: calc(-6px * var(--zoom-inverse, 1));
+    right: calc(-6px * var(--zoom-inverse, 1));
+    width: calc(16px * var(--zoom-inverse, 1));
+    height: calc(16px * var(--zoom-inverse, 1));
+    cursor: nwse-resize;
+}
+
+.dark .workflow-node {
+    background: var(--bg-secondary);
+    border-color: var(--border-light);
+}
+
+.dark .workflow-node:hover {
+    outline: 2px solid var(--claude-primary);
+    outline-offset: -2px;
+}
+
+.dark .workflow-node.selected {
+    box-shadow: 0 0 20px 5px rgba(236, 116, 65, 0.4);
+}
+
+/* Заголовок блока */
+.workflow-node-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 22px;
+    background: var(--claude-primary);
+    border-radius: 10px 10px 0 0;
+    cursor: default;
+    flex-shrink: 0;
+}
+
+/* Кнопки в header блока (сворачивание и удаление) */
+.workflow-collapse-btn,
+.workflow-node-delete-btn {
+    padding: 4px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: rgba(255,255,255,0.8);
+    transition: var(--transition-normal);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.workflow-collapse-btn svg,
+.workflow-node-delete-btn svg {
+    width: var(--node-header-icon-size);
+    height: var(--node-header-icon-size);
+}
+
+.workflow-collapse-btn:hover,
+.workflow-node-delete-btn:hover {
+    color: white;
+    background: rgba(255,255,255,0.2);
+}
+
+/* Свёрнутый блок */
+.workflow-node.collapsed {
+    min-height: fit-content !important;
+    max-height: none !important;
+    height: fit-content !important;
+    min-width: auto !important;
+    max-width: none !important;
+    box-sizing: border-box;
+    border: 2px solid transparent !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+}
+
+/* В edit mode cursor grab */
+.workflow-container.edit-mode .workflow-node.collapsed {
+    cursor: grab;
+}
+
+/* Hover для collapsed в edit mode */
+.workflow-container.edit-mode .workflow-node.collapsed:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+/* Hover для collapsed во view mode */
+.workflow-container:not(.edit-mode) .workflow-node.collapsed {
+    transition: filter 0.2s ease;
+    cursor: pointer !important;
+}
+
+.workflow-container:not(.edit-mode) .workflow-node.collapsed:hover {
+    filter: brightness(1.15);
+    cursor: pointer !important;
+}
+
+.workflow-container:not(.edit-mode) .workflow-node.collapsed:active {
+    filter: brightness(0.95);
+}
+
+.workflow-container:not(.edit-mode) .workflow-node.collapsed .workflow-node-header {
+    cursor: pointer !important;
+}
+
+.workflow-node.collapsed.selected {
+    box-shadow: none !important;
+}
+
+.workflow-node.collapsed.selected .workflow-node-header {
+    box-shadow: 0 0 25px 0 rgba(236, 116, 65, 0.5);
+}
+
+/* Скрываем resize зоны для collapsed блоков */
+.workflow-node.collapsed .resize-zone {
+    display: none !important;
+    pointer-events: none !important;
+    cursor: default !important;
+}
+
+/* Боковые порты collapsed блоков - поверх кнопок */
+.workflow-node.collapsed .workflow-port-left,
+.workflow-node.collapsed .workflow-port-right {
+    z-index: 25;
+}
+
+.workflow-node.collapsed .workflow-node-header {
+    border-radius: 10px;
+    padding: 18px 22px;
+    flex-wrap: nowrap;
+    gap: 14px;
+    justify-content: center;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Кнопки снаружи для collapsed блоков — скрыты по умолчанию */
+.workflow-node.collapsed .workflow-collapse-btn {
+    position: absolute;
+    left: -52px;
+    top: 0;
+    bottom: 0;
+    height: 100%;
+    background: var(--claude-primary);
+    border-radius: 10px;
+    width: 44px;
+    z-index: 30;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateX(15px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.workflow-node.collapsed .workflow-node-delete-btn {
+    position: absolute;
+    right: -52px;
+    top: 0;
+    bottom: 0;
+    height: 100%;
+    background: var(--claude-primary);
+    border-radius: 10px;
+    width: 44px;
+    z-index: 30;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateX(-15px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+/* Расширяем зону hover collapsed блока чтобы захватить кнопки — только в edit mode */
+.workflow-container.edit-mode .workflow-node.collapsed::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -52px;
+    right: -52px;
+    pointer-events: auto;
+    z-index: -1;
+}
+
+/* При hover показываем кнопки — только в edit mode */
+.workflow-container.edit-mode .workflow-node.collapsed:hover .workflow-collapse-btn {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+}
+
+.workflow-container.edit-mode .workflow-node.collapsed:hover .workflow-node-delete-btn {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+}
+
+/* Скрытие кнопок при наведении на порты или перетаскивании */
+.workflow-node.collapsed.hide-buttons .workflow-collapse-btn {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateX(15px) !important;
+}
+
+.workflow-node.collapsed.hide-buttons .workflow-node-delete-btn {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateX(-15px) !important;
+}
+
+/* Badges в collapsed - убираем margin для центрирования */
+.workflow-node.collapsed .script-badges {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+/* Скрываем пустой контейнер badges */
+.workflow-node.collapsed .script-badges:empty {
+    display: none;
+}
+
+/* Кнопка файлов в хедере collapsed блоков */
+.collapsed-files-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: transparent;
+    border: 2px dashed rgba(255,255,255,0.4);
+    border-radius: 6px;
+    color: rgba(255,255,255,0.8);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.collapsed-files-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.collapsed-files-btn .files-count {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.collapsed-files-btn:hover {
+    border-color: rgba(255,255,255,0.8);
+    color: white;
+    background: rgba(255,255,255,0.15);
+}
+
+/* Badges некликабельны во view mode */
+.workflow-container:not(.edit-mode) .script-badge,
+.workflow-container:not(.edit-mode) .automation-badge {
+    pointer-events: none;
+    cursor: default;
+}
+
+.workflow-container:not(.edit-mode) .script-badge:hover,
+.workflow-container:not(.edit-mode) .automation-badge:hover {
+    transform: none;
+    background: inherit;
+}
+
+.workflow-node.collapsed .workflow-instruction-strip,
+.workflow-node.collapsed .workflow-node-body,
+.workflow-node.collapsed .workflow-node-textarea,
+.workflow-node.collapsed .workflow-node-attachments,
+.workflow-node.collapsed .workflow-node-footer,
+.workflow-node.collapsed .workflow-instruction-add,
+.workflow-node.collapsed .workflow-attachments-add {
+    display: none !important;
+}
+
+.workflow-node.collapsed .workflow-node-title {
+    flex: none;
+    white-space: nowrap;
+}
+
+/* Collapsed блоки заблокированные проектом (в других вкладках) */
+.workflow-container:not(.edit-mode) .workflow-node.collapsed.project-restricted {
+    pointer-events: none;
+}
+
+.workflow-container:not(.edit-mode) .workflow-node.collapsed.project-restricted .workflow-node-header {
+    background: var(--bg-muted) !important;
+}
+
+/* Анимированная пунктирная линия для соединений к automation блокам */
+.workflow-connection-animated {
+    animation: dash-flow 0.8s linear infinite;
+}
+
+@keyframes dash-flow {
+    to {
+        stroke-dashoffset: -14;
+    }
+}
+
+.workflow-node-title {
+    flex: 1;
+    font-weight: 600;
+    font-size: 26px;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Стили для редактирования заголовка блока */
+.workflow-title-edit-input {
+    cursor: text !important;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+}
+.workflow-title-edit-input:active,
+.workflow-title-edit-input:focus {
+    cursor: text !important;
+}
+.workflow-title-edit-input::selection {
+    background-color: var(--text-muted);
+    color: white;
+}
+.workflow-title-edit-input::-moz-selection {
+    background-color: var(--text-muted);
+    color: white;
+}
+
+/* Метки скриптов (C, W) */
+.script-badges {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+    margin-right: 8px;
+}
+
+.script-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 6px;
+    font-size: 20px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.script-badge:hover {
+    background: rgba(255, 100, 100, 0.5);
+    transform: scale(1.1);
+}
+
+.script-badge[data-script="convert"] {
+    background: rgba(16, 185, 129, 0.7); /* Изумрудный */
+}
+
+.script-badge[data-script="count"] {
+    background: rgba(59, 130, 246, 0.7); /* Синий */
+}
+
+.script-badge[data-script="spellcheck"] {
+    background: rgba(236, 72, 153, 0.7); /* Розовый */
+}
+
+/* Automation badges (P, N) */
+.automation-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    font-size: 20px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.automation-badge:hover {
+    background: rgba(255, 100, 100, 0.5);
+    transform: scale(1.1);
+}
+
+.automation-badge[data-automation="newProject"] {
+    background: rgba(139, 92, 246, 0.7); /* Фиолетовый */
+}
+
+.automation-badge[data-automation="newChat"] {
+    background: rgba(250, 204, 21, 0.7); /* Жёлтый */
+}
+
+/* Специфичные стили кнопки удаления */
+.workflow-node-delete-btn .delete-icon-check {
+    display: none;
+}
+
+.workflow-node-delete-btn.confirm-mode .delete-icon-cross {
+    display: none;
+}
+
+.workflow-node-delete-btn.confirm-mode .delete-icon-check {
+    display: block;
+}
+
+.workflow-node-delete-btn.confirm-mode {
+    background: transparent;
+}
+
+.workflow-node-delete-btn.confirm-mode:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+/* Textarea для редактирования блока */
+.workflow-node-textarea {
+    width: 100%;
+    min-height: 0;
+    flex: 1;
+    padding: 22px;
+    font-size: 22px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: inherit;
+    overflow-y: auto;
+    scrollbar-width: none; /* Firefox */
+}
+
+.dark .workflow-node-textarea {
+    color: var(--text-primary);
+}
+
+.workflow-node-textarea::placeholder {
+    color: var(--text-muted);
+}
+
+/* Скроллбар для textarea - скрыт */
+.workflow-node-textarea::-webkit-scrollbar {
+    display: none;
+}
+
+/* Меню выбора формы языка */
+/* ═══════════════════════════════════════════════════════════════════════════
+   МЕНЮ ВЫБОРА ЯЗЫКОВЫХ ФОРМ (унифицированное)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.lang-form-menu-container {
+    /* Контейнер для меню и подменю */
+}
+
+.lang-form-menu {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    min-width: 220px;
+    overflow: hidden;
+}
+
+.dark .lang-form-menu {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.lang-form-menu-inner {
+    padding: 8px 0;
+}
+
+.lang-form-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    margin-left: 6px;
+    margin-right: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.lang-form-option:hover,
+.lang-form-option.submenu-open {
+    background: var(--bg-tertiary);
+}
+
+.lang-form-value {
+    color: var(--claude-primary);
+    font-weight: 500;
+}
+
+.lang-form-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.lang-form-label .submenu-arrow {
+    width: 12px;
+    height: 12px;
+}
+
+.lang-form-separator {
+    height: 1px;
+    background: var(--border-light);
+    margin: 4px 0;
+}
+
+/* Подменю с падежами */
+.lang-form-submenu {
+    position: fixed;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    min-width: 220px;
+    max-height: 400px;
+    overflow: hidden;
+    z-index: 10001;
+}
+
+.dark .lang-form-submenu {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.lang-form-submenu-inner {
+    padding: 8px 0;
+    max-height: 380px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
+}
+
+.lang-form-submenu-inner::-webkit-scrollbar {
+    width: 6px;
+}
+
+.lang-form-submenu-inner::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 8px 0;
+}
+
+.lang-form-submenu-inner::-webkit-scrollbar-thumb {
+    background: rgba(150, 150, 150, 0.3);
+    border-radius: 3px;
+}
+
+.lang-form-submenu-inner::-webkit-scrollbar-thumb:hover {
+    background: rgba(150, 150, 150, 0.5);
+}
+
+.dark .lang-form-submenu-inner {
+    scrollbar-color: rgba(200, 200, 200, 0.25) transparent;
+}
+
+.dark .lang-form-submenu-inner::-webkit-scrollbar-thumb {
+    background: rgba(200, 200, 200, 0.25);
+}
+
+.dark .lang-form-submenu-inner::-webkit-scrollbar-thumb:hover {
+    background: rgba(200, 200, 200, 0.4);
+}
+
+.lang-form-submenu-header {
+    padding: 8px 16px 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    margin-left: 6px;
+    margin-right: 6px;
+}
+
+.lang-form-submenu .lang-form-option {
+    padding: 8px 16px;
+    margin-left: 6px;
+    margin-right: 6px;
+    border-radius: 8px;
+}
+
+.lang-form-submenu .lang-form-option:hover {
+    background: var(--bg-hover);
+}
+
+.lang-form-submenu .lang-form-label {
+    font-size: 11px;
+    opacity: 0.7;
+}
+
+/* Тело блока */
+.workflow-node-body {
+    padding: 22px;
+    font-size: 26px;
+    color: var(--text-primary);
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    background: white;
+    scrollbar-width: none; /* Firefox */
+}
+
+/* Скроллбар для тела блока - скрыт */
+.workflow-node-body::-webkit-scrollbar {
+    display: none;
+}
+
+/* Базовые стили для instruction strips */
+.workflow-instruction-strip,
+.workflow-instruction-add,
+.workflow-attachments-add {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 22px;
+    height: 52px;
+    min-height: 52px;
+    max-height: 52px;
+    box-sizing: border-box;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.workflow-instruction-strip svg,
+.workflow-instruction-add svg,
+.workflow-attachments-add svg {
+    width: var(--node-header-icon-size);
+    height: var(--node-header-icon-size);
+    flex-shrink: 0;
+}
+
+/* Стили для заполненной инструкции */
+.workflow-instruction-strip {
+    background: rgba(236, 116, 65, 0.25);
+    color: var(--claude-primary);
+    font-weight: 500;
+}
+
+.workflow-instruction-strip.edit-mode {
+    justify-content: space-between;
+}
+
+.workflow-instruction-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--claude-primary);
+    font-size: 20px;
+    font-weight: 500;
+    outline: none;
+}
+
+.workflow-instruction-input::placeholder {
+    color: rgba(236, 116, 65, 0.6);
+}
+
+.workflow-instruction-config,
+.workflow-instruction-remove,
+.workflow-attachments-remove {
+    padding: 4px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--claude-primary);
+    opacity: 0.8;
+    transition: var(--transition-normal);
+}
+
+.workflow-instruction-config svg,
+.workflow-instruction-remove svg,
+.workflow-attachments-remove svg {
+    width: var(--node-header-icon-size);
+    height: var(--node-header-icon-size);
+}
+
+.workflow-instruction-config:hover,
+.workflow-instruction-remove:hover,
+.workflow-attachments-remove:hover {
+    opacity: 1;
+    background: rgba(236, 116, 65, 0.2);
+    filter: brightness(1.15);
+}
+
+/* Специфичные стили для attachments-remove */
+.workflow-attachments-remove {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+/* Стили confirm mode для кнопок удаления */
+.workflow-instruction-remove .delete-icon-check,
+.workflow-attachments-remove .delete-icon-check {
+    display: none;
+}
+
+.workflow-instruction-remove.confirm-mode .delete-icon-cross,
+.workflow-attachments-remove.confirm-mode .delete-icon-cross {
+    display: none;
+}
+
+.workflow-instruction-remove.confirm-mode .delete-icon-check,
+.workflow-attachments-remove.confirm-mode .delete-icon-check {
+    display: block;
+}
+
+.workflow-instruction-btn {
+    background: transparent;
+    border: none;
+    color: var(--claude-primary);
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 20px;
+}
+
+.workflow-instruction-btn:hover {
+    text-decoration: none;
+}
+
+/* Стили для кнопок добавления (инструкция и файлы) */
+.workflow-instruction-add,
+.workflow-attachments-add {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition-normal);
+}
+
+.workflow-instruction-add:hover,
+.workflow-attachments-add:hover {
+    background: rgba(236, 116, 65, 0.25);
+    color: var(--claude-primary);
+}
+
+/* Dark mode для кнопок добавления */
+.dark .workflow-instruction-add,
+.dark .workflow-attachments-add {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+}
+
+.dark .workflow-instruction-add:hover,
+.dark .workflow-attachments-add:hover {
+    background: rgba(236, 116, 65, 0.25);
+    color: var(--claude-primary);
+}
+
+.dark .workflow-node-body {
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+}
+
+/* Порты соединений */
+.workflow-port {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: white;
+    border: 2px solid var(--claude-primary);
+    border-radius: 50%;
+    cursor: crosshair;
+    z-index: 30;
+    transition: transform 0.15s, background 0.15s, opacity 0.15s;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Увеличенная кликабельная зона для портов */
+.workflow-port::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: calc(15px * var(--zoom-inverse, 1));
+    height: calc(15px * var(--zoom-inverse, 1));
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+}
+
+/* Порты видны только в режиме редактирования */
+.workflow-container.edit-mode .workflow-node:hover .workflow-port {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Показываем все порты когда идёт создание связи */
+.workflow-container.edit-mode.connecting .workflow-port {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.workflow-port:hover,
+.workflow-port.magnet-target {
+    background: var(--claude-primary);
+}
+
+/* Позиции портов - все 4 стороны */
+.workflow-port-left {
+    left: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+.workflow-port-left:hover,
+.workflow-port-left.magnet-target {
+    transform: translateY(-50%) scale(1.3);
+}
+
+.workflow-port-right {
+    right: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+.workflow-port-right:hover,
+.workflow-port-right.magnet-target {
+    transform: translateY(-50%) scale(1.3);
+}
+
+.workflow-port-top {
+    top: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+.workflow-port-top:hover,
+.workflow-port-top.magnet-target {
+    transform: translateX(-50%) scale(1.3);
+}
+
+.workflow-port-bottom {
+    bottom: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+.workflow-port-bottom:hover,
+.workflow-port-bottom.magnet-target {
+    transform: translateX(-50%) scale(1.3);
+}
+
+/* Футер блока с кнопками */
+.workflow-node-footer {
+    display: flex;
+    gap: 10px;
+    padding: 14px 22px;
+    border-top: 1px solid var(--border-light);
+    border-radius: 0 0 10px 10px;
+    background: white;
+    flex-shrink: 0;
+}
+
+.workflow-node-footer-buttons {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+.dark .workflow-node-footer {
+    border-top-color: var(--border-light);
+    background: var(--bg-secondary);
+}
+
+/* Секция прикреплённых файлов */
+.workflow-node-attachments {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 0 22px;
+    height: 52px;
+    min-height: 52px;
+    max-height: 52px;
+    box-sizing: border-box;
+    border-top: 1px solid var(--border-light);
+    background: var(--bg-elevated);
+    flex-shrink: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+
+.workflow-node-attachments::-webkit-scrollbar {
+    display: none;
+}
+
+.dark .workflow-node-attachments {
+    border-top-color: var(--border-light);
+    background: var(--bg-secondary);
+}
+
+.workflow-attach-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 2px dashed var(--border-medium);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.workflow-attach-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.workflow-attach-btn:hover {
+    border-color: var(--claude-primary);
+    color: var(--claude-primary);
+    background: rgba(236, 116, 65, 0.1);
+}
+
+.dark .workflow-attach-btn {
+    border-color: var(--border-light);
+    color: var(--text-muted);
+}
+
+.dark .workflow-attach-btn:hover {
+    border-color: var(--claude-primary);
+    color: var(--claude-primary);
+}
+
+.workflow-attached-files {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+
+.workflow-attached-files::-webkit-scrollbar {
+    display: none;
+}
+
+.workflow-file-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: #e8e8e8;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    color: var(--text-secondary);
+    max-width: 180px;
+    flex-shrink: 0;
+}
+
+.workflow-file-chip .file-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.workflow-file-chip .file-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.workflow-file-chip .file-remove svg {
+    width: 14px;
+    height: 14px;
+}
+
+.workflow-file-chip .file-remove:hover {
+    background: rgba(231, 76, 60, 0.3);
+    color: var(--color-danger-light);
+}
+
+.dark .workflow-file-chip {
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+}
+
+.dark .workflow-file-chip .file-remove {
+    color: var(--text-muted);
+}
+
+.dark .workflow-file-chip .file-remove:hover {
+    background: rgba(231, 76, 60, 0.3);
+    color: var(--color-danger-light);
+}
+
+.workflow-node-btn {
+    flex: 1;
+    padding: 12px 18px;
+    font-size: 24px;
+    font-weight: 500;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: white;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.workflow-node-btn svg {
+    flex-shrink: 0;
+    display: block;
+}
+
+.workflow-node-btn span {
+    line-height: 24px;
+    transform: translateY(-1px);
+}
+
+.workflow-node-btn:hover {
+    border-color: #d0d0d0;
+    background: #f5f5f5;
+}
+
+.workflow-node-btn.primary {
+    background: var(--claude-primary);
+    border-color: var(--claude-primary);
+    color: white;
+}
+
+.workflow-node-btn.primary:hover {
+    opacity: 0.9;
+}
+
+.dark .workflow-node-btn {
+    background: var(--btn-bg);
+    border-color: var(--btn-border);
+    color: var(--btn-text);
+}
+
+.dark .workflow-node-btn:hover {
+    background: var(--btn-hover-bg);
+    border-color: var(--btn-hover-border);
+}
+
+/* Привязка блока к чату Claude */
+.workflow-node-chat-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: var(--claude-primary);
+    border: 2px solid white;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    color: white;
+    cursor: pointer;
+    z-index: 30;
+}
+
+.workflow-node-chat-badge:hover {
+    transform: scale(1.1);
+}
+
+/* Модальное окно редактирования workflow */
+#workflow-edit-modal .modal-content input,
+#workflow-edit-modal .modal-content textarea {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.dark #workflow-edit-modal .modal-content input,
+.dark #workflow-edit-modal .modal-content textarea {
+    background: var(--bg-tertiary);
+    border-color: var(--btn-border);
+    color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCESSIBILITY: Reduced Motion
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ARCHIVE LOG TABLE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.archive-log-row {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.archive-log-row:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.dark .archive-log-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.archive-log-cell {
+    padding: 0.5rem 0.75rem;
+}
+
+.archive-log-timestamp {
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.archive-log-filename {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.archive-log-link {
+    color: var(--claude-primary);
+    font-size: 0.75rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.archive-log-link:hover {
+    text-decoration: underline;
+}
+
+.archive-log-empty {
+    padding: 1rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.archive-log-error {
+    padding: 1rem;
+    text-align: center;
+    color: var(--color-danger);
+}
+
+.archive-log-header {
+    background: var(--bg-tertiary);
+    position: sticky;
+    top: 0;
+}
+
+.archive-log-th {
+    text-align: left;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLOBAL ELEMENTS (previously Tailwind hardcodes)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.scroll-container {
+    background: var(--bg-primary);
+}
+
+.text-danger {
+    color: var(--color-danger);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FINISH PROJECT BUTTON
+   ═══════════════════════════════════════════════════════════════════════════ */
+.finish-project-btn {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--color-success);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease, filter 0.15s ease;
+}
+
+.finish-project-btn:hover {
+    filter: brightness(1.15);
+}
+
+.finish-project-btn.visible {
+    display: flex;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.finish-project-btn.hiding {
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.continue-project-btn {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease, filter 0.15s ease;
+}
+
+.continue-project-btn:hover {
+    filter: brightness(1.1);
+}
+
+.continue-project-btn.visible {
+    display: flex;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.continue-project-btn.hiding {
+    opacity: 0;
+    transform: translateY(20px);
+}

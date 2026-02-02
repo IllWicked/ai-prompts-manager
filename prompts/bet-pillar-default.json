@@ -1,0 +1,389 @@
+{
+  "version": 2,
+  "exportDate": "2026-02-02T14:44:40.221Z",
+  "tab": {
+    "id": "bet-pillar-default",
+    "name": "BET-PILLAR-DEFAULT",
+    "version": "1.0.0",
+    "items": [
+      {
+        "type": "block",
+        "id": "item_1768308167100_pjmgz9geh",
+        "title": "Контент-план",
+        "content": "1. Задача\nСоздать контент-план для pillar-страницы по ключу example в тематике спортивных ставок.\n\n2. Подготовка\nПроанализируй ТОП-10 англоязычной выдачи.\nОпредели интенты пользователей (информационный, навигационный, коммерческий, смешанный).\nОпредели структуру и глубину проработки тем у конкурентов.\n\n3. Требования к SEO\nНа основе ключа найди популярные средне- и высокочастотные интентные запросы через анализ поисковых данных.\nДобавь LSI-фразы, синонимы и смежные формулировки.\nРаздели ключи по смысловым кластерам (основные, вспомогательные, уточняющие).\nПри написании используй органично, без переспама.\n\nНайди 5-10 популярных вопросов пользователей по теме на основе:\n\"Похожие вопросы\" в поисковых системах.\nPeople Also Ask (Google).\nНа тематических форумах.\nИз них выбери 3 самых релевантных для FAQ в Pillar.\n\n4. Требования к контент-плану\nЯзык плана: английский.\nPillar-статья: 5000-6000 слов.\nКластерные статьи: 3000-4000 слов. 5шт.\n\nВ конец добавь сноску \"Ключ: example. Код: XX.\", где укажи использованный ключ и код используемого языка (только в контент-план).\n\n5. Результат\nСохрани как content-plan.md.",
+        "instruction": {
+          "type": "input",
+          "icon": "edit",
+          "text": "Заменить ключ и контекст",
+          "fields": [
+            {
+              "label": "Ключ",
+              "placeholder": "",
+              "prefix": "по ключу",
+              "optional": false
+            },
+            {
+              "label": "Контекст",
+              "placeholder": "",
+              "prefix": "в контексте ",
+              "optional": true,
+              "savedPosition": 96
+            }
+          ]
+        },
+        "automation": {
+          "newProject": true
+        }
+      },
+      {
+        "type": "block",
+        "id": "item_1768308167100_uic49m33s",
+        "title": "Pillar - статья",
+        "content": "1. Задача\nНаписать текст для pillar-статьи на английском языке для англоязычной аудитории по контент-плану.\n\n2. Требования к статье\nОбъём: 5000-6000 слов.\nГод (при необходимости): 2026.\nСтиль: технический, повествовательный, но лёгкий для восприятия.\nПиши как человек, без воды, с уместной долей иронии.\nЗакончи статью уникальной секцией, а не обычным выводом.\nХедер стандартный, в начале страницы, без доп. контейнеров.\nTable of contents.\nFAQ — 3 вопроса в конце.\nПод каждым подзаголовком — не менее 3 содержательных абзацев.\nНе более 2 ненумерованных списков.\nТекста от 70%, списков до 30% общего визуального объёма статьи.\nЖирного шрифта до 10% общего визуального объёма статьи.\nИспользуй Markdown-разметку.\n\nЗапрещено:\nЭмодзи.\nКвадратные скобки.\nНумерация заголовков.\nВыдуманные и placeholder: ссылки, email-адреса.\nПерекрёстные ссылки на другие статьи проекта.\n\nРазрешено:\nСсылки на реальные авторитетные источники (при необходимости).\n\n3. Метод\nНа основе контент-плана создай мини-план написания статьи, разбив её на несколько частей.\nДля каждой части заранее рассчитай фиксированный объём исходя из требований.\nПосле написания каждой части выполняй проверку кол-ва слов скриптом count.py, суммируй результат и сверяйся с мини-планом.\nЕсли текущий объём превысил 4500 слов — пиши оставшиеся секции в 50% от запланированного объёма.\nЕсли финальный объём не попал в заданный диапазон <10% — не сокращай/не дополняй. \n\nЗаконченные части объедини командой cat. Сделай редакторский проход: исправь переходы между отрывками (если смысл обрывается), убери случайные повторы мыслей, делай через str_replace.\n\n4. Результат\nСохрани как index.md.",
+        "instruction": {
+          "type": "info",
+          "icon": "paperclip",
+          "text": "Прикрепить content-plan.md",
+          "fields": []
+        },
+        "scripts": [
+          "count"
+        ],
+        "hasAttachments": true,
+        "automation": {
+          "newChat": true
+        }
+      },
+      {
+        "type": "block",
+        "id": "item_1768308167100_jy6qrq89b",
+        "title": "Pillar - дизайн",
+        "content": "Create an HTML design template for pillar-article content.\nBase the visual design (color palette, mood, accent colors, typography) on the article content above.\n\nTemplate Marker:\nInside <main>, place only the marker {{CONTENT}}.\nDo not include actual article text.\nExample:\n<main>\n    {{CONTENT}}\n</main>\n\nSemantic Markup:\nUse only one <main> tag.\nUse only one main <footer> after <main>.\nUse <nav> for navigation elements if needed.\nUse semantic tags instead of divs wherever possible.\n\nMeta tags:\nOnly charset, viewport.\n<header></header> — empty.\n<footer></footer> — empty.\n<title></title> — empty.\n<meta name=\"description\"> — empty.\n\nPerformance Optimization:\nMinimize DOM nesting (maximum 3-4 levels where possible).\nAvoid \"div soup\" - every element should have semantic meaning.\nUse CSS Grid and Flexbox for layout instead of multiple wrappers.\nApply CSS variables for repeated values.\n\nVisual Design:\nSmooth hover animations (use transform and opacity for GPU acceleration).\nResponsive typography with clamp() for fluid scaling.\nSubtle shadows and gradients for depth.\nAccent colors for important elements.\nMicro-animations for interactive elements.\nEnsure excellent readability with proper spacing and line heights.\nAdd dark theme support via CSS variables and prefers-color-scheme.\n\nCSS Selectors for Content:\nStyle article elements that will be inserted: h1, h2, h3, p, ul, ol, li, strong, em, blockquote, figure, figcaption.\nPrepare styles for .hero-image and .article-image classes (for images).\n\nAccessibility and Resilience:\nDocument must be fully readable without CSS and JavaScript.\nUse proper heading hierarchy (h1 → h2 → h3, no skipping).\nAdd aria-labels where necessary for screen readers.\nEnsure contrast ratio of at least 4.5:1 for regular text.\nAdd :focus styles for keyboard navigation.\n\nMachine Readability:\nStructure content to be understandable by search engines and AI agents.\nUse Schema.org microdata where appropriate.\n\nTechnical Details:\nNo emojis.\nAll code in a single HTML file.\nUse modern CSS (Grid, Flexbox, Custom Properties, clamp()).\nAdd smooth transitions for all interactive elements.\nMake design fully responsive (mobile-first approach).\n\nSave as design.html.",
+        "instruction": null
+      },
+      {
+        "type": "block",
+        "id": "item_1768308167100_c67xd0tep",
+        "title": "Кластерные статьи",
+        "content": "1. Задача\nНаписать кластерные статьи №1-2 по контент-плану.\n\n2. Требования к статьям\nЦелевой диапазон: 3000-4000 слов.\nЯзык: английский.\nГод (при необходимости): 2026.\nСтиль: технический, повествовательный, но лёгкий для восприятия.\nПиши как человек, без воды, с уместной долей иронии.\nЗакончи статью уникальной секцией, а не обычным выводом.\nПод каждым подзаголовком — не менее 3 содержательных абзацев.\nНе более 2 ненумерованных списков.\nТекста от 70%, списков до 30% общего визуального объёма статьи.\nЖирного шрифта до 10% общего визуального объёма статьи.\nИспользуй Markdown-разметку.\n\nЗапрещено:\nTable of contents.\nFAQ.\nЭмодзи.\nКвадратные скобки.\nНумерация заголовков.\nБлоки плюсы/минусы.\nЦитаты в рамках.\nВыдуманные и placeholder: ссылки, email-адреса.\nПерекрёстные ссылки на другие статьи проекта.\n\nРазрешено:\nСсылки на реальные авторитетные источники (при необходимости).\n\n3. Метод\nНа основе контент-плана создай мини-план написания всех 5 статей, разбив каждую на несколько частей.\nДля каждой части заранее рассчитай фиксированный объём исходя из требований.\nПеред написанием каждой статьи сверяйся с мини-планом.\nПосле написания каждой части выполняй проверку кол-ва слов скриптом count.py, суммируй результат и сверяйся с мини-планом.\nЕсли текущий объём превысил 2500 слов — пиши оставшиеся секции в 50% от запланированного объёма.\nЕсли финальный объём не попал в заданный диапазон <10% — не сокращай/не дополняй. \n\nЗаконченные части объедини командой cat. Сделай редакторский проход: исправь переходы между отрывками (если смысл обрывается), убери случайные повторы мыслей, делай через str_replace.\n\n4. Результат\nСохрани каждую статью в отдельный .md файл: index1.md, index2.md и т.д.",
+        "instruction": {
+          "type": "info",
+          "icon": "paperclip",
+          "text": "Прикрепить content-plan.md",
+          "fields": []
+        },
+        "hasAttachments": true,
+        "scripts": [
+          "count"
+        ],
+        "automation": {
+          "newChat": true
+        }
+      },
+      {
+        "type": "block",
+        "id": "item_1768308167100_30p48wwme",
+        "title": "Кластеры - конвертация",
+        "content": "1. Задача\nКонвертировать каждый Markdown в HTML.\nИнтегрировать hero-изображение.\nСоздать промпт для генерации hero-изображения.\n\n2. Метод\nПроанализируй и запусти скрипт convert.py.\nДалее нужно вставить:\nПо 1 тегу <img>.\n<title> — до 70 символов.\n<meta name=\"description\"> — до 160 символов.\nДля этого:\nПроанализируй получившиеся HTML-статьи.\nИсходя из контекста статьи сформулируй теги и SEO-имена для изображений.\nНапиши python-скрипт для массовой вставки тегов и проверки их кол-ва.\nHero (после H1): без loading=\"lazy\".\nФормат: .webp.\n\nПроверяй email-адреса и расшифровывай защищённые.\n\nЗапрещено:\nCSS в любом виде.\n\n3. Требования к изображению\nРазрешение: width=1200px.\nОдин главный объект или простая сцена.\nСильное визуальное впечатление (свет, композиция).\nБез графиков, таблиц, KPI и интерфейсов.\nДопустим короткий заголовок.\nРеалистичное или гиперреалистичное.\nОсновано на контексте статьи.\nAlt-теги и текст внутри изображения — на языке страницы.\nНичего не обрезано.\n\nЗапрещено:\nАбстрактные и футуристичные сцены.\nНереалистичные формы и пропорции.\nКалькуляторы.\nКалендари.\nРеальные деньги и банковские карты.\n\nОбязательные замены:\nКалькулятор → человек считает / документ / простой график без цифр.\nКалендарь → планирование / таймлайн / блокнот (не сетка).\nДеньги → символические знаки (€ / $).\n\nДля спортивных страниц:\nВ промпте явно обозначь вид спорта на основе контекста статьи.\nУказывай: тип поля/покрытия, корректный инвентарь, корректную экипировку.\n\n4. Результат\nСохраняй исходные имена файлов.\nindex[N].html.\nprompt[N].txt — для изображения укажи дополнительно имя файла.",
+        "instruction": {
+          "type": "info",
+          "icon": "paperclip",
+          "text": "Прикрепить index1-5.md"
+        },
+        "hasAttachments": true,
+        "scripts": [
+          "convert"
+        ],
+        "automation": {
+          "newChat": true
+        }
+      },
+      {
+        "type": "block",
+        "id": "item_1768308167100_mt7dye4st",
+        "title": "Pillar - конвертация",
+        "content": "1. Задача\nВзять текст из index.md.\nОбернуть в дизайн из design.html.\nИнтегрировать изображения.\nСоздать CSS для изображений.\nСоздать промпты для генерации изображений.\n\n2. Метод\nПроанализируй и запусти скрипт convert.py.\nДалее нужно вставить:\n6 тегов <img>.\n<title> — до 70 символов.\n<meta name=\"description\"> — до 160 символов.\n<footer> — дисклеймер по тематике статьи, без inline стилей.\nЯкоря для table of contents.\nДля этого:\nПроанализируй получившуюся HTML-статью.\nИсходя из контекста определи оптимальные места для изображений и сформулируй теги и SEO-имена для изображений.\nНапиши python-скрипт для массовой вставки тегов и проверки их кол-ва.\nHero (после H1): без loading=\"lazy\", остальные: с loading=\"lazy\".\nФормат: .webp.\n\nЕсли тегов <img> не ровно 6 — исправь файл.\nПроверяй email-адреса и расшифровывай защищённые.\n\nЗапрещено:\nПлейсхолдеры в любом виде.\n\n3. Требования к изображениям\n6 изображений на страницу.\nРеалистичные или гиперреалистичные.\nЛогично соответствуют теме секции.\nAlt-теги и текст внутри изображений на языке страницы.\nНичего не обрезано.\n\nЗапрещено:\nАбстрактные и футуристичные сцены.\nНереалистичные формы и пропорции.\nКалькуляторы.\nКалендари.\nРеальные деньги и банковские карты.\n\nОбязательные замены:\nКалькулятор → человек считает / документ / простой график без цифр.\nКалендарь → планирование / таймлайн / блокнот (не сетка).\nДеньги → символические знаки (€ / $).\n\nHero-изображение:\nОдин главный объект или простая сцена.\nСильное визуальное впечатление (свет, композиция).\nБез графиков, таблиц, KPI и интерфейсов.\nДопустим короткий заголовок на языке страницы.\nНичего не обрезано.\n\nОстальные изображения:\nДопускаются простые визуализации, аккуратные графики и чистые интерфейсы.\n\nДля спортивных страниц:\nВ промптах явно обозначь вид спорта на основе контекста статьи.\nУказывай: тип поля/покрытия, корректный инвентарь, корректную экипировку.\n\n4. Результат\nindex.html — HTML с дизайном и 6 изображениями.\nimages-styles.css — стили для изображений.\nprompts.txt — для каждого изображения: промпт, имя файла (.webp), размер (px), место в тексте.",
+        "instruction": {
+          "type": "info",
+          "icon": "paperclip",
+          "text": "Прикрепить index.md и design.html"
+        },
+        "hasAttachments": true,
+        "scripts": [
+          "convert"
+        ],
+        "automation": {
+          "newChat": true
+        }
+      },
+      {
+        "type": "block",
+        "id": "item_1768308167100_jy1ati6fm",
+        "title": "Технические страницы",
+        "content": "Проанализируй статью в index.html и напиши технические страницы.\nСоздавай HTML-файлы: чистый контент без классов, основной текст внутри article, мета title и description в head.\n\nЗапрещено:\nЭмодзи.\nНумерация подразделов.\nCSS.\nВыдуманные и placeholder: ссылки, email-адреса, телефоны и адреса офисов.\nЛюбые заглушки, которые подразумевают замену.\n\nРазрешено:\nСсылки на реальные официальные сайты.\nСтраницы без контактных данных.\n\nВыдай четыре страницы с названиями:\nPrivacy Policy\nAbout Us\nLegal Information\nCookie Policy",
+        "instruction": null
+      },
+      {
+        "type": "block",
+        "id": "item_1768308167100_tnsbethzj",
+        "title": "Экспорт",
+        "content": "Упакуй все файлы в архив .zip.\n\nМетод:\nСоздай python-скрипт для упаковки на основе нижеуказанной структуры.\n\nСтруктура архива:\nНазвание: BET-S2-XX-PILLAR-ключевое-слово. XX — код языка, и он, и ключ указаны в конце content-plan.md.\nСодержимое:\n├── ADD PAGES/        → технические страницы (названия локализированы под язык)\n├── CL1/              → index1.html + prompts1.txt\n├── CL2/              → index2.html + prompts2.txt\n├── CL3/              → index3.html + prompts3.txt\n├── CL4/              → index4.html + prompts4.txt\n├── CL5/              → index5.html + prompts5.txt\n└── PILLAR/           → index.html + prompts.txt + images-styles.css\n\nContent-plan.md не нужен в архиве, он только для тебя.",
+        "instruction": {
+          "type": "info",
+          "icon": "paperclip",
+          "text": "Прикрепить все готовые файлы"
+        },
+        "hasAttachments": true,
+        "automation": {
+          "newChat": true
+        }
+      },
+      {
+        "type": "block",
+        "id": "item_1768308167100_d2q3oayvj",
+        "title": "Фактчекинг",
+        "content": "Проверь статью на фактические ошибки через веб-поиск. Каждый факт — отдельный запрос. Исправь через str_replace при обнаружении. Сохраняй исходное имя файла.",
+        "instruction": null,
+        "collapsed": true
+      },
+      {
+        "type": "block",
+        "id": "item_1768308167100_79vec12s6",
+        "title": "Фактчекинг",
+        "content": "Проверь каждую статью из .md на фактические ошибки через веб-поиск. Каждый факт — отдельный запрос. Исправь через str_replace при обнаружении. Сохраняй исходные имена файлов.",
+        "instruction": null,
+        "collapsed": true,
+        "automation": {
+          "newChat": true
+        },
+        "hasAttachments": true
+      },
+      {
+        "id": "item_1768930091685_u6m12j5cz",
+        "type": "block",
+        "title": "№3-4",
+        "content": "Напиши статьи №3-4.",
+        "collapsed": true
+      },
+      {
+        "id": "item_1768930091685_xvzy9tq9u",
+        "type": "block",
+        "title": "№5",
+        "content": "Напиши статью №5.",
+        "collapsed": true
+      },
+      {
+        "id": "item_1769091208578_vhlxpywe4",
+        "type": "block",
+        "title": "Проверка",
+        "content": "1. Проверка через скрипт\nУстанови hunspell.\nПроанализируй скрипт spellcheck.py.\nЗапусти проверку, проанализируй результат, исправь найденные ошибки через str_replace.\nИгнорируй: бренды, общепринятые англоязычные термины, аббревиатуры.\nЕсли словарь недоступен, выполни проверку вручную.\n\n2. Ручная проверка\nПроанализируй текст статьи на наличие грамматических, пунктуационных и стилистических ошибок. Исправь найденные.\n\n3. Результат\nСохраняй исходное имя файла.",
+        "collapsed": true,
+        "scripts": [
+          "spellcheck"
+        ]
+      },
+      {
+        "id": "item_1769100577728_qpchf6949",
+        "type": "block",
+        "title": "Проверка",
+        "content": "1. Проверка через скрипт\nУстанови hunspell.\nПроанализируй скрипт spellcheck.py.\nЗапусти проверку для каждой статьи, проанализируй результат, исправь найденные ошибки через str_replace.\nИгнорируй: бренды, общепринятые англоязычные термины, аббревиатуры.\nЕсли словарь недоступен, выполни проверку вручную.\n\n2. Ручная проверка\nПроанализируй текст каждой статьи на наличие грамматических, пунктуационных и стилистических ошибок. Исправь найденные.\n\n3. Результат\nСохраняй исходные имена файлов.",
+        "collapsed": true,
+        "automation": {
+          "newChat": true
+        },
+        "scripts": [
+          "spellcheck"
+        ],
+        "hasAttachments": true
+      }
+    ]
+  },
+  "workflow": {
+    "positions": {
+      "item_1768308167100_pjmgz9geh": {
+        "x": 2040,
+        "y": 120
+      },
+      "item_1768308167100_uic49m33s": {
+        "x": 2560,
+        "y": 680
+      },
+      "item_1768308167100_jy6qrq89b": {
+        "x": 2560,
+        "y": 1360
+      },
+      "item_1768308167100_c67xd0tep": {
+        "x": 1680,
+        "y": 680
+      },
+      "item_1768308167100_30p48wwme": {
+        "x": 1680,
+        "y": 1480
+      },
+      "item_1768308167100_mt7dye4st": {
+        "x": 2560,
+        "y": 1920
+      },
+      "item_1768308167100_jy1ati6fm": {
+        "x": 2560,
+        "y": 2440
+      },
+      "item_1768308167100_tnsbethzj": {
+        "x": 1680,
+        "y": 2000
+      },
+      "item_1768308167100_d2q3oayvj": {
+        "x": 2680,
+        "y": 1240
+      },
+      "item_1768308167100_79vec12s6": {
+        "x": 2120,
+        "y": 1240
+      },
+      "item_1768930091685_u6m12j5cz": {
+        "x": 1720,
+        "y": 1240
+      },
+      "item_1768930091685_xvzy9tq9u": {
+        "x": 1920,
+        "y": 1240
+      },
+      "item_1769091208578_vhlxpywe4": {
+        "x": 3000,
+        "y": 1240
+      },
+      "item_1769100577728_qpchf6949": {
+        "x": 1920,
+        "y": 1360
+      }
+    },
+    "sizes": {
+      "item_1768308167100_pjmgz9geh": {
+        "width": 960,
+        "height": 520
+      },
+      "item_1768308167100_uic49m33s": {
+        "width": 800,
+        "height": 520
+      },
+      "item_1768308167100_jy6qrq89b": {
+        "width": 800,
+        "height": 520
+      },
+      "item_1768308167100_c67xd0tep": {
+        "width": 800,
+        "height": 520
+      },
+      "item_1768308167100_30p48wwme": {
+        "width": 800,
+        "height": 480
+      },
+      "item_1768308167100_mt7dye4st": {
+        "width": 800,
+        "height": 480
+      },
+      "item_1768308167100_jy1ati6fm": {
+        "width": 800,
+        "height": 440
+      },
+      "item_1768308167100_tnsbethzj": {
+        "width": 800,
+        "height": 880
+      },
+      "item_1768308167100_d2q3oayvj": {
+        "width": 480,
+        "height": 440
+      },
+      "item_1768308167100_79vec12s6": {
+        "width": 480,
+        "height": 440
+      }
+    },
+    "connections": [
+      {
+        "from": "item_1768308167100_pjmgz9geh",
+        "fromSide": "bottom",
+        "to": "item_1768308167100_uic49m33s",
+        "toSide": "top"
+      },
+      {
+        "from": "item_1768308167100_jy6qrq89b",
+        "fromSide": "bottom",
+        "to": "item_1768308167100_mt7dye4st",
+        "toSide": "top"
+      },
+      {
+        "from": "item_1768308167100_mt7dye4st",
+        "fromSide": "bottom",
+        "to": "item_1768308167100_jy1ati6fm",
+        "toSide": "top"
+      },
+      {
+        "from": "item_1768308167100_30p48wwme",
+        "fromSide": "bottom",
+        "to": "item_1768308167100_tnsbethzj",
+        "toSide": "top"
+      },
+      {
+        "from": "item_1768930091685_u6m12j5cz",
+        "to": "item_1768930091685_xvzy9tq9u",
+        "fromSide": "right",
+        "toSide": "left"
+      },
+      {
+        "from": "item_1768308167100_c67xd0tep",
+        "fromSide": "bottom",
+        "to": "item_1768930091685_u6m12j5cz",
+        "toSide": "top"
+      },
+      {
+        "from": "item_1768308167100_pjmgz9geh",
+        "fromSide": "bottom",
+        "to": "item_1768308167100_c67xd0tep",
+        "toSide": "top"
+      },
+      {
+        "from": "item_1768308167100_jy1ati6fm",
+        "fromSide": "left",
+        "to": "item_1768308167100_tnsbethzj",
+        "toSide": "right"
+      },
+      {
+        "from": "item_1768308167100_79vec12s6",
+        "fromSide": "bottom",
+        "to": "item_1769100577728_qpchf6949",
+        "toSide": "top"
+      },
+      {
+        "from": "item_1769100577728_qpchf6949",
+        "fromSide": "bottom",
+        "to": "item_1768308167100_30p48wwme",
+        "toSide": "top"
+      },
+      {
+        "from": "item_1768930091685_xvzy9tq9u",
+        "fromSide": "right",
+        "to": "item_1768308167100_79vec12s6",
+        "toSide": "left"
+      },
+      {
+        "from": "item_1769091208578_vhlxpywe4",
+        "fromSide": "bottom",
+        "to": "item_1768308167100_jy6qrq89b",
+        "toSide": "top"
+      },
+      {
+        "from": "item_1768308167100_d2q3oayvj",
+        "fromSide": "top",
+        "to": "item_1768308167100_uic49m33s",
+        "toSide": "bottom"
+      },
+      {
+        "from": "item_1768308167100_d2q3oayvj",
+        "fromSide": "right",
+        "to": "item_1769091208578_vhlxpywe4",
+        "toSide": "left"
+      }
+    ]
+  }
+}

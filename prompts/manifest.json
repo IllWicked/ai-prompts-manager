@@ -2,33 +2,38 @@
   "tabs": {
     "bet-clusters": {
       "name": "BET-CLUSTERS",
-      "version": "1.0.1",
-      "order": 2
+      "version": "1.0.2",
+      "order": 3
     },
     "bet-linkbuilding": {
       "name": "BET-LINKBUILDING",
-      "version": "1.0.1",
-      "order": 3
+      "version": "1.0.2",
+      "order": 4
     },
     "bet-pillar": {
       "name": "BET-PILLAR",
       "version": "1.0.1",
-      "order": 4
+      "order": 1
     },
     "bet-pillar-clkeys": {
       "name": "BET-PILLAR-CLKEYS",
       "version": "1.0.1",
-      "order": 5
+      "order": 2
     },
     "bet-sportwetten": {
       "name": "BET-SPORTWETTEN",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "order": 6
     },
     "gamble-test": {
       "name": "GAMBLE-TEST",
+      "version": "1.0.1",
+      "order": 7
+    },
+    "bet-pillar-default": {
+      "name": "BET-PILLAR-DEFAULT",
       "version": "1.0.0",
-      "order": 1
+      "order": 5
     }
   },
   "release_notes": "ЧТО НОВОГО:\n- Новый пайплайн LinkBuilding\n- Новый пайплайн Casino (В тестовом режиме)",

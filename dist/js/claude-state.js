@@ -7,7 +7,7 @@
  * 
  * Зависимости:
  *   - window.AppState.claude (shared state)
- *   - isClaudeVisible, activeClaudeTab, existingTabs, panelRatio, tabUrls, isResetting (алиасы)
+ *   - isClaudeVisible, activeClaudeTab, panelRatio, tabUrls, isResetting (алиасы)
  *   - activeProject, currentTab (алиасы)
  *   - Tauri API: window.__TAURI__.core.invoke
  * 
@@ -51,7 +51,6 @@ async function saveClaudeSettings() {
         const claudeSettings = {
             visible: isClaudeVisible,
             activeTab: activeClaudeTab,
-            existingTabs: existingTabs,
             panelRatio: panelRatio,
             tabUrls: tabUrls,
             tabNames: tabNames
@@ -66,7 +65,7 @@ async function saveClaudeSettings() {
  * Обновить URL всех табов Claude
  */
 async function updateAllTabUrls() {
-    for (const tab of existingTabs) {
+    for (const tab of [1, 2, 3]) {
         try {
             const url = await window.__TAURI__.core.invoke('get_tab_url', { tab });
             // Не сохраняем пустые URL

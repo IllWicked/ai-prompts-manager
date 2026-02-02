@@ -79,27 +79,29 @@
 
 ### Архитектура
 
-Все три таба Claude создаются при старте приложения:
-- **Таб 1** — загружается на `https://claude.ai/new`
-- **Табы 2 и 3** — создаются с `about:blank`, загружаются при первом переключении
-
-Это решает проблему случайного зависания WebView2 при создании webview "на лету".
+Все три таба Claude создаются при старте приложения на `https://claude.ai/new`.
+WebView2 не загружает страницу пока webview за пределами экрана, поэтому реальная загрузка происходит при первом показе панели.
 
 ### Жизненный цикл
 
 ```
 Старт приложения
     │
-    ├── ensure_claude_webview(1, None)      → claude.ai/new
-    ├── ensure_claude_webview(2, "about:blank")
-    └── ensure_claude_webview(3, "about:blank")
+    ├── ensure_claude_webview(1, None)  → claude.ai/new (за экраном)
+    ├── ensure_claude_webview(2, None)  → claude.ai/new (за экраном)
+    └── ensure_claude_webview(3, None)  → claude.ai/new (за экраном)
     
-Переключение на таб 2/3
+Первое открытие панели Claude
     │
-    └── switch_claude_tab(tab)
+    └── toggle_claude()
             │
-            └── if url == "about:blank"
-                    └── navigate(claude.ai/new)
+            └── resize_webviews() → webview перемещается в видимую область
+                    │
+                    └── WebView2 начинает загрузку страницы
+
+Автоматизация (флаги P или N)
+    │
+    └── waitForClaudeInput() → ожидание загрузки перед действием
 ```
 
 ### Toolbar

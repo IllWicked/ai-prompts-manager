@@ -50,7 +50,6 @@ window.AppState = {
     claude: {
         isVisible: false,
         activeTab: 1,
-        existingTabs: [1, 2, 3],
         generatingTabs: {},
         tabUrls: {},
         tabNames: {},
@@ -168,10 +167,6 @@ Object.defineProperty(window, 'isClaudeVisible', {
 Object.defineProperty(window, 'activeClaudeTab', {
     get() { return window.AppState.claude.activeTab; },
     set(v) { window.AppState.claude.activeTab = v; }
-});
-Object.defineProperty(window, 'existingTabs', {
-    get() { return window.AppState.claude.existingTabs; },
-    set(v) { window.AppState.claude.existingTabs = v; }
 });
 Object.defineProperty(window, 'generatingTabs', {
     get() { return window.AppState.claude.generatingTabs; },

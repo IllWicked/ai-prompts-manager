@@ -46,7 +46,6 @@ fn main() {
             claude::recreate_claude_tab,
             claude::navigate_claude_tab,
             claude::notify_url_change,
-            claude::close_claude_tab,
             claude::reset_claude_state,
             claude::set_panel_ratio,
             claude::get_panel_ratio,
@@ -114,16 +113,15 @@ fn main() {
                 let _ = webview::resize_webviews(&app_handle);
                 
                 // Создаём все три Claude webview при старте
-                // Таб 1 — сразу на claude.ai
+                // Все на claude.ai — в фоне всё равно не грузятся
                 std::thread::sleep(std::time::Duration::from_millis(500));
                 let _ = webview::ensure_claude_webview(&app_handle, 1, None);
                 
-                // Табы 2 и 3 — пустые (about:blank), загрузятся при переключении
                 std::thread::sleep(std::time::Duration::from_millis(200));
-                let _ = webview::ensure_claude_webview(&app_handle, 2, Some("about:blank"));
+                let _ = webview::ensure_claude_webview(&app_handle, 2, None);
                 
                 std::thread::sleep(std::time::Duration::from_millis(200));
-                let _ = webview::ensure_claude_webview(&app_handle, 3, Some("about:blank"));
+                let _ = webview::ensure_claude_webview(&app_handle, 3, None);
             });
             
             // Обработчик изменения размера окна

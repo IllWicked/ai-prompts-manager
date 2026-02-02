@@ -10,7 +10,7 @@
  *   - Алиасы: workflowMode, workflowPositions, workflowSizes, workflowConnections,
  *             isEditMode, currentTab, selectedNodes, isDraggingNode, dragOffsets,
  *             isResizingNode, resizeNode, resizeDirection, resizeStartX/Y/Width/Height/Left/Top,
- *             existingTabs, activeClaudeTab, collapsedBlocks, blockScripts, blockAttachments,
+ *             activeClaudeTab, collapsedBlocks, blockScripts, blockAttachments,
  *             activeTextarea, skipScrollOnRender, activeProject
  *   - DOM getters: getWorkflowContainer(), getWorkflowCanvas(), getWorkflowSvg(), 
  *                  getZoomIndicator(), getEditModal(), getEditTitle(), getEditContent()
@@ -500,8 +500,8 @@ function createWorkflowNode(block, index) {
     const footer = document.createElement('div');
     footer.className = 'workflow-node-footer';
     
-    // Кнопки отправки в чаты
-    const chatTabs = typeof existingTabs !== 'undefined' && existingTabs.length > 0 ? existingTabs : [1];
+    // Кнопки отправки в чаты (всегда 3 чата)
+    const chatTabs = [1, 2, 3];
     
     // Проверка доступности кнопок чата (для Project Binding)
     const showChatButtons = !isProjectActive() || isCurrentTabProjectOwner();

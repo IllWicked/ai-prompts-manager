@@ -71,7 +71,6 @@ pub use claude::{
     recreate_claude_tab,
     navigate_claude_tab,
     notify_url_change,
-    close_claude_tab,
     reset_claude_state,
     set_panel_ratio,
     get_panel_ratio,

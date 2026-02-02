@@ -261,51 +261,28 @@ pub async fn notify_url_change(app: AppHandle, tab: u8, url: String) -> Result<(
     Ok(())
 }
 
-/// Закрывает указанный таб Claude
-///
-/// Таб 1 нельзя закрыть — он базовый.
-///
-/// # Returns
-/// Номер нового активного таба
-#[tauri::command]
-pub async fn close_claude_tab(app: AppHandle, tab: u8) -> Result<u8, String> {
-    if tab == 1 {
-        return Err("Cannot close tab 1".to_string());
-    }
-    
-    let label = format!("claude_{}", tab);
-    
-    if let Some(webview) = app.get_webview(&label) {
-        webview.close().map_err(|e| e.to_string())?;
-    }
-    
-    // Определяем на какой таб переключиться
-    let current_active = ACTIVE_TAB.load(Ordering::SeqCst);
-    let new_active = if current_active == tab { 1 } else { current_active };
-    
-    ACTIVE_TAB.store(new_active, Ordering::SeqCst);
-    resize_webviews(&app)?;
-    
-    Ok(new_active)
-}
-
-/// Сбрасывает состояние Claude (закрывает все webview)
+/// Сбрасывает состояние Claude (пересоздаёт все webview)
 #[tauri::command]
 pub async fn reset_claude_state(app: AppHandle) -> Result<(), String> {
-    // Закрываем все Claude webviews
-    for i in 1u8..=3 {
-        let label = format!("claude_{}", i);
-        if let Some(webview) = app.get_webview(&label) {
-            let _ = webview.close();
-        }
-    }
-    
     // Закрываем toolbar и downloads
     if let Some(toolbar) = app.get_webview("toolbar") {
         let _ = toolbar.close();
     }
     if let Some(downloads) = app.get_webview("downloads") {
         let _ = downloads.close();
+    }
+    
+    // Пересоздаём все Claude webviews (таб 1 на claude.ai, остальные на about:blank)
+    for i in 1u8..=3 {
+        let label = format!("claude_{}", i);
+        if let Some(webview) = app.get_webview(&label) {
+            let _ = webview.close();
+        }
+        // Небольшая задержка для закрытия
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        
+        let url = if i == 1 { None } else { Some("about:blank") };
+        let _ = ensure_claude_webview(&app, i, url);
     }
     
     // Сбрасываем состояние

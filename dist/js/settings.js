@@ -250,9 +250,8 @@ async function confirmReset() {
         // Останавливаем мониторинг генерации
         stopGenerationMonitor();
         
-        // Очищаем JS переменные Claude (все три таба остаются)
+        // Очищаем JS переменные Claude
         isClaudeVisible = false;
-        existingTabs = [1, 2, 3];
         tabUrls = {};
         generatingTabs = {};
         activeProject = null;

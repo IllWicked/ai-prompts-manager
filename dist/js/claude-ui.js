@@ -7,7 +7,7 @@
  * 
  * Зависимости:
  *   - window.AppState (shared state)
- *   - isClaudeVisible, activeClaudeTab, existingTabs, panelRatio, generatingTabs, tabNames (алиасы)
+ *   - isClaudeVisible, activeClaudeTab, panelRatio, generatingTabs, tabNames (алиасы)
  *   - resizer, isResizing, startX, startRatio, windowWidth, lastAppliedRatio, updateScheduled (алиасы)
  *   - workflowMode, currentTab, activeProject (алиасы)
  *   - Tauri API: window.__TAURI__.core.invoke
@@ -142,10 +142,10 @@ function updateResizer() {
  */
 async function updateClaudeState() {
     try {
-        const [visible, active, tabs] = await window.__TAURI__.core.invoke('get_claude_state');
+        const [visible, active, _tabs] = await window.__TAURI__.core.invoke('get_claude_state');
         isClaudeVisible = visible;
         activeClaudeTab = active;
-        existingTabs = tabs;
+        // tabs игнорируем — всегда 3 чата
         
         // Загружаем ratio
         panelRatio = await window.__TAURI__.core.invoke('get_panel_ratio');
@@ -173,23 +173,16 @@ function updateClaudeUI() {
         tabsRow.classList.toggle('hidden', !isClaudeVisible);
     }
     
-    // Обновляем все табы (1, 2, 3)
+    // Обновляем все табы (1, 2, 3) — все всегда видимы
     for (let i = 1; i <= 3; i++) {
         const tabBtn = document.getElementById(`claude-tab-${i}`);
         if (!tabBtn) continue;
         
-        const exists = existingTabs.includes(i);
         const isActive = activeClaudeTab === i;
         const isGenerating = generatingTabs[i] || false;
         const tabName = tabNames[i] || `Чат ${i}`;
         
-        // Чат 1 виден всегда (через CSS), для остальных управляем через .visible
-        if (i > 1) {
-            tabBtn.classList.toggle('visible', exists);
-        }
-        
         tabBtn.classList.toggle('active', isActive);
-        tabBtn.classList.toggle('exists', exists);
         tabBtn.classList.toggle('generating', isGenerating);
         
         // Обновляем содержимое
@@ -210,7 +203,7 @@ function updateWorkflowChatButtons() {
     if (!workflowMode) return;
     
     const blocks = getTabBlocks(currentTab);
-    const chatTabs = existingTabs.length > 0 ? existingTabs : [1];
+    const chatTabs = [1, 2, 3]; // Всегда 3 чата
     
     // Проверка доступности кнопок чата (для Project Binding)
     // Показываем кнопки если нет активного проекта ИЛИ текущая вкладка — владелец

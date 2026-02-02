@@ -964,6 +964,7 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    padding-left: 2px; /* Чтобы индикатор проекта не обрезался */
 }
 
 /* Кнопки действий (rename, delete) */
@@ -1857,15 +1858,8 @@ header .flex {
     flex-shrink: 1; /* Позволяет сжиматься */
 }
 
-/* Чат 1 всегда виден */
-#claude-tab-1 {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-}
-
-/* Чат 2, 3, + Чат — показываются через .visible */
-.claude-tab-btn.visible {
+/* Все 3 чата всегда видны */
+.claude-tab-btn {
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
@@ -1920,46 +1914,6 @@ header .flex {
     filter: brightness(1.15);
 }
 
-.claude-add-btn {
-    display: none;
-    color: var(--text-muted);
-    border-color: var(--border-medium);
-    border-style: dashed;
-    background: transparent;
-}
-
-.claude-add-btn.visible {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.claude-add-btn svg {
-    flex-shrink: 0;
-    display: block;
-}
-
-.claude-add-btn span {
-    line-height: 12px;
-    transform: translateY(-1px);
-}
-
-.claude-add-btn:hover {
-    border-color: #aaa;
-    background-color: #f5f5f5;
-}
-
-.dark .claude-add-btn {
-    color: var(--btn-text);
-    border-color: var(--btn-border);
-    background: transparent;
-}
-
-.dark .claude-add-btn:hover {
-    border-color: var(--btn-hover-border);
-    background-color: var(--btn-hover-bg);
-}
-
 /* Индикатор генерации на табе */
 .claude-tab-btn.generating {
     position: relative;
@@ -1984,24 +1938,35 @@ header .flex {
     background: white;
 }
 
-/* Индикатор активного проекта в селекторе вкладок */
-.project-indicator {
+/* Индикатор активного проекта в кнопке селектора */
+.header-selector-btn .project-indicator {
     display: inline-block;
     width: 8px;
     height: 8px;
     margin-right: 6px;
     border-radius: 50%;
-    background: var(--claude-primary);
+    background: white;
     animation: pulse-generating 1s ease-in-out infinite;
     vertical-align: middle;
     position: relative;
-    top: -2px;
+    top: -1px;
 }
 
-/* Индикатор в кнопке селектора - белый цвет как текст */
-.header-selector-btn .project-indicator {
+/* Индикатор активного проекта в списке вкладок */
+.tab-option .project-indicator {
+    display: inline-flex;
+    width: 8px;
+    height: 8px;
+    min-width: 8px;
+    border-radius: 50%;
+    background: var(--claude-primary);
+    animation: pulse-generating 1s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+/* Индикатор в выбранной вкладке - белый */
+.tab-option.selected .project-indicator {
     background: white;
-    top: -1px;
 }
 
 /* Кнопка закрытия таба */

@@ -13,7 +13,7 @@
  * 
  * Зависимости:
  *   - window.AppState (shared state)
- *   - Алиасы: isClaudeVisible, activeClaudeTab, existingTabs, generatingTabs, 
+ *   - Алиасы: isClaudeVisible, activeClaudeTab, generatingTabs, 
  *             tabUrls, panelRatio, isResetting, currentTab, activeProject
  *   - delay() из utils.js
  *   - showToast() из toast.js
@@ -46,10 +46,8 @@
  *   - startGenerationMonitor()
  *   - stopGenerationMonitor()
  *   - newChatInTab(tab)
- *   - closeClaudeTab(tab)
  *   - restoreClaudeState()
  *   - initClaudeHandlers()
- *   - addNewChatTab()
  *   - startProject(uuid, name, ownerTab)
  *   - finishProject()
  *   - getProjectUUIDFromUrl(url)
@@ -662,6 +660,20 @@ async function sendNodeToClaude(index, chatTab) {
         }
         
         // Обработка автоматизации
+        if (automation.newProject || automation.newChat) {
+            // Ждём загрузки страницы Claude перед автоматизацией
+            const pageReady = await waitForClaudeInput(targetTab, 15000);
+            if (!pageReady) {
+                showToast('Ожидание загрузки Claude...');
+                // Пробуем ещё раз с большим таймаутом
+                const retryReady = await waitForClaudeInput(targetTab, 30000);
+                if (!retryReady) {
+                    showToast('Ошибка: страница Claude не загрузилась');
+                    return;
+                }
+            }
+        }
+        
         if (automation.newProject) {
             // Завершаем предыдущий проект если есть
             if (isProjectActive()) {
@@ -885,7 +897,7 @@ async function checkAllGenerationStatus() {
     if (!isClaudeVisible) return;
     
     let changed = false;
-    for (const tab of existingTabs) {
+    for (const tab of [1, 2, 3]) {
         try {
             // Монитор инжектируется на page-loaded событии,
             // здесь только проверяем статус
@@ -927,7 +939,7 @@ function startGenerationMonitor() {
     // Периодически сохраняем URL табов (каждые 5 сек)
     if (!urlSaveInterval) {
         urlSaveInterval = setInterval(async () => {
-            if (isClaudeVisible && existingTabs.length > 0) {
+            if (isClaudeVisible) {
                 await saveClaudeSettings();
             }
         }, 5000);
@@ -1029,30 +1041,6 @@ async function newChatInTab(tab, clearName = true) {
         programmaticNavigation = false;
         // Fallback
         await navigateClaude(tab, 'https://claude.ai/new');
-    }
-}
-
-/**
- * Закрыть таб Claude
- */
-async function closeClaudeTab(tab) {
-    try {
-        // Таб 1 нельзя закрыть (на нём и нет крестика)
-        if (tab === 1) return;
-        
-        const newActive = await window.__TAURI__.core.invoke('close_claude_tab', { tab });
-        
-        // Обновляем состояние
-        existingTabs = existingTabs.filter(t => t !== tab);
-        activeClaudeTab = newActive;
-        delete tabNames[tab]; // Очищаем название закрытого таба
-        
-        updateClaudeUI();
-        await saveClaudeSettings();
-    } catch (e) {
-        
-        // Синхронизируем состояние после ошибки
-        await updateClaudeState();
     }
 }
 
@@ -1165,26 +1153,8 @@ function initClaudeHandlers() {
     // Восстанавливаем сохранённое состояние
     restoreClaudeState();
     
-    // Обновляем UI сразу (чтобы показать кнопку Чат 1)
+    // Обновляем UI сразу
     updateClaudeUI();
-}
-
-/**
- * Добавить новый чат
- */
-async function addNewChatTab() {
-    // Если Claude закрыт - сначала открываем
-    if (!isClaudeVisible) {
-        await toggleClaude();
-    }
-    
-    // Находим первый свободный номер
-    for (let i = 2; i <= 3; i++) {
-        if (!existingTabs.includes(i)) {
-            await switchClaudeTab(i);
-            return;
-        }
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

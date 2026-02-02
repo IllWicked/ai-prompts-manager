@@ -11,7 +11,7 @@ src-tauri/src/
 ├── main.rs              (131 строк)  — точка входа, Tauri Builder
 ├── lib.rs               (23 строки)  — реэкспорт модулей
 ├── types.rs             (57 строк)   — структуры данных
-├── state.rs             (31 строка)  — глобальные состояния
+├── state.rs             (35 строк)  — глобальные состояния
 ├── commands/            (45 команд)  — Tauri команды
 │   ├── mod.rs           — реэкспорт
 │   ├── app.rs           — управление приложением
@@ -238,7 +238,8 @@ sequenceDiagram
 
 | Mutex | Назначение |
 |-------|------------|
-| `WEBVIEW_CREATION_LOCK` | Защита от параллельного создания webview |
+| `WEBVIEW_CREATION_LOCK` | Защита от параллельного создания Claude webview |
+| `TOOLBAR_CREATION_LOCK` | Защита от race condition между ensure_toolbar и recreate_toolbar |
 | `DOWNLOADS_LOG_LOCK` | Синхронизация записи в downloads_log.json |
 | `ARCHIVE_LOG_LOCK` | Синхронизация записи в archive_log.json |
 
@@ -252,6 +253,12 @@ fn ensure_claude_webview(...) -> Result<(), String> {
         return Ok(()); // Double-check под локом
     }
     // ... создание webview
+}
+
+fn ensure_toolbar(...) -> Result<(), String> {
+    let _guard = TOOLBAR_CREATION_LOCK.lock()
+        .map_err(|_| "Lock poisoned")?;
+    // ... создание toolbar/downloads если не существуют
 }
 ```
 

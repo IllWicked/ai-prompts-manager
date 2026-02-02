@@ -8,6 +8,44 @@
 
 ---
 
+## [4.2.3] - 2026-02-02 {#v423}
+
+### Исправления
+
+#### Race condition при создании toolbar/downloads webview
+- **Баг:** При запуске приложения возникала ошибка `a webview with label 'downloads' already exists`, которая приводила к рассинхронизации UI Claude
+- **Причина:** `ensure_toolbar` и `recreate_toolbar` могли выполняться параллельно из разных потоков
+- **Исправление:** Добавлен мьютекс `TOOLBAR_CREATION_LOCK` для синхронизации создания toolbar/downloads
+
+#### Оптимизация создания webview при старте
+- `ensure_claude_webview` теперь вызывает `ensure_toolbar` вместо `recreate_toolbar`
+- `recreate_toolbar` вызывается один раз после создания всех Claude webview
+- Увеличена задержка в `recreate_toolbar` до 50ms + проверка закрытия webview
+
+#### Унификация логики сброса
+- **Баг:** Авто-сброс (при обновлении версии) и ручной сброс (Reset All) имели разную логику
+- **Исправление:** Создана общая функция `performReset(options)` в persistence.js
+- Теперь оба типа сброса очищают одинаковые данные (вкладки, workflow, блоки, Claude настройки)
+- Различие только в опциях: `reloadPage` и `callRustCommands`
+
+### UI
+
+#### Светлая тема — улучшение контрастности
+- Хедер (`--bg-header`): `#dcdcde` → `#e2e2e5` (светлее, но отличается от основного фона)
+- Ресайзер панели теперь заметен (добавлены переменные `--bg-resizer`, `--bg-resizer-hover`)
+
+### Рефакторинг
+
+- `confirmReset()` перенесена из settings.js в persistence.js
+- Добавлена общая функция `performReset(options)` для унификации сброса
+- Добавлен `TOOLBAR_CREATION_LOCK` в state.rs
+
+### Документация
+
+- Обновлена документация по сбросу в DATA-MIGRATIONS.md
+
+---
+
 ## [4.2.2] - 2026-02-02 {#v422}
 
 ### Исправления
@@ -49,7 +87,6 @@
 
 ### Документация
 
-- Исправлена таблица "Что сохраняется при сбросе" в DATA-MIGRATIONS.md
 - Обновлена документация по Claude Tabs в 04-CLAUDE.md
 
 ---

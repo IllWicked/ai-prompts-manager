@@ -153,7 +153,7 @@ async function updateClaudeState() {
         updateClaudeUI();
         updateResizer();
     } catch (e) {
-        
+        console.error('[Claude] updateClaudeState error:', e);
     }
 }
 

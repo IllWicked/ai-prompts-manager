@@ -235,101 +235,10 @@ function toggleAutoUpdate(enabled) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// СБРОС ПРИЛОЖЕНИЯ
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Сбрасывает все данные приложения и перезагружает
- * Настройки (тема, автообновление) НЕ сбрасываются
- */
-async function confirmReset() {
-    try {
-        // Устанавливаем флаг сброса (чтобы beforeunload не сохранял)
-        isResetting = true;
-        
-        // Останавливаем мониторинг генерации
-        stopGenerationMonitor();
-        
-        // Очищаем JS переменные Claude
-        isClaudeVisible = false;
-        tabUrls = {};
-        generatingTabs = {};
-        activeProject = null;
-        
-        // Очищаем JS переменные workflow
-        workflowPositions = {};
-        workflowConnections = [];
-        workflowSizes = {};
-        
-        // Очищаем JS переменные блоков
-        collapsedBlocks = {};
-        blockScripts = {};
-        blockAutomation = {};
-        
-        // Сохраняем настройки перед сбросом
-        const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-        
-        // Очищаем все возможные ключи localStorage (включая старые версии)
-        localStorage.removeItem(STORAGE_KEYS.LANGUAGE);
-        localStorage.removeItem(STORAGE_KEYS.CURRENT_TAB);
-        localStorage.removeItem(STORAGE_KEYS.TABS);
-        localStorage.removeItem('claude-ai-prompts-data-v2');
-        localStorage.removeItem('claude-ai-prompts-language-v2');
-        
-        // Сбрасываем данные блоков
-        localStorage.removeItem(STORAGE_KEYS.COLLAPSED_BLOCKS);
-        localStorage.removeItem(STORAGE_KEYS.BLOCK_SCRIPTS);
-        localStorage.removeItem(STORAGE_KEYS.BLOCK_AUTOMATION);
-        
-        // Сбрасываем Claude чаты и активный проект (но не auto_send - это настройка)
-        localStorage.removeItem(STORAGE_KEYS.CLAUDE_SETTINGS);
-        localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROJECT);
-        
-        // Очищаем весь localStorage связанный с приложением (кроме настроек)
-        const keysToRemove = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && (
-                key.startsWith('claude-ai-prompts') || 
-                key.startsWith('ai-prompts-manager') ||
-                key.startsWith('workflow-') ||
-                key.startsWith('field-value-') ||
-                key.startsWith('collapsed-') ||
-                key.startsWith('block-') ||
-                key.startsWith('remote-prompts')
-            )) {
-                // Не удаляем ключи настроек
-                if (!key.includes('settings')) {
-                    keysToRemove.push(key);
-                }
-            }
-        }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-        
-        // Восстанавливаем настройки
-        if (savedSettings) {
-            localStorage.setItem(STORAGE_KEYS.SETTINGS, savedSettings);
-        }
-        
-        // Вызываем Rust-команды для сброса
-        if (window.__TAURI__ && window.__TAURI__.core) {
-            // Сбрасываем Claude (закрываем webviews)
-            await window.__TAURI__.core.invoke('reset_claude_state');
-            // Удаляем папку приложения
-            await window.__TAURI__.core.invoke('reset_app_data');
-        }
-        
-        // Перезагружаем приложение
-        location.reload();
-    } catch (e) {
-        // Всё равно перезагружаем
-        location.reload();
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // ЭКСПОРТ
 // ═══════════════════════════════════════════════════════════════════════════
+
+// confirmReset экспортируется из persistence.js
 
 window.showSettingsModal = showSettingsModal;
 window.hideSettingsModal = hideSettingsModal;
@@ -344,4 +253,3 @@ window.syncWindowBackground = syncWindowBackground;
 window.applyTheme = applyTheme;
 window.initThemeListener = initThemeListener;
 window.toggleAutoUpdate = toggleAutoUpdate;
-window.confirmReset = confirmReset;

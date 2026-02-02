@@ -108,12 +108,7 @@ fn main() {
             // Запускаем фоновые задачи
             let app_handle = app.handle().clone();
             std::thread::spawn(move || {
-                // Небольшая задержка для инициализации
-                std::thread::sleep(std::time::Duration::from_millis(100));
-                let _ = webview::resize_webviews(&app_handle);
-                
                 // Создаём все три Claude webview при старте
-                // Все на claude.ai — в фоне всё равно не грузятся
                 std::thread::sleep(std::time::Duration::from_millis(500));
                 let _ = webview::ensure_claude_webview(&app_handle, 1, None);
                 
@@ -122,6 +117,14 @@ fn main() {
                 
                 std::thread::sleep(std::time::Duration::from_millis(200));
                 let _ = webview::ensure_claude_webview(&app_handle, 3, None);
+                
+                // Пересоздаём toolbar один раз чтобы он был поверх всех Claude
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                let _ = webview::recreate_toolbar(&app_handle);
+                
+                // Синхронизируем позиции всех webview
+                std::thread::sleep(std::time::Duration::from_millis(50));
+                let _ = webview::resize_webviews(&app_handle);
             });
             
             // Обработчик изменения размера окна

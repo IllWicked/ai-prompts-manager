@@ -1111,7 +1111,6 @@ async function restoreClaudeState() {
         }
     } catch (e) {
         console.error('[Claude] Failed to restore state:', e);
-        showToast('Не удалось восстановить состояние Claude');
     }
 }
 

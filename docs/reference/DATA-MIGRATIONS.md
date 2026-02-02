@@ -101,28 +101,80 @@
 
 ---
 
-## Код миграции
+## Код сброса
 
-### checkAppVersionAndReset()
+### performReset() — общая функция
+
+```javascript
+/**
+ * Общая функция сброса данных приложения
+ * @param {Object} options
+ * @param {boolean} options.reloadPage - перезагружать страницу после сброса
+ * @param {boolean} options.callRustCommands - вызывать Rust команды
+ */
+async function performReset(options = {}) {
+    const { reloadPage = false, callRustCommands = false } = options;
+    
+    isResetting = true;
+    stopGenerationMonitor();
+    
+    // Очищаем JS переменные
+    isClaudeVisible = false;
+    tabUrls = {};
+    generatingTabs = {};
+    activeProject = null;
+    workflowPositions = {};
+    workflowConnections = [];
+    workflowSizes = {};
+    collapsedBlocks = {};
+    blockScripts = {};
+    blockAutomation = {};
+    
+    // Сохраняем настройки
+    const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+    
+    // Очищаем localStorage (все ключи кроме settings)
+    // ... удаление всех ключей приложения ...
+    
+    // Восстанавливаем настройки
+    if (savedSettings) {
+        localStorage.setItem(STORAGE_KEYS.SETTINGS, savedSettings);
+    }
+    
+    // Rust команды (только для ручного сброса)
+    if (callRustCommands && window.__TAURI__?.core) {
+        await window.__TAURI__.core.invoke('reset_claude_state');
+        await window.__TAURI__.core.invoke('reset_app_data');
+    }
+    
+    if (reloadPage) {
+        location.reload();
+    }
+}
+```
+
+### checkAppVersionAndReset() — авто-сброс
 
 ```javascript
 async function checkAppVersionAndReset() {
     const currentAppVersion = await getAppVersion();
-    const savedAppVersion = localStorage.getItem(STORAGE_KEYS.APP_VERSION) || '0.3.0';
+    const savedAppVersion = localStorage.getItem(STORAGE_KEYS.APP_VERSION);
     
-    // Сброс если версия изменилась
-    const needsReset = currentAppVersion !== savedAppVersion;
-    
-    if (needsReset && savedAppVersion !== '0.3.0') {
-        // Сбрасываем данные вкладок
-        localStorage.removeItem(STORAGE_KEYS.TABS);
-        // Очистка legacy ключей
-        localStorage.removeItem('ai-prompts-manager-data');
-        localStorage.removeItem('ai-prompts-manager-data-task4');
-        // НЕ трогаем: настройки, язык
+    if (currentAppVersion !== savedAppVersion) {
+        // Полный сброс без перезагрузки (уже при старте)
+        await performReset({ reloadPage: false, callRustCommands: false });
     }
     
     localStorage.setItem(STORAGE_KEYS.APP_VERSION, currentAppVersion);
+}
+```
+
+### confirmReset() — ручной сброс
+
+```javascript
+async function confirmReset() {
+    // Полный сброс с перезагрузкой и Rust командами
+    await performReset({ reloadPage: true, callRustCommands: true });
 }
 ```
 
@@ -178,15 +230,23 @@ if (savedVersion === 4) {
 
 ## Что сохраняется при сбросе
 
-| Данные | Сохраняются при сбросе APP | Сохраняются при Reset All |
-|--------|---------------------------|--------------------------|
-| Тема | ✅ Да | ✅ Да |
-| Автообновление | ✅ Да | ✅ Да |
-| Язык | ❌ Нет | ❌ Нет |
-| Вкладки | ❌ Нет | ❌ Нет |
-| Workflow | ❌ Нет | ❌ Нет |
-| Путь загрузок | ✅ Да | ✅ Да |
-| Archive Log | ✅ Да | ✅ Да |
+Авто-сброс (при обновлении версии) и ручной сброс (Reset All) используют **одинаковую логику** через `performReset()`.
+
+| Данные | Сохраняется |
+|--------|-------------|
+| Тема | ✅ Да |
+| Автообновление | ✅ Да |
+| Путь загрузок | ✅ Да (Rust backup) |
+| Archive Log | ✅ Да (Rust backup) |
+| Язык | ❌ Нет |
+| Вкладки | ❌ Нет |
+| Workflow | ❌ Нет |
+| Claude настройки | ❌ Нет |
+| Активный проект | ❌ Нет |
+
+**Различия:**
+- Авто-сброс: без перезагрузки страницы, без Rust команд
+- Ручной сброс: с перезагрузкой страницы, с Rust командами (`reset_claude_state`, `reset_app_data`)
 
 ---
 

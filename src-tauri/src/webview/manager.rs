@@ -15,7 +15,7 @@ use tauri::{
 
 use crate::state::{
     CLAUDE_VISIBLE, ACTIVE_TAB, PANEL_RATIO,
-    WEBVIEW_CREATION_LOCK, DOWNLOADS_LOG_LOCK,
+    WEBVIEW_CREATION_LOCK, TOOLBAR_CREATION_LOCK, DOWNLOADS_LOG_LOCK,
 };
 use crate::types::DownloadEntry;
 use crate::utils::get_dimensions;
@@ -91,8 +91,8 @@ pub fn ensure_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Res
         LogicalSize::new(claude_width, height),
     ).map_err(|e| e.to_string())?;
     
-    // После создания нового Claude webview - пересоздаём toolbar чтобы он был поверх
-    recreate_toolbar(app)?;
+    // Создаём toolbar/downloads если не существуют (чтобы были поверх)
+    ensure_toolbar(app)?;
     
     Ok(())
 }
@@ -225,7 +225,12 @@ fn save_download_to_log(filename: &str, file_path: &str) {
 /// Создаёт webview тулбара если он ещё не существует
 ///
 /// Вызывается ПОСЛЕ создания claude webview чтобы быть поверх.
+/// Потокобезопасная — использует мьютекс.
 pub fn ensure_toolbar(app: &AppHandle) -> Result<(), String> {
+    // Блокируем для предотвращения race condition с recreate_toolbar
+    let _guard = TOOLBAR_CREATION_LOCK.lock()
+        .map_err(|_| "Toolbar creation lock poisoned")?;
+    
     let window = app.get_window("main").ok_or("Main window not found")?;
     
     // Создаём toolbar если его нет
@@ -256,7 +261,12 @@ pub fn ensure_toolbar(app: &AppHandle) -> Result<(), String> {
 /// Пересоздаёт toolbar чтобы поднять его z-order
 ///
 /// Вызывается после создания новых Claude webview.
+/// Потокобезопасная — использует мьютекс.
 pub fn recreate_toolbar(app: &AppHandle) -> Result<(), String> {
+    // Блокируем для предотвращения race condition с ensure_toolbar
+    let _guard = TOOLBAR_CREATION_LOCK.lock()
+        .map_err(|_| "Toolbar creation lock poisoned")?;
+    
     let window = app.get_window("main").ok_or("Main window not found")?;
     
     // Закрываем существующие
@@ -267,25 +277,35 @@ pub fn recreate_toolbar(app: &AppHandle) -> Result<(), String> {
         let _ = downloads.close();
     }
     
-    // Небольшая задержка чтобы webview успели закрыться
-    std::thread::sleep(std::time::Duration::from_millis(10));
+    // Задержка чтобы webview успели закрыться (WebView2 требует время)
+    std::thread::sleep(std::time::Duration::from_millis(50));
+    
+    // Проверяем что webview действительно закрылись
+    if app.get_webview("toolbar").is_some() || app.get_webview("downloads").is_some() {
+        // Если не закрылись — ждём ещё
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
     
     // Создаём заново - теперь они будут поверх
-    window.add_child(
-        WebviewBuilder::new("toolbar", WebviewUrl::App("toolbar.html".into()))
-            .transparent(true)
-            .background_color(tauri::webview::Color(0, 0, 0, 0)),
-        LogicalPosition::new(-500.0, 0.0),
-        LogicalSize::new(sizes::TOOLBAR_WIDTH, sizes::TOOLBAR_HEIGHT),
-    ).map_err(|e| e.to_string())?;
+    if app.get_webview("toolbar").is_none() {
+        window.add_child(
+            WebviewBuilder::new("toolbar", WebviewUrl::App("toolbar.html".into()))
+                .transparent(true)
+                .background_color(tauri::webview::Color(0, 0, 0, 0)),
+            LogicalPosition::new(-500.0, 0.0),
+            LogicalSize::new(sizes::TOOLBAR_WIDTH, sizes::TOOLBAR_HEIGHT),
+        ).map_err(|e| e.to_string())?;
+    }
     
-    window.add_child(
-        WebviewBuilder::new("downloads", WebviewUrl::App("downloads.html".into()))
-            .transparent(true)
-            .background_color(tauri::webview::Color(0, 0, 0, 0)),
-        LogicalPosition::new(-500.0, 0.0),
-        LogicalSize::new(sizes::DOWNLOADS_WIDTH, sizes::DOWNLOADS_HEIGHT),
-    ).map_err(|e| e.to_string())?;
+    if app.get_webview("downloads").is_none() {
+        window.add_child(
+            WebviewBuilder::new("downloads", WebviewUrl::App("downloads.html".into()))
+                .transparent(true)
+                .background_color(tauri::webview::Color(0, 0, 0, 0)),
+            LogicalPosition::new(-500.0, 0.0),
+            LogicalSize::new(sizes::DOWNLOADS_WIDTH, sizes::DOWNLOADS_HEIGHT),
+        ).map_err(|e| e.to_string())?;
+    }
     
     Ok(())
 }

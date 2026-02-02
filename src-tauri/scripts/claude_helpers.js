@@ -1,32 +1,49 @@
 // === Claude Helpers ===
 // Общие функции для инжектирования в Claude.ai WebView
-// Селекторы передаются через window.__SEL__ из main.rs
+// Селекторы передаются через window.__SEL__ из main.rs (selectors.json)
 
 /**
- * Поиск элемента по массиву селекторов с fallback
- * @param {string} key - ключ селектора в __SEL__
+ * Получить значение селектора по пути (поддержка вложенности)
+ * @param {string} path - путь к селектору, например "generation.stopButton" или "ui.ghostButtonIndicator"
+ * @returns {string|string[]|null} - селектор(ы) или null
+ */
+function __getSel__(path) {
+    const parts = path.split('.');
+    let value = window.__SEL__;
+    for (const part of parts) {
+        if (!value || typeof value !== 'object') return null;
+        value = value[part];
+    }
+    return value;
+}
+
+/**
+ * Поиск элемента по пути к селектору с fallback
+ * @param {string} path - путь к селектору, например "navigation.leftNav"
  * @returns {Element|null}
  */
-function __findEl__(key) {
-    const selectors = window.__SEL__[key];
+function __findEl__(path) {
+    const selectors = __getSel__(path);
     if (!selectors) return null;
     const arr = Array.isArray(selectors) ? selectors : [selectors];
     for (const sel of arr) {
         try {
             const el = document.querySelector(sel);
             if (el) return el;
-        } catch (e) {}
+        } catch (e) {
+            // Невалидный селектор — пробуем следующий
+        }
     }
     return null;
 }
 
 /**
- * Поиск всех элементов по массиву селекторов
- * @param {string} key - ключ селектора в __SEL__
+ * Поиск всех элементов по пути к селектору
+ * @param {string} path - путь к селектору
  * @returns {Element[]}
  */
-function __findAll__(key) {
-    const selectors = window.__SEL__[key];
+function __findAll__(path) {
+    const selectors = __getSel__(path);
     if (!selectors) return [];
     const arr = Array.isArray(selectors) ? selectors : [selectors];
     const results = [];
@@ -35,15 +52,32 @@ function __findAll__(key) {
             document.querySelectorAll(sel).forEach(el => {
                 if (!results.includes(el)) results.push(el);
             });
-        } catch (e) {}
+        } catch (e) {
+            // Невалидный селектор — пробуем следующий
+        }
     }
     return results;
 }
 
 function hideGhostButton() {
+    // Используем централизованный селектор
+    const ghostIndicator = __getSel__('ui.ghostButtonIndicator');
+    if (!ghostIndicator) return;
+    
+    // Ищем кнопку с ghost indicator напрямую через :has()
+    // Fallback на перебор если :has() не поддерживается
+    try {
+        const ghost = document.querySelector(`button:has(${ghostIndicator})`);
+        if (ghost) {
+            ghost.style.display = 'none';
+            return;
+        }
+    } catch (e) {
+        // :has() не поддерживается, используем fallback
+    }
+    
+    // Fallback: перебор кнопок (для старых браузеров)
     document.querySelectorAll('button').forEach(btn => {
-        // Используем селектор GHOST_BUTTON_INDICATOR
-        const ghostIndicator = window.__SEL__.GHOST_BUTTON_INDICATOR;
         if (btn.querySelector(ghostIndicator)) {
             btn.style.display = 'none';
         }
@@ -51,21 +85,17 @@ function hideGhostButton() {
 }
 
 function setupGhostObserver() {
-    if (window.__ghostObserver) {
-        window.__ghostObserver.disconnect();
-    }
-    window.__ghostObserver = new MutationObserver(() => hideGhostButton());
-    window.__ghostObserver.observe(document.body, { childList: true, subtree: true });
+    // Ghost observer теперь объединён с UI observer в setupCombinedObserver()
 }
 
 function hideSidebar() {
     // Отключаем перехват кликов у свёрнутого левого сайдбара
-    const leftNav = __findEl__('LEFT_NAV');
+    const leftNav = __findEl__('navigation.leftNav');
     if (leftNav) {
         const navWidth = leftNav.offsetWidth;
         if (navWidth < 100) {
             leftNav.style.pointerEvents = 'none';
-            const pinBtn = __findEl__('PIN_SIDEBAR_BUTTON');
+            const pinBtn = __findEl__('navigation.pinSidebarButton');
             if (pinBtn) {
                 pinBtn.style.pointerEvents = 'auto';
             }
@@ -82,7 +112,7 @@ function setupSidebarObserver() {
     window.__sidebarObserver = new MutationObserver(() => hideSidebar());
     
     const observeSidebar = () => {
-        const leftNav = __findEl__('LEFT_NAV');
+        const leftNav = __findEl__('navigation.leftNav');
         if (leftNav) {
             window.__sidebarObserver.observe(leftNav, { 
                 attributes: true, 
@@ -96,9 +126,35 @@ function setupSidebarObserver() {
     observeSidebar();
 }
 
+/**
+ * Объединённый MutationObserver с debounce через requestAnimationFrame
+ * Заменяет отдельные ghostObserver и uiObserver для лучшей производительности
+ */
+function setupCombinedObserver() {
+    if (window.__combinedObserver) {
+        window.__combinedObserver.disconnect();
+    }
+    
+    let uiUpdatePending = false;
+    
+    window.__combinedObserver = new MutationObserver(() => {
+        if (uiUpdatePending) return;
+        uiUpdatePending = true;
+        
+        requestAnimationFrame(() => {
+            hideGhostButton();
+            truncateChatTitle();
+            uiUpdatePending = false;
+        });
+    });
+    
+    window.__combinedObserver.observe(document.body, { childList: true, subtree: true });
+}
+
 function truncateChatTitle() {
-    // Находим контейнер заголовка
-    const titleContainer = document.querySelector('div.flex.min-w-0.flex-1.shrink.md\\:items-center.font-base-bold');
+    // Используем централизованный селектор
+    const titleSelector = __getSel__('ui.titleContainer');
+    const titleContainer = titleSelector ? document.querySelector(titleSelector) : null;
     if (!titleContainer) return;
     
     // Применяем CSS для корректной работы truncate в flexbox
@@ -149,6 +205,9 @@ function setupUploadInterceptor() {
 }
 
 function initClaudeUI() {
+    // Получаем селектор для artifact controls
+    const artifactControlsSelector = __getSel__('ui.artifactControls') || '[data-testid="wiggle-controls-actions"]';
+    
     // Стили для скрытия элементов и убирания рамок фокуса
     if (!document.getElementById('tauri-custom-styles')) {
         const style = document.createElement('style');
@@ -158,7 +217,7 @@ function initClaudeUI() {
             *:focus-visible { outline: none !important; }
             
             /* Скрываем весь контейнер с кнопками Share и сайдбаром артефактов */
-            div:has(> [data-testid="wiggle-controls-actions"]) { display: none !important; }
+            div:has(> ${artifactControlsSelector}) { display: none !important; }
         `;
         document.head.appendChild(style);
     }
@@ -166,24 +225,19 @@ function initClaudeUI() {
     // Отслеживание изменения URL для проектов
     setupUrlChangeDetection();
     
-    // Скрываем кнопку-призрака
+    // Первоначальное скрытие элементов
     hideGhostButton();
-    setupGhostObserver();
-    
     hideSidebar();
     truncateChatTitle();
+    
+    // Объединённый observer для UI обновлений (с debounce)
+    setupCombinedObserver();
+    
+    // Отдельный observer для сайдбара (точечный, без subtree)
     setupSidebarObserver();
     
     // Глобальный слушатель кликов - закрывает downloads popup
     setupGlobalClickListener();
-    
-    // MutationObserver для UI обновлений
-    if (!window.__uiObserver) {
-        window.__uiObserver = new MutationObserver(() => {
-            truncateChatTitle();
-        });
-        window.__uiObserver.observe(document.body, { childList: true, subtree: true });
-    }
     
     // Резервный интервал (редкий, на случай пропуска)
     if (window.__claudeUIInterval) {
@@ -250,5 +304,9 @@ function setupUrlChangeDetection() {
     };
     
     // Также проверяем периодически (на случай навигации через клики)
-    setInterval(checkUrlChange, 2000);
+    // Сохраняем ID для возможности очистки
+    if (window.__urlCheckInterval) {
+        clearInterval(window.__urlCheckInterval);
+    }
+    window.__urlCheckInterval = setInterval(checkUrlChange, 2000);
 }

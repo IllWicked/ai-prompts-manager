@@ -23,6 +23,7 @@
  *   - renderConnections()
  *   - onConnectionDrag(e)
  *   - onConnectionEnd(e)
+ *   - setupPortEvents(port)
  */
 
 /**
@@ -384,3 +385,99 @@ function onConnectionEnd(e) {
     document.removeEventListener('mousemove', onConnectionDrag);
     document.removeEventListener('mouseup', onConnectionEnd);
 }
+
+/**
+ * Настроить обработчики событий для порта
+ * Вызывается из renderWorkflow при создании нод
+ * @param {HTMLElement} port - DOM элемент порта
+ */
+function setupPortEvents(port) {
+    const node = port.closest('.workflow-node');
+    
+    // Скрываем кнопки при наведении на боковой порт collapsed блока
+    if (port.dataset.side === 'left' || port.dataset.side === 'right') {
+        port.addEventListener('mouseenter', () => {
+            if (node && node.classList.contains('collapsed')) {
+                node.classList.add('hide-buttons');
+            }
+        });
+        
+        port.addEventListener('mouseleave', () => {
+            // Не показываем кнопки если идёт создание соединения
+            if (!isCreatingConnection && node && node.classList.contains('collapsed')) {
+                node.classList.remove('hide-buttons');
+            }
+        });
+    }
+    
+    port.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        if (e.button !== 0) return;
+        // Только в режиме редактирования
+        if (!isEditMode) return;
+        
+        const side = port.dataset.side;
+        const blockId = port.dataset.blockId;
+        
+        // Начинаем создание связи с любого порта
+        isCreatingConnection = true;
+        connectionStart = {blockId: blockId, side: side};
+        
+        // Скрываем кнопки у всех collapsed блоков при начале соединения
+        document.querySelectorAll('.workflow-node.collapsed').forEach(n => {
+            n.classList.add('hide-buttons');
+        });
+        
+        // Показываем все порты
+        getWorkflowContainer()?.classList.add('connecting');
+        
+        // Создаём временную линию (path для Bezier)
+        const svg = getWorkflowSvg();
+        if (!svg) {
+            return;
+        }
+        tempLineEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        tempLineEl.setAttribute('stroke', '#ec7441');
+        tempLineEl.setAttribute('stroke-width', '4');
+        tempLineEl.setAttribute('stroke-dasharray', '8,8');
+        tempLineEl.setAttribute('fill', 'none');
+        const startPos = getPortPosition(blockId, side);
+        tempLineEl.dataset.startX = startPos.x;
+        tempLineEl.dataset.startY = startPos.y;
+        tempLineEl.dataset.startSide = side;
+        tempLineEl.setAttribute('d', `M ${startPos.x} ${startPos.y} L ${startPos.x} ${startPos.y}`);
+        svg.appendChild(tempLineEl);
+        
+        document.addEventListener('mousemove', onConnectionDrag);
+        document.addEventListener('mouseup', onConnectionEnd);
+    });
+    
+    port.addEventListener('mouseup', (e) => {
+        if (!isCreatingConnection || !connectionStart) return;
+        if (!isEditMode) return;
+        
+        const side = port.dataset.side;
+        const blockId = port.dataset.blockId;
+        
+        // Завершаем связь если это другой блок
+        if (connectionStart.blockId !== blockId) {
+            addConnection(connectionStart.blockId, connectionStart.side, blockId, side);
+            // Сбрасываем чтобы onConnectionEnd не создал дубликат
+            connectionStart = null;
+        }
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPORTS
+// ═══════════════════════════════════════════════════════════════════════════
+window.getPortPosition = getPortPosition;
+window.buildBezierPath = buildBezierPath;
+window.findNearestPort = findNearestPort;
+window.addConnection = addConnection;
+window.removeConnection = removeConnection;
+window.wouldCreateCycle = wouldCreateCycle;
+window.renderConnections = renderConnections;
+window.onConnectionDrag = onConnectionDrag;
+window.onConnectionEnd = onConnectionEnd;
+window.setupPortEvents = setupPortEvents;

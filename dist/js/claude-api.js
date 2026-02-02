@@ -73,6 +73,19 @@ let projectUrlTrackingInitialized = false;
 // Флаг программной навигации (не сбрасывать название при переходе на /new)
 let programmaticNavigation = false;
 
+// Флаг защиты от повторной отправки (double-click protection)
+let isSendingToClaudeInProgress = false;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ЦЕНТРАЛИЗОВАННЫЕ СЕЛЕКТОРЫ CLAUDE
+// ═══════════════════════════════════════════════════════════════════════════
+// 
+// Селекторы определены в src-tauri/scripts/selectors.json
+// В WebView доступны через window.__SEL__ (устанавливается init script)
+// Все evaluate-скрипты используют window.__SEL__ напрямую
+//
+// ═══════════════════════════════════════════════════════════════════════════
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CLAUDE INTERNAL API (fetch-based)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -333,29 +346,33 @@ async function evalInClaude(tab, script) {
  * @returns {Promise<boolean>} - true если загрузилась, false если таймаут
  */
 async function waitForTabLoad(tab, timeoutMs = 10000) {
-    let unlisten = null;
     let resolved = false;
     
-    return new Promise((resolve) => {
-        const timeout = setTimeout(() => {
-            if (!resolved) {
-                resolved = true;
-                if (unlisten) unlisten();
-                resolve(false);
-            }
-        }, timeoutMs);
-        
-        window.__TAURI__.event.listen('claude-page-loaded', (event) => {
-            if (!resolved && event.payload?.tab === tab) {
-                resolved = true;
-                clearTimeout(timeout);
-                if (unlisten) unlisten();
-                resolve(true);
-            }
-        }).then(fn => {
-            unlisten = fn;
-        });
+    // Сначала подписываемся (await!) чтобы гарантировать наличие unlisten
+    const unlisten = await window.__TAURI__.event.listen('claude-page-loaded', (event) => {
+        if (!resolved && event.payload?.tab === tab) {
+            resolved = true;
+            clearTimeout(timeout);
+            unlisten();
+            resolvePromise(true);
+        }
     });
+    
+    let resolvePromise;
+    const promise = new Promise((resolve) => {
+        resolvePromise = resolve;
+    });
+    
+    // Теперь создаём timeout - unlisten гарантированно существует
+    const timeout = setTimeout(() => {
+        if (!resolved) {
+            resolved = true;
+            unlisten();
+            resolvePromise(false);
+        }
+    }, timeoutMs);
+    
+    return promise;
 }
 
 /**
@@ -365,30 +382,32 @@ async function waitForTabLoad(tab, timeoutMs = 10000) {
 async function navigateClaude(tab, url) {
     // Создаём Promise который разрешится когда страница РЕАЛЬНО загрузится
     // Событие claude-page-loaded эмитится из on_page_load callback в Rust
-    let unlisten = null;
     let resolved = false;
+    let resolvePromise;
+    
+    // Сначала подписываемся (await!) чтобы гарантировать наличие unlisten
+    const unlisten = await window.__TAURI__.event.listen('claude-page-loaded', (event) => {
+        // Проверяем что это наш таб
+        if (!resolved && event.payload?.tab === tab) {
+            resolved = true;
+            clearTimeout(timeout);
+            unlisten();
+            resolvePromise(true);
+        }
+    });
     
     const pageLoadPromise = new Promise((resolve) => {
-        const timeout = setTimeout(() => {
-            if (!resolved) {
-                resolved = true;
-                if (unlisten) unlisten();
-                resolve(false);
-            }
-        }, 15000);
-        
-        window.__TAURI__.event.listen('claude-page-loaded', (event) => {
-            // Проверяем что это наш таб
-            if (!resolved && event.payload?.tab === tab) {
-                resolved = true;
-                clearTimeout(timeout);
-                if (unlisten) unlisten();
-                resolve(true);
-            }
-        }).then(fn => {
-            unlisten = fn;
-        });
+        resolvePromise = resolve;
     });
+    
+    // Теперь создаём timeout - unlisten гарантированно существует
+    const timeout = setTimeout(() => {
+        if (!resolved) {
+            resolved = true;
+            unlisten();
+            resolvePromise(false);
+        }
+    }, 15000);
     
     await window.__TAURI__.core.invoke('navigate_claude_tab', { tab, url });
     
@@ -490,16 +509,20 @@ async function attachFilesToMessage(tab, files) {
  * @returns {Promise<boolean>} - true если поле найдено
  */
 async function waitForClaudeInput(tab, timeout = 15000) {
+    // Используем централизованные селекторы через window.__SEL__ (установлен в WebView)
     const script = `
         (function() {
-            const pmElement = document.querySelector('.ProseMirror');
+            const SEL = window.__SEL__;
+            const pmSelector = SEL?.input?.proseMirror || '.ProseMirror';
+            const pmElement = document.querySelector(pmSelector);
             // Проверяем что элемент есть И editor полностью инициализирован
             if (pmElement && pmElement.editor && pmElement.editor.commands && typeof pmElement.editor.commands.insertContent === 'function') {
                 return true;
             }
             // Fallback для старых версий
-            const el = document.querySelector('[contenteditable="true"]') ||
-                       document.querySelector('textarea');
+            const ceSelector = SEL?.input?.contentEditable || '[contenteditable="true"]';
+            const taSelector = SEL?.input?.textarea || 'textarea';
+            const el = document.querySelector(ceSelector) || document.querySelector(taSelector);
             return !!el;
         })();
     `;
@@ -534,7 +557,14 @@ async function waitForClaudeInput(tab, timeout = 15000) {
  * @returns {Promise<boolean>} - true если input найден
  */
 async function waitForFileInput(tab, timeout = 15000) {
-    const script = `!!document.querySelector('input[type="file"]')`;
+    // Используем централизованные селекторы через window.__SEL__
+    const script = `
+        (function() {
+            const SEL = window.__SEL__;
+            const selector = SEL?.input?.fileInput || 'input[type="file"]';
+            return !!document.querySelector(selector);
+        })();
+    `;
     const startTime = Date.now();
     
     while (Date.now() - startTime < timeout) {
@@ -581,7 +611,9 @@ async function waitForFilesUploaded(tab, expectedCount, timeout = 10000) {
             if (count >= expectedCount) {
                 return true;
             }
-        } catch (e) {}
+        } catch (e) {
+            // Игнорируем ошибки eval — продолжаем polling
+        }
         await delay(200);
     }
     
@@ -597,8 +629,16 @@ async function waitForFilesUploaded(tab, expectedCount, timeout = 10000) {
  * Отправить ноду в Claude
  */
 async function sendNodeToClaude(index, chatTab) {
+    // Защита от двойного клика
+    if (isSendingToClaudeInProgress) {
+        showToast('Отправка уже выполняется...');
+        return;
+    }
+    
     const blocks = getTabBlocks(currentTab);
     if (!blocks[index]) return;
+    
+    isSendingToClaudeInProgress = true;
     
     const block = blocks[index];
     const blockId = block.id;
@@ -608,71 +648,123 @@ async function sendNodeToClaude(index, chatTab) {
     const automation = getBlockAutomationFlags(blockId);
     const targetTab = chatTab || activeClaudeTab;
     
-    // Открываем Claude если закрыт
-    if (!isClaudeVisible) {
-        await toggleClaude();
-        await delay(300);
-    }
-    
-    // Переключаемся на нужный таб
-    if (chatTab) {
-        await switchClaudeTab(chatTab);
-        await delay(100);
-    }
-    
-    // Обработка автоматизации
-    if (automation.newProject) {
-        // Завершаем предыдущий проект если есть
-        if (isProjectActive()) {
-            await finishProject();
+    try {
+        // Открываем Claude если закрыт
+        if (!isClaudeVisible) {
+            await toggleClaude();
+            await delay(300);
         }
-        // Создаём новый проект
-        const result = await createNewProject(targetTab);
-        if (result.success && result.uuid) {
-            startProject(result.uuid, result.name, currentTab);
-        } else {
-            // Не удалось создать проект — прерываем отправку
-            showToast('Ошибка: не удалось создать проект');
-            return;
+        
+        // Переключаемся на нужный таб
+        if (chatTab) {
+            await switchClaudeTab(chatTab);
+            await delay(100);
         }
-    } else if (automation.newChat) {
-        await newChatInTab(targetTab, false); // false — название присвоится от блока
-    }
-    
-    // Прикрепляем скрипты и файлы
-    const totalFiles = scripts.length + files.length;
-    
-    // Ждём готовности file input перед прикреплением
-    if (totalFiles > 0) {
-        await waitForFileInput(targetTab);
         
-        // Сбрасываем счётчик ПЕРЕД прикреплением файлов
-        try {
-            await window.__TAURI__.core.invoke('eval_in_claude_with_result', { 
-                tab: targetTab, 
-                script: 'window.__uploadedFilesCount = 0;',
-                timeoutSecs: 2
-            });
-        } catch (e) {}
-    }
-    
-    await attachScriptsToMessage(targetTab, scripts);
-    await attachFilesToMessage(targetTab, files);
-    
-    // Ждём загрузки всех файлов через интерсептор
-    if (totalFiles > 0) {
-        const filesUploaded = await waitForFilesUploaded(targetTab, totalFiles);
+        // Обработка автоматизации
+        if (automation.newProject) {
+            // Завершаем предыдущий проект если есть
+            if (isProjectActive()) {
+                await finishProject();
+            }
+            // Создаём новый проект
+            const result = await createNewProject(targetTab);
+            if (result.success && result.uuid) {
+                startProject(result.uuid, result.name, currentTab);
+            } else {
+                // Не удалось создать проект — прерываем отправку
+                showToast('Ошибка: не удалось создать проект');
+                return;
+            }
+        } else if (automation.newChat) {
+            await newChatInTab(targetTab, false); // false — название присвоится от блока
+        }
         
-        if (!filesUploaded) {
-            // Таймаут — файлы не загрузились, отменяем отправку
-            showToast('Ошибка: файлы не загрузились. Отправка отменена.');
+        // Прикрепляем скрипты и файлы
+        const totalFiles = scripts.length + files.length;
+        
+        // Ждём готовности file input перед прикреплением
+        if (totalFiles > 0) {
+            await waitForFileInput(targetTab);
             
-            // Очищаем поле ввода чтобы не отправить бракованный промпт
+            // Генерируем уникальный session ID для этой операции
+            // Это защищает от race condition если пользователь вручную прикрепит файл
+            const uploadSessionId = Date.now().toString() + Math.random().toString(36).slice(2);
+        
+            // Сбрасываем счётчик ПЕРЕД прикреплением файлов с session ID
+            try {
+                await window.__TAURI__.core.invoke('eval_in_claude_with_result', { 
+                    tab: targetTab, 
+                    script: `window.__uploadedFilesCount = 0; window.__uploadSessionId = "${uploadSessionId}";`,
+                    timeoutSecs: 2
+                });
+            } catch (e) {
+                // Сброс счётчика не критичен — продолжаем
+            }
+        }
+    
+        // Прикрепляем файлы и отправляем с защитой от partial failure
+        let attachmentStarted = false;
+        attachmentStarted = true;
+        await attachScriptsToMessage(targetTab, scripts);
+        await attachFilesToMessage(targetTab, files);
+        
+        // Ждём загрузки всех файлов через интерсептор
+        if (totalFiles > 0) {
+            const filesUploaded = await waitForFilesUploaded(targetTab, totalFiles);
+            
+            if (!filesUploaded) {
+                // Таймаут — файлы не загрузились, отменяем отправку
+                showToast('Ошибка: файлы не загрузились. Отправка отменена.');
+                
+                // Очищаем поле ввода чтобы не отправить бракованный промпт
+                try {
+                    await window.__TAURI__.core.invoke('eval_in_claude', { 
+                        tab: targetTab, 
+                        script: `
+                            const SEL = window.__SEL__;
+                            const pmSelector = SEL?.input?.proseMirror || '.ProseMirror';
+                            const pm = document.querySelector(pmSelector);
+                            if (pm?.editor?.commands) {
+                                pm.editor.commands.clearContent();
+                            } else if (pm) {
+                                pm.innerHTML = '';
+                            }
+                        `
+                    });
+                } catch (e) {
+                    // Очистка поля не критична при отмене
+                }
+                
+                return; // Прерываем отправку
+            }
+        }
+        
+        // Отправляем текст
+        await sendTextToClaude(text, targetTab);
+        attachmentStarted = false; // Успешно отправлено
+        
+        // Запоминаем название блока для этого таба (макс. 30 символов)
+        const blockName = block.title || `Блок ${index + 1}`;
+        tabNames[targetTab] = blockName.length > 30 ? blockName.slice(0, 30) : blockName;
+        updateClaudeUI();
+        saveClaudeSettings();
+        
+        // Очищаем прикреплённые файлы (скрипты постоянные)
+        if (files.length > 0) {
+            clearBlockAttachments(blockId);
+        }
+    } catch (e) {
+        // Если произошла ошибка после начала прикрепления — очищаем редактор
+        if (attachmentStarted) {
+            showToast('Ошибка при отправке. Редактор очищен.');
             try {
                 await window.__TAURI__.core.invoke('eval_in_claude', { 
                     tab: targetTab, 
                     script: `
-                        const pm = document.querySelector('.ProseMirror');
+                        const SEL = window.__SEL__;
+                        const pmSelector = SEL?.input?.proseMirror || '.ProseMirror';
+                        const pm = document.querySelector(pmSelector);
                         if (pm?.editor?.commands) {
                             pm.editor.commands.clearContent();
                         } else if (pm) {
@@ -680,24 +772,13 @@ async function sendNodeToClaude(index, chatTab) {
                         }
                     `
                 });
-            } catch (e) {}
-            
-            return; // Прерываем отправку
+            } catch (clearError) {
+                // Очистка при ошибке не критична
+            }
         }
-    }
-    
-    // Отправляем текст
-    await sendTextToClaude(text, targetTab);
-    
-    // Запоминаем название блока для этого таба (макс. 30 символов)
-    const blockName = block.title || `Блок ${index + 1}`;
-    tabNames[targetTab] = blockName.length > 30 ? blockName.slice(0, 30) : blockName;
-    updateClaudeUI();
-    saveClaudeSettings();
-    
-    // Очищаем прикреплённые файлы (скрипты постоянные)
-    if (files.length > 0) {
-        clearBlockAttachments(blockId);
+        throw e; // Re-throw для отладки
+    } finally {
+        isSendingToClaudeInProgress = false;
     }
 }
 
@@ -773,29 +854,12 @@ async function toggleClaude() {
 
 /**
  * Переключить таб Claude
+ * Все табы создаются при старте, здесь только переключение
  */
 async function switchClaudeTab(tab) {
     try {
-        const isNewTab = !existingTabs.includes(tab);
         await window.__TAURI__.core.invoke('switch_claude_tab', { tab });
         activeClaudeTab = tab;
-        
-        if (isNewTab) {
-            existingTabs.push(tab);
-            
-            // Retry механизм для новых табов: 3 попытки по 10 сек
-            let loaded = false;
-            for (let attempt = 1; attempt <= 3 && !loaded; attempt++) {
-                loaded = await waitForTabLoad(tab, 10000);
-                if (!loaded && attempt < 3) {
-                    await window.__TAURI__.core.invoke('reload_claude_tab', { tab });
-                }
-            }
-            
-            // Инжектим монитор генерации в новый таб
-            await injectGenerationMonitor(tab);
-        }
-        
         updateClaudeUI();
         await saveClaudeSettings();
     } catch (e) {
@@ -823,9 +887,8 @@ async function checkAllGenerationStatus() {
     let changed = false;
     for (const tab of existingTabs) {
         try {
-            // Периодически переинжектим монитор (он может потеряться при навигации)
-            await injectGenerationMonitor(tab);
-            
+            // Монитор инжектируется на page-loaded событии,
+            // здесь только проверяем статус
             const isGenerating = await window.__TAURI__.core.invoke('check_generation_status', { tab });
             const wasGenerating = generatingTabs[tab] || false;
             
@@ -927,7 +990,9 @@ async function newChatInTab(tab, clearName = true) {
             try {
                 const script = `
                     (function() {
-                        const link = document.querySelector('div.text-text-300 a[href^="/project/"]');
+                        const SEL = window.__SEL__;
+                        const linkSelector = SEL?.project?.projectLinkInHeader || 'div.text-text-300 a[href^="/project/"]';
+                        const link = document.querySelector(linkSelector);
                         if (link) {
                             const href = link.getAttribute('href');
                             const match = href.match(/\\/project\\/([a-f0-9-]+)/i);
@@ -997,6 +1062,7 @@ async function closeClaudeTab(tab) {
 
 /**
  * Восстановление состояния Claude
+ * Все три таба создаются при старте, здесь восстанавливаем URL и настройки
  */
 async function restoreClaudeState() {
     const saved = loadClaudeSettings();
@@ -1015,45 +1081,17 @@ async function restoreClaudeState() {
             
             // Claude открывается только если был открыт ранее
             if (saved.visible === true) {
-                // Получаем URL для первого таба
-                const tab1Url = saved?.tabUrls?.[1] || 'https://claude.ai/new';
-                
-                // Открываем Claude с первым табом
                 isClaudeVisible = await window.__TAURI__.core.invoke('toggle_claude');
                 
-                // Даём время на создание первого webview
+                // Даём время на инициализацию
                 await delay(300);
                 
-                // Если есть сохранённый URL для первого таба - переходим на него
-                if (tab1Url && tab1Url !== 'https://claude.ai/new') {
-                    await window.__TAURI__.core.invoke('switch_claude_tab_with_url', { tab: 1, url: tab1Url });
-                }
-                
-                // Инжектим монитор в первый таб
-                await injectGenerationMonitor(1);
-                
-                // Восстанавливаем дополнительные табы (2 и 3) с их URL
-                if (saved?.existingTabs) {
-                    for (const tab of [2, 3]) {
-                        if (saved.existingTabs.includes(tab)) {
-                            let tabUrl = saved.tabUrls?.[tab] || 'https://claude.ai/new';
-                            // Защита от невалидных URL
-                            if (!tabUrl || tabUrl === 'about:blank' || !tabUrl.startsWith('https://claude.ai')) {
-                                tabUrl = 'https://claude.ai/new';
-                            }
-                            
-                            // Retry механизм: 3 попытки по 10 сек
-                            let loaded = false;
-                            for (let attempt = 1; attempt <= 3 && !loaded; attempt++) {
-                                await window.__TAURI__.core.invoke('switch_claude_tab_with_url', { tab, url: tabUrl });
-                                loaded = await waitForTabLoad(tab, 10000);
-                                if (!loaded && attempt < 3) {
-                                    await window.__TAURI__.core.invoke('reload_claude_tab', { tab });
-                                }
-                            }
-                            
-                            await injectGenerationMonitor(tab);
-                        }
+                // Восстанавливаем URL для всех табов с сохранёнными URL
+                for (const tab of [1, 2, 3]) {
+                    const tabUrl = saved.tabUrls?.[tab];
+                    if (tabUrl && tabUrl !== 'about:blank' && tabUrl.startsWith('https://claude.ai')) {
+                        await window.__TAURI__.core.invoke('switch_claude_tab_with_url', { tab, url: tabUrl });
+                        await delay(100);
                     }
                 }
                 
@@ -1081,16 +1119,11 @@ async function restoreClaudeState() {
                 
                 // Запускаем монитор генерации
                 startGenerationMonitor();
-            } else {
-                // Claude был закрыт - предзагружаем webview в фоне
-                window.__TAURI__.core.invoke('preload_claude').catch(() => {});
             }
-        } else {
-            // Нет сохранённых настроек - предзагружаем webview в фоне
-            window.__TAURI__.core.invoke('preload_claude').catch(() => {});
         }
     } catch (e) {
-        
+        console.error('[Claude] Failed to restore state:', e);
+        showToast('Не удалось восстановить состояние Claude');
     }
 }
 
@@ -1104,38 +1137,25 @@ function initClaudeHandlers() {
     for (let i = 1; i <= 3; i++) {
         const tabBtn = document.getElementById(`claude-tab-${i}`);
         if (tabBtn) {
-            tabBtn.addEventListener('click', (e) => {
-                // Если клик по кнопке закрытия - закрываем таб (только для чатов 2 и 3)
-                const closeBtn = e.target.closest('.tab-close-btn');
-                if (closeBtn && i > 1) {
-                    e.stopPropagation();
-                    const tab = parseInt(closeBtn.dataset.tab);
-                    closeClaudeTab(tab);
-                    return;
-                }
+            tabBtn.addEventListener('click', () => {
                 switchClaudeTab(i);
             });
             tabBtn.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
-                if (existingTabs.includes(i)) {
-                    newChatInTab(i);
-                }
+                newChatInTab(i);
             });
         }
     }
-    
-    // Кнопка добавления чата
-    document.getElementById('claude-add-tab')?.addEventListener('click', addNewChatTab);
     
     // Auto-send чекбокс
     const autoSendCheckbox = document.getElementById('auto-send-checkbox');
     if (autoSendCheckbox) {
         // Восстанавливаем состояние из localStorage
-        autoSendCheckbox.checked = localStorage.getItem('claude_auto_send') === 'true';
+        autoSendCheckbox.checked = localStorage.getItem(STORAGE_KEYS.CLAUDE_AUTO_SEND) === 'true';
         
         // Сохраняем при изменении
         autoSendCheckbox.addEventListener('change', () => {
-            localStorage.setItem('claude_auto_send', autoSendCheckbox.checked);
+            localStorage.setItem(STORAGE_KEYS.CLAUDE_AUTO_SEND, autoSendCheckbox.checked);
         });
     }
     
@@ -1276,11 +1296,13 @@ async function continueProject() {
             tab: activeClaudeTab,
             script: `
                 (function() {
-                    // Пробуем получить из breadcrumb
+                    const SEL = window.__SEL__;
+                    // Пробуем получить из breadcrumb (динамический селектор с uuid)
                     const link = document.querySelector('a[href*="/project/${uuid}"]');
                     if (link) return link.textContent.trim();
                     // Пробуем из заголовка
-                    const h1 = document.querySelector('h1');
+                    const h1Selector = SEL?.project?.pageTitle || 'h1';
+                    const h1 = document.querySelector(h1Selector);
                     if (h1) return h1.textContent.trim();
                     return null;
                 })();
@@ -1409,6 +1431,12 @@ function initProjectUrlTracking() {
     window.__TAURI__.event.listen('claude-page-loaded', (event) => {
         const { tab, url } = event.payload || {};
         
+        // Переинжектим монитор генерации после полной загрузки страницы
+        // (он мог потеряться при навигации)
+        if (tab) {
+            injectGenerationMonitor(tab).catch(() => {});
+        }
+        
         // Сбрасываем название таба при ручной навигации на новый чат
         if (!programmaticNavigation && url && tab) {
             const isNewChat = url.includes('/new') || url.endsWith('/project/') || url.match(/\/project\/[a-f0-9-]+$/i);
@@ -1427,6 +1455,12 @@ function initProjectUrlTracking() {
     // Слушаем событие SPA-навигации внутри Claude (pushState/replaceState)
     window.__TAURI__.event.listen('claude-url-changed', (event) => {
         const { tab, url } = event.payload || {};
+        
+        // Инвалидируем кэш org_id при переходе на страницу логина/логаута
+        // чтобы не использовать старый org_id при смене аккаунта
+        if (url && (url.includes('/login') || url.includes('/logout') || url.includes('/sign'))) {
+            invalidateOrgCache();
+        }
         
         // Сбрасываем название таба при ручной навигации на новый чат
         if (!programmaticNavigation && url && tab) {
@@ -1455,4 +1489,10 @@ function initProjectUrlTracking() {
     }
 }
 
-
+// Экспорт
+window.initClaudeHandlers = initClaudeHandlers;
+window.sendNodeToClaude = sendNodeToClaude;
+window.finishProject = finishProject;
+window.isCurrentTabProjectOwner = isCurrentTabProjectOwner;
+window.restoreProjectState = restoreProjectState;
+window.initProjectUrlTracking = initProjectUrlTracking;

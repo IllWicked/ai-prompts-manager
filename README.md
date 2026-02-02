@@ -2,71 +2,71 @@
 
 Desktop-приложение для управления промптами с интеграцией Claude AI.
 
+**Версия:** 4.2.0 | **Платформа:** Windows | **Фреймворк:** Tauri 2.0 + Rust
+
 ## Возможности
 
-- **Workflow-редактор** — визуальное построение цепочек промптов с drag & drop
-- **Встроенный Claude** — split-view с тремя независимыми чатами
-- **Auto-send** — автоматическая отправка промптов с прикреплёнными файлами
-- **Автоматизация проектов** — создание проектов и чатов через внутренний API Claude
-- **Онлайн-обновление вкладок** — вкладки загружаются с GitHub, автообновление при запуске
-- **Менеджер загрузок** — управление скачанными файлами с multi-select, отправкой в Claude и кастомной директорией
-- **Скрипты** — встроенные Python-скрипты (convert.py, count.py) для автоматизации
-- **Archive Log** — лог скачанных архивов с быстрым доступом к проектам Claude
-- **Undo/Redo** — полная история изменений
-- **Автосохранение** — debounced (2 сек) + периодическое (30 сек)
-- **Темы** — светлая и тёмная
-- **Автообновление** — через GitHub Releases
+- **Workflow редактор** — визуальное редактирование промптов с drag & drop и связями между блоками
+- **Встроенный Claude AI** — три независимых чата Claude прямо в приложении
+- **Автоматизация** — создание проектов и чатов через API, auto-send, прикрепление файлов
+- **Система языков** — автоматическое склонение и замена языков в промптах (20 языков)
+- **Встроенные скрипты** — convert.py, count.py, spellcheck.py
+- **Export/Import** — обмен вкладками через JSON
+- **Автообновление** — приложения и промптов через GitHub
 
-## Технологии
+## Быстрый старт
 
-- **Frontend**: Vanilla JS, TailwindCSS
-- **Backend**: Rust, Tauri 2.0
-- **Platform**: Windows (WebView2)
-- **Claude API**: CDP (Chrome DevTools Protocol) для выполнения JS с возвратом результата
+### Требования
 
-## Архитектура
+- Windows 10/11
+- [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)
+- Rust 1.75+ (для разработки)
 
-```
-┌─────────────────────────────────────────────────┐
-│                  Main Window                     │
-├───────────────────┬─────────────────────────────┤
-│   Main WebView    │   Claude WebView (Tab 1-3) │
-│   (UI приложения) │   (claude.ai)              │
-│   - index.html    ├─────────────────────────────┤
-│   - JS модули     │   Toolbar + Downloads       │
-└───────────────────┴─────────────────────────────┘
-```
+### Установка (пользователь)
 
-## Сборка
+Скачайте последний релиз из [GitHub Releases](https://github.com/IllWicked/ai-prompts-manager/releases).
+
+### Разработка
 
 ```bash
-cd src-tauri
-cargo tauri build
+git clone https://github.com/IllWicked/ai-prompts-manager.git
+cd ai-prompts-manager/src-tauri
+cargo tauri dev
+```
+
+## Структура проекта
+
+```
+ai-prompts-manager/
+├── dist/                    # Frontend (HTML + 35 JS модулей + CSS)
+├── src-tauri/               # Backend (Rust, 20 файлов, 45 Tauri команд)
+├── docs/                    # Документация
+├── tests/                   # Unit-тесты (Jest)
+└── project-manager/         # CLI управления промптами
 ```
 
 ## Документация
 
+Полная документация: [docs/INDEX.md](docs/INDEX.md)
+
 | Документ | Описание |
 |----------|----------|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Структура проекта, карта кода, CDP |
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Разработка, обновление селекторов |
-| [docs/SETUP_GITHUB.md](docs/SETUP_GITHUB.md) | Первоначальная настройка GitHub |
+| [QUICKSTART](docs/guides/QUICKSTART.md) | Быстрый старт для разработчика |
+| [01-OVERVIEW](docs/01-OVERVIEW.md) | Архитектура приложения |
+| [02-FRONTEND](docs/02-FRONTEND.md) | JavaScript модули |
+| [03-BACKEND](docs/03-BACKEND.md) | Rust backend и Tauri commands |
+| [04-CLAUDE](docs/04-CLAUDE.md) | Интеграция с Claude AI |
+| [CHANGELOG](docs/reference/CHANGELOG.md) | История изменений |
 
-## Быстрый старт
-
-### Управление промптами и релизами
+## Тестирование
 
 ```bash
-python project-manager.py
+npm test              # Все тесты
+npm run test:watch    # Watch mode
 ```
 
-### Релиз новой версии
-
-1. Запусти `python project-manager.py`
-2. Выбери "Релизы" → "Изменить версию"
-3. Отредактируй Release Notes
-4. Выбери "Создать релиз"
+Подробнее: [tests/README.md](tests/README.md)
 
 ## Лицензия
 
-MIT
+Приватный проект. © IllWicked

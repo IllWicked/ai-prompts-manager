@@ -504,12 +504,27 @@
             
             const activeTab = await invoke('get_active_tab');
             const paths = [...selectedPaths];
+            const failed = [];
             
-            // Отправляем файлы последовательно
+            // Отправляем файлы последовательно с обработкой ошибок
             for (const path of paths) {
-                await invoke('attach_file_to_claude', { tab: activeTab, path });
-                // Небольшая задержка между файлами
-                await new Promise(r => setTimeout(r, 100));
+                try {
+                    await invoke('attach_file_to_claude', { tab: activeTab, path });
+                    // Небольшая задержка между файлами
+                    await new Promise(r => setTimeout(r, 100));
+                } catch (e) {
+                    console.error('Failed to attach file:', path, e);
+                    failed.push(path.split(/[/\\]/).pop()); // Только имя файла
+                }
+            }
+            
+            // Показываем ошибку если были проблемы
+            if (failed.length > 0) {
+                const msg = failed.length === 1 
+                    ? `Не удалось прикрепить: ${failed[0]}`
+                    : `Не удалось прикрепить ${failed.length} файлов`;
+                // Toast показывается через main window
+                console.warn(msg);
             }
             
             // Очищаем выделение после отправки

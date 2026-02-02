@@ -192,20 +192,11 @@ function updateClaudeUI() {
         tabBtn.classList.toggle('exists', exists);
         tabBtn.classList.toggle('generating', isGenerating);
         
-        // Обновляем содержимое (Чат 1 всегда, остальные если существуют)
-        if (i === 1 || exists) {
-            const generatingHtml = isGenerating ? `<span class="generating-indicator" style="animation-delay: ${getSyncedAnimationDelay()}"></span>` : '';
-            // Чат 1 без крестика, остальные с крестиком
-            const closeBtn = i > 1 ? `<span class="tab-close-btn" data-tab="${i}"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1L9 9M9 1L1 9"/></svg></span>` : '';
-            tabBtn.innerHTML = `${generatingHtml}<span class="tab-text">${tabName}</span>${closeBtn}`;
-        }
-    }
-    
-    // Кнопка "+ Чат" - показывается если можно добавить чат 2 или 3
-    const addBtn = document.getElementById('claude-add-tab');
-    if (addBtn) {
-        const canAdd = !existingTabs.includes(2) || !existingTabs.includes(3);
-        addBtn.classList.toggle('visible', canAdd);
+        // Обновляем содержимое
+        const generatingHtml = isGenerating ? `<span class="generating-indicator" style="animation-delay: ${getGeneratingAnimationDelay()}"></span>` : '';
+        // Escape tabName для защиты от XSS (tabName может содержать user content из block.title)
+        const safeTabName = typeof escapeHtml === 'function' ? escapeHtml(tabName) : tabName;
+        tabBtn.innerHTML = `${generatingHtml}<span class="tab-text">${safeTabName}</span>`;
     }
     
     // Обновляем кнопки чатов в workflow

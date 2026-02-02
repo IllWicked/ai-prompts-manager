@@ -41,7 +41,32 @@ function loadFromStorage(key, defaultValue = {}) {
 }
 
 function saveToStorage(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
+    safeSetItem(key, JSON.stringify(value));
+}
+
+/**
+ * Безопасная запись в localStorage с обработкой QuotaExceededError
+ * @param {string} key - ключ
+ * @param {string} value - значение (уже сериализованное)
+ * @returns {boolean} - успех записи
+ */
+function safeSetItem(key, value) {
+    try {
+        localStorage.setItem(key, value);
+        return true;
+    } catch (e) {
+        if (e.name === 'QuotaExceededError' || e.code === 22) {
+            console.error('[Storage] Quota exceeded for key:', key);
+            // Показываем toast если функция доступна
+            if (typeof showToast === 'function') {
+                showToast('Хранилище переполнено. Очистите историю или удалите старые вкладки.');
+            }
+            return false;
+        }
+        // Для других ошибок - логируем и пробрасываем
+        console.error('[Storage] Failed to save:', key, e);
+        throw e;
+    }
 }
 
 // Кэш для tabs (оптимизация - избегаем повторного JSON.parse)
@@ -101,7 +126,6 @@ function repairTab(tabId, tab) {
     const repaired = {
         id: tabId,
         name: (tab && typeof tab.name === 'string') ? tab.name : tabId,
-        order: (tab && typeof tab.order === 'number') ? tab.order : 999,
         items: []
     };
     
@@ -189,8 +213,8 @@ function getAllTabs() {
 // Сохранить все вкладки (обновляет кэш)
 function saveAllTabs(tabs, skipUndo = false) {
     _tabsCache = tabs; // Обновляем кэш
-    localStorage.setItem(STORAGE_KEYS.TABS, JSON.stringify(tabs));
-    if (!skipUndo) {
+    const saved = safeSetItem(STORAGE_KEYS.TABS, JSON.stringify(tabs));
+    if (saved && !skipUndo) {
         autoSaveToUndo();
     }
 }

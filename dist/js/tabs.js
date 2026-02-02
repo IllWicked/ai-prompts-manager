@@ -1,6 +1,8 @@
 /**
  * AI Prompts Manager - Tabs Management
  * Функции управления вкладками
+ * 
+ * @requires config.js (STORAGE_KEYS)
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -41,17 +43,33 @@ function getTabBlocks(tabId) {
  */
 function createNewTab(name) {
     const tabs = getAllTabs();
-    const id = generateTabId();
-    const maxOrder = Math.max(0, ...Object.values(tabs).map(t => t.order || 0));
-    tabs[id] = {
-        id,
-        name,
-        order: maxOrder + 1,
+    
+    // Название всегда в верхнем регистре
+    const upperName = name.toUpperCase();
+    
+    // ID из названия в нижнем регистре
+    let id = upperName.toLowerCase()
+        .replace(/[^a-zа-яё0-9\s-]/gi, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '') || 'tab';
+    
+    // Если ID занят — добавляем суффикс
+    let finalId = id;
+    let counter = 1;
+    while (tabs[finalId]) {
+        finalId = `${id}-${counter}`;
+        counter++;
+    }
+    
+    tabs[finalId] = {
+        id: finalId,
+        name: upperName,
         items: []
     };
     saveAllTabs(tabs, true); // skipUndo - создание вкладки не записывается
     
-    return id;
+    return finalId;
 }
 
 /**
@@ -76,8 +94,11 @@ function renameTab(oldId, newName) {
     const tabs = getAllTabs();
     if (!tabs[oldId]) return;
     
-    // Генерируем новый ID из названия
-    const newId = newName.toLowerCase()
+    // Название всегда в верхнем регистре
+    const upperName = newName.toUpperCase();
+    
+    // Генерируем новый ID из названия в нижнем регистре
+    const newId = upperName.toLowerCase()
         .replace(/[^a-zа-яё0-9\s-]/gi, '')
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
@@ -85,7 +106,7 @@ function renameTab(oldId, newName) {
     
     // Если ID не изменился — просто обновляем name
     if (newId === oldId) {
-        tabs[oldId].name = newName;
+        tabs[oldId].name = upperName;
         saveAllTabs(tabs, true);
         return;
     }
@@ -99,17 +120,17 @@ function renameTab(oldId, newName) {
     }
     
     // Создаём новую запись с новым ID
-    const tabData = { ...tabs[oldId], id: finalId, name: newName };
+    const tabData = { ...tabs[oldId], id: finalId, name: upperName };
     tabs[finalId] = tabData;
     
     // Удаляем старую запись
     delete tabs[oldId];
     
     // Переносим workflow данные
-    const oldWorkflow = localStorage.getItem(`workflow-${oldId}`);
+    const oldWorkflow = localStorage.getItem(STORAGE_KEYS.workflow(oldId));
     if (oldWorkflow) {
-        localStorage.setItem(`workflow-${finalId}`, oldWorkflow);
-        localStorage.removeItem(`workflow-${oldId}`);
+        localStorage.setItem(STORAGE_KEYS.workflow(finalId), oldWorkflow);
+        localStorage.removeItem(STORAGE_KEYS.workflow(oldId));
     }
     
     // Переносим историю undo/redo
@@ -129,7 +150,7 @@ function renameTab(oldId, newName) {
     // Обновляем project owner если это вкладка-владелец проекта
     if (window.AppState?.claude?.project?.ownerTab === oldId) {
         window.AppState.claude.project.ownerTab = finalId;
-        localStorage.setItem('active-project', JSON.stringify(window.AppState.claude.project));
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT, JSON.stringify(window.AppState.claude.project));
     }
     
     saveAllTabs(tabs, true);
@@ -182,13 +203,13 @@ function deleteTab(id) {
     }
     
     // Удаляем workflow данные
-    localStorage.removeItem(`workflow-${id}`);
+    localStorage.removeItem(STORAGE_KEYS.workflow(id));
     
     delete tabs[id];
     saveAllTabs(tabs, true); // skipUndo - удаление вкладки не записывается
     // Удаляем данные контента вкладки
     localStorage.removeItem(`ai-prompts-manager-${id}`);
-    localStorage.removeItem(`ai-prompts-manager-data-${id}`);
+    localStorage.removeItem(STORAGE_KEYS.promptsData(id));
     
     return true;
 }
@@ -215,13 +236,14 @@ function addBlockToTab(tabId) {
         content: ''
     };
     items.push(newBlock);
+    markTabAsModified(tabId);
     saveAllTabs(tabs);
     
     return newBlock.id;
 }
 
 /**
- * Удалить item из вкладки по ID
+ * Удалить item из вкладки по ID (с cleanup связанных данных)
  * @param {string} tabId - ID вкладки
  * @param {string} itemId - ID элемента
  */
@@ -231,23 +253,47 @@ function removeItemFromTab(tabId, itemId) {
     
     const items = tabs[tabId].items;
     
+    // Cleanup связанных данных блока
+    // 1. Удаляем field-values для этого блока из localStorage
+    const prefix = `field-value-${tabId}-${itemId}`;
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(prefix)) {
+            keysToRemove.push(key);
+        }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+    
+    // 2. Удаляем из collapsedBlocks
+    if (typeof collapsedBlocks !== 'undefined' && collapsedBlocks[itemId]) {
+        delete collapsedBlocks[itemId];
+        saveCollapsedBlocks();
+    }
+    
+    // 3. Удаляем из blockScripts
+    if (typeof blockScripts !== 'undefined' && blockScripts[itemId]) {
+        delete blockScripts[itemId];
+        saveBlockScripts();
+    }
+    
+    // 4. Удаляем из blockAutomation
+    if (typeof blockAutomation !== 'undefined' && blockAutomation[itemId]) {
+        delete blockAutomation[itemId];
+        saveBlockAutomation();
+    }
+    
+    // 5. Удаляем из blockAttachments (runtime, не персистится)
+    if (typeof blockAttachments !== 'undefined' && blockAttachments[itemId]) {
+        delete blockAttachments[itemId];
+    }
+    
+    // Помечаем вкладку как изменённую
+    markTabAsModified(tabId);
+    
     // autoSaveToUndo() вызывается в вызывающем коде
     tabs[tabId].items = items.filter(i => i.id !== itemId);
     saveAllTabs(tabs);
-}
-
-/**
- * Удалить блок из вкладки по номеру
- * @param {string} tabId - ID вкладки
- * @param {string} blockNumber - Номер блока
- */
-function removeBlockFromTab(tabId, blockNumber) {
-    // Находим блок по номеру
-    const blocks = getTabBlocks(tabId);
-    const block = blocks.find(b => b.number === blockNumber);
-    if (block) {
-        removeItemFromTab(tabId, block.id);
-    }
 }
 
 /**
@@ -269,6 +315,7 @@ function updateBlockTitle(tabId, blockNumber, newTitle) {
     const item = tabs[tabId].items.find(i => i.id === block.id);
     if (item) {
         item.title = newTitle;
+        markTabAsModified(tabId);
         saveAllTabs(tabs);
     }
 }
@@ -290,7 +337,24 @@ function updateBlockInstruction(tabId, blockNumber, instruction) {
     const item = tabs[tabId].items.find(i => i.id === block.id);
     if (item) {
         item.instruction = instruction;
+        markTabAsModified(tabId);
         saveAllTabs(tabs);
+    }
+}
+
+/**
+ * Пометить вкладку как изменённую пользователем
+ * Используется для предупреждения при обновлении remote prompts
+ * @param {string} tabId - ID вкладки
+ */
+function markTabAsModified(tabId) {
+    const tabs = getAllTabs();
+    if (!tabs[tabId]) return;
+    
+    // Помечаем только remote вкладки (у которых есть version)
+    if (tabs[tabId].version) {
+        tabs[tabId].userModified = true;
+        // Не вызываем saveAllTabs здесь - вызывающий код сделает это
     }
 }
 

@@ -11,6 +11,8 @@
  *   - workflowPositions, workflowConnections, workflowSizes (алиасы)
  *   - autoSaveToUndo() из undo.js
  * 
+ * @requires config.js (STORAGE_KEYS)
+ * 
  * Экспортирует (глобально):
  *   - saveWorkflowState(skipUndo)
  *   - loadWorkflowState()
@@ -29,7 +31,7 @@ function saveWorkflowState(skipUndo = false) {
         sizes: workflowSizes
     };
     
-    localStorage.setItem(`workflow-${tabId}`, JSON.stringify(workflowData));
+    localStorage.setItem(STORAGE_KEYS.workflow(tabId), JSON.stringify(workflowData));
     if (!skipUndo) {
         autoSaveToUndo();
     }
@@ -48,7 +50,7 @@ function loadWorkflowState() {
     workflowSizes = {};
     
     try {
-        const saved = localStorage.getItem(`workflow-${tabId}`);
+        const saved = localStorage.getItem(STORAGE_KEYS.workflow(tabId));
         if (saved) {
             const data = JSON.parse(saved);
             workflowPositions = data.positions || {};

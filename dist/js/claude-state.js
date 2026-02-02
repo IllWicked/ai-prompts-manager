@@ -11,6 +11,8 @@
  *   - activeProject, currentTab (алиасы)
  *   - Tauri API: window.__TAURI__.core.invoke
  * 
+ * @requires config.js (STORAGE_KEYS)
+ * 
  * Экспортирует (глобально):
  *   - saveClaudeSettings()
  *   - loadClaudeSettings()
@@ -54,7 +56,7 @@ async function saveClaudeSettings() {
             tabUrls: tabUrls,
             tabNames: tabNames
         };
-        localStorage.setItem('claudeSettings', JSON.stringify(claudeSettings));
+        localStorage.setItem(STORAGE_KEYS.CLAUDE_SETTINGS, JSON.stringify(claudeSettings));
     } catch (e) {
         
     }
@@ -83,7 +85,7 @@ async function updateAllTabUrls() {
  */
 function loadClaudeSettings() {
     try {
-        const saved = localStorage.getItem('claudeSettings');
+        const saved = localStorage.getItem(STORAGE_KEYS.CLAUDE_SETTINGS);
         if (saved) {
             return JSON.parse(saved);
         }
@@ -92,3 +94,7 @@ function loadClaudeSettings() {
     }
     return null;
 }
+
+// Экспорт
+window.saveClaudeSettings = saveClaudeSettings;
+window.loadClaudeSettings = loadClaudeSettings;

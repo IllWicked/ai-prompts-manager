@@ -1,6 +1,8 @@
 /**
  * AI Prompts Manager - Undo/Redo System
  * Per-tab история изменений
+ * 
+ * @requires config.js (STORAGE_KEYS)
  */
 // ═══════════════════════════════════════════════════════════════════════════
 // СЕКЦИЯ 3: UNDO/REDO (Per-tab история)
@@ -24,6 +26,9 @@ const tabHistories = {};
 /** @type {boolean} Флаг для предотвращения записи при undo/redo */
 let isUndoRedoAction = false;
 
+/** @type {number|null} ID таймера сброса isUndoRedoAction */
+let undoRedoResetTimeout = null;
+
 /** @type {boolean} Флаг для предотвращения прыжка скролла при редактировании */
 let skipScrollOnRender = false;
 
@@ -41,7 +46,7 @@ const UNDO_DEBOUNCE_MS = 500;
 
 /**
  * Захватывает состояние ТОЛЬКО текущей вкладки для undo
- * @returns {Object} snapshot состояния {tabId, workflow, tabData, fieldValues}
+ * @returns {Object} snapshot состояния {tabId, workflow, tabData, fieldValues, collapsedBlocks, blockScripts, blockAutomation}
  */
 function captureCurrentTabState() {
     const tabId = currentTab;
@@ -49,7 +54,7 @@ function captureCurrentTabState() {
     // Workflow только для текущей вкладки
     let workflow = null;
     try {
-        const workflowData = localStorage.getItem(`workflow-${tabId}`);
+        const workflowData = localStorage.getItem(STORAGE_KEYS.workflow(tabId));
         workflow = workflowData ? JSON.parse(workflowData) : null;
     } catch (e) {
         
@@ -75,11 +80,56 @@ function captureCurrentTabState() {
         }
     }
     
+    // Получаем ID всех блоков текущей вкладки для фильтрации
+    let blockIds = [];
+    try {
+        const tabsData = localStorage.getItem(STORAGE_KEYS.TABS);
+        const tabs = tabsData ? JSON.parse(tabsData) : {};
+        if (tabs[tabId] && Array.isArray(tabs[tabId].items)) {
+            blockIds = tabs[tabId].items.map(item => item.id);
+        }
+    } catch (e) {
+        // Ошибка парсинга tabs — используем пустой blockIds
+    }
+    
+    // Состояние свёрнутых блоков (только для блоков текущей вкладки)
+    const collapsedSnapshot = {};
+    if (typeof collapsedBlocks !== 'undefined') {
+        blockIds.forEach(id => {
+            if (collapsedBlocks[id]) {
+                collapsedSnapshot[id] = true;
+            }
+        });
+    }
+    
+    // Скрипты блоков (только для блоков текущей вкладки)
+    const scriptsSnapshot = {};
+    if (typeof blockScripts !== 'undefined') {
+        blockIds.forEach(id => {
+            if (blockScripts[id]) {
+                scriptsSnapshot[id] = [...blockScripts[id]];
+            }
+        });
+    }
+    
+    // Automation флаги (только для блоков текущей вкладки)
+    const automationSnapshot = {};
+    if (typeof blockAutomation !== 'undefined') {
+        blockIds.forEach(id => {
+            if (blockAutomation[id]) {
+                automationSnapshot[id] = { ...blockAutomation[id] };
+            }
+        });
+    }
+    
     return {
         tabId: tabId,
         workflow: workflow,
         tabData: tabData, // Данные вкладки из tabs
-        fieldValues: fieldValues
+        fieldValues: fieldValues,
+        collapsedBlocks: collapsedSnapshot,
+        blockScripts: scriptsSnapshot,
+        blockAutomation: automationSnapshot
     };
 }
 
@@ -93,7 +143,7 @@ function applyCurrentTabState(state) {
     
     // Восстанавливаем workflow
     if (state.workflow) {
-        localStorage.setItem(`workflow-${tabId}`, JSON.stringify(state.workflow));
+        localStorage.setItem(STORAGE_KEYS.workflow(tabId), JSON.stringify(state.workflow));
         workflowPositions = state.workflow.positions || {};
         workflowSizes = state.workflow.sizes || {};
         workflowConnections = state.workflow.connections || [];
@@ -128,6 +178,70 @@ function applyCurrentTabState(state) {
         Object.entries(state.fieldValues).forEach(([key, value]) => {
             localStorage.setItem(key, value);
         });
+    }
+    
+    // Восстанавливаем состояние свёрнутых блоков
+    if (state.collapsedBlocks && typeof collapsedBlocks !== 'undefined') {
+        // Удаляем текущие записи для блоков этой вкладки
+        if (state.tabData) {
+            try {
+                const tabDataParsed = JSON.parse(state.tabData);
+                if (tabDataParsed.items) {
+                    tabDataParsed.items.forEach(item => {
+                        delete collapsedBlocks[item.id];
+                    });
+                }
+            } catch (e) {
+                // Ошибка парсинга — пропускаем очистку
+            }
+        }
+        // Восстанавливаем из snapshot
+        Object.assign(collapsedBlocks, state.collapsedBlocks);
+        saveCollapsedBlocks();
+    }
+    
+    // Восстанавливаем скрипты блоков
+    if (state.blockScripts && typeof blockScripts !== 'undefined') {
+        // Удаляем текущие записи для блоков этой вкладки
+        if (state.tabData) {
+            try {
+                const tabDataParsed = JSON.parse(state.tabData);
+                if (tabDataParsed.items) {
+                    tabDataParsed.items.forEach(item => {
+                        delete blockScripts[item.id];
+                    });
+                }
+            } catch (e) {
+                // Ошибка парсинга — пропускаем очистку
+            }
+        }
+        // Восстанавливаем из snapshot
+        Object.entries(state.blockScripts).forEach(([id, scripts]) => {
+            blockScripts[id] = [...scripts];
+        });
+        saveBlockScripts();
+    }
+    
+    // Восстанавливаем automation флаги
+    if (state.blockAutomation && typeof blockAutomation !== 'undefined') {
+        // Удаляем текущие записи для блоков этой вкладки
+        if (state.tabData) {
+            try {
+                const tabDataParsed = JSON.parse(state.tabData);
+                if (tabDataParsed.items) {
+                    tabDataParsed.items.forEach(item => {
+                        delete blockAutomation[item.id];
+                    });
+                }
+            } catch (e) {
+                // Ошибка парсинга — пропускаем очистку
+            }
+        }
+        // Восстанавливаем из snapshot
+        Object.entries(state.blockAutomation).forEach(([id, flags]) => {
+            blockAutomation[id] = { ...flags };
+        });
+        saveBlockAutomation();
     }
     
     // Перезагружаем интерфейс
@@ -213,8 +327,13 @@ function executeUndoRedo(action) {
     
     // Держим флаг активным дольше чем debounce savePrompt (800ms) + запас
     // Это предотвращает запись debounced сохранений после undo/redo
-    setTimeout(() => {
+    // Очищаем предыдущий timeout если был
+    if (undoRedoResetTimeout) {
+        clearTimeout(undoRedoResetTimeout);
+    }
+    undoRedoResetTimeout = setTimeout(() => {
         isUndoRedoAction = false;
+        undoRedoResetTimeout = null;
     }, 1000);
     
     updateUndoRedoButtons();

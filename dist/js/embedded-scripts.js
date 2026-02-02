@@ -118,32 +118,94 @@ def md_to_html(md_text):
     return '\\n'.join(result)
 
 def detect_language(text):
+    """Определение языка методом подсчёта очков (scoring)."""
     t = text.lower()
-    if re.search(r'[α-ωά-ώ]', t): return 'gr'
-    if re.search(r'[а-яё]', t): return 'bg'
-    if re.search(r'[ąęłśźż]', t): return 'pl'
-    if re.search(r'[ěřů]', t): return 'cz'
-    if re.search(r'[ĺľŕ]', t): return 'sk'
-    if re.search(r'[őű]', t): return 'hu'
-    if re.search(r'[ășț]', t): return 'ro'
-    # hr vs sl: оба имеют čšž, но hr имеет đ и специфичные слова
-    if re.search(r'đ', t) or (re.search(r'[čšž]', t) and re.search(r'\\b(ili|ali|što|kako|biti|imam)\\b', t)): return 'hr'
-    if re.search(r'[čšž]', t) and re.search(r'\\b(je|ali|ki|kaj|lahko|zelo)\\b', t): return 'sl'
-    # dk vs no: различаем по уникальным словам
-    if re.search(r'[æøå]', t) and re.search(r'\\b(af|ikke|med|har|kan|vil)\\b', t) and re.search(r'\\b(og|er|det)\\b', t): return 'dk'
-    if re.search(r'[æøå]', t) and re.search(r'\\b(av|ikke|med|har|kan|vil)\\b', t) and re.search(r'\\b(og|er|det)\\b', t): return 'no'
-    if re.search(r'[äöå]', t) and re.search(r'\\b(och|att|det|som|för)\\b', t): return 'se'
-    if re.search(r'[äö]', t) and re.search(r'\\b(ja|on|ei|että|olla|minä)\\b', t): return 'fi'
-    if re.search(r'ß', t): return 'de'
-    if re.search(r'[äöü]', t) and re.search(r'\\b(und|der|die|das|ist|nicht)\\b', t): return 'de'
-    if re.search(r'[ñ¿¡]', t): return 'es'
-    if re.search(r'\\b(el|la|los|las|que|por|para|como|pero|este|esta|puede|tiene|sobre|entre|desde|cuando|donde|hacia|según)\\b', t) and not re.search(r'\\b(het|zijn|hebben|wordt|deze)\\b', t): return 'es'
-    if re.search(r'\\b(het|een|van|zijn|hebben|wordt|deze)\\b', t): return 'nl'
-    if re.search(r'[ãõ]', t): return 'pt'
-    # it vs fr: итальянский имеет специфичные слова и окончания
-    if re.search(r'\\b(degli|delle|sono|questo|questa|perché|anche|essere|molto|tutti)\\b', t): return 'it'
-    if re.search(r"(c'est|qu'|j'ai|n'est|d'un|l'on|aujourd'hui|beaucoup|français)", t) or re.search(r'\\b(avec|pour|dans|plus|sont|cette|tout|mais|nous|vous)\\b', t): return 'fr'
-    return 'en'
+    scores = {}
+    
+    # === УНИКАЛЬНЫЕ СИМВОЛЫ (вес 50 за каждое вхождение) ===
+    char_rules = [
+        ('gr', r'[α-ωά-ώΑ-Ω]'),           # греческий
+        ('bg', r'[а-яёА-ЯЁ]'),             # болгарский/кириллица
+        ('pl', r'[ąęłńśźżćĄĘŁŃŚŹŻĆ]'),    # польский
+        ('cz', r'[ěřůĚŘŮ]'),               # чешский
+        ('sk', r'[ĺľŕĹĽŔ]'),               # словацкий
+        ('hu', r'[őűŐŰ]'),                 # венгерский
+        ('ro', r'[ășțĂȘȚ]'),               # румынский
+        ('hr', r'[đĐ]'),                   # хорватский (уникальный đ)
+        ('de', r'ß'),                      # немецкий (эсцет)
+        ('es', r'[ñÑ¿¡]'),                 # испанский
+        ('pt', r'[ãõÃÕ]'),                 # португальский
+    ]
+    for lang, pattern in char_rules:
+        count = len(re.findall(pattern, t))
+        if count: scores[lang] = scores.get(lang, 0) + count * 50
+    
+    # === ДИАКРИТИКА С НЕОДНОЗНАЧНОСТЬЮ (вес 10) ===
+    # Эти символы встречаются в нескольких языках
+    if re.search(r'[čšžČŠŽ]', t):  # hr, sl, cz, sk
+        scores['hr'] = scores.get('hr', 0) + 10
+        scores['sl'] = scores.get('sl', 0) + 10
+    if re.search(r'[äöüÄÖÜ]', t):  # de, fi, se
+        scores['de'] = scores.get('de', 0) + 10
+        scores['fi'] = scores.get('fi', 0) + 10
+        scores['se'] = scores.get('se', 0) + 10
+    if re.search(r'[æøåÆØÅ]', t):  # dk, no
+        scores['dk'] = scores.get('dk', 0) + 10
+        scores['no'] = scores.get('no', 0) + 10
+    if re.search(r'å', t):  # se тоже имеет å
+        scores['se'] = scores.get('se', 0) + 5
+    
+    # === ХАРАКТЕРНЫЕ СЛОВА (вес 3 за слово) ===
+    word_rules = {
+        'en': {'the','and','is','are','was','were','have','has','had','been','being','will','would','could','should','this','that','these','those','which','what','where','when','who','how','there','their','they','them','from','with','about','into','through','during','before','after','above','below','between','because','although','however','therefore','also','just','only','very','more','most','other','some','any','each','every','both','few','many','much','such','than','then','now','here','but','not','all','can','may','must','shall','might'},
+        'de': {'und','der','die','das','ist','sind','war','waren','haben','hat','hatte','werden','wird','wurde','nicht','auch','aber','oder','wenn','weil','dass','kann','können','muss','müssen','soll','sollen','wird','werden','nach','bei','mit','von','für','auf','aus','über','unter','vor','hinter','neben','zwischen','durch','ohne','gegen','bis','sein','ihr','sie','wir','ich','du','er','es'},
+        'es': {'el','la','los','las','un','una','unos','unas','que','de','en','por','para','con','sin','sobre','entre','pero','como','más','muy','también','porque','cuando','donde','quien','cual','este','esta','estos','estas','ese','esa','esos','esas','ser','estar','tener','hacer','poder','decir','ir','ver','dar','saber','querer','llegar','pasar','deber','poner','parecer','quedar','creer','hablar','llevar','dejar','seguir','encontrar','llamar','venir','pensar','salir','volver','tomar','conocer','vivir','sentir','tratar','mirar','contar','empezar','esperar','buscar','existir','entrar','trabajar','escribir','perder','producir','ocurrir','entender','pedir','recibir','recordar','terminar','permitir','aparecer','conseguir','comenzar','servir','sacar','necesitar','mantener','resultar','leer','caer','cambiar','presentar','crear','abrir','considerar','oír','acabar','convertir','ganar','formar'},
+        'fr': {'le','la','les','un','une','des','de','du','et','est','sont','a','ont','être','avoir','faire','dire','aller','voir','venir','pouvoir','vouloir','devoir','falloir','savoir','avec','pour','dans','sur','par','plus','pas','ne','que','qui','ce','cette','ces','son','sa','ses','leur','leurs','nous','vous','ils','elles','lui','elle','tout','tous','toute','toutes','autre','autres','même','bien','encore','aussi','donc','car','mais','ou','où','si','quand','comme','très','peu','beaucoup','trop','assez','moins','plus'},
+        'it': {'il','lo','la','i','gli','le','un','uno','una','di','da','in','su','per','con','tra','fra','che','chi','cui','quale','quanto','come','dove','quando','perché','se','non','anche','già','ancora','sempre','mai','solo','molto','poco','tanto','troppo','più','meno','bene','male','essere','avere','fare','dire','andare','venire','stare','dare','sapere','potere','volere','dovere','vedere','sentire','parlare','pensare','trovare','prendere','mettere','lasciare','tenere','portare','credere','seguire','restare','leggere','aprire','chiudere','questo','questa','questi','queste','quello','quella','quelli','quelle','suo','sua','suoi','sue','nostro','nostra','nostri','nostre','loro'},
+        'nl': {'de','het','een','van','en','in','is','op','te','dat','die','voor','met','zijn','aan','niet','ook','als','maar','bij','of','om','er','tot','uit','kan','naar','dan','wat','nog','wel','zo','door','over','veel','waar','hoe','wie','moet','zou','zal','worden','hebben','kunnen','zullen','mogen','willen','gaan','komen','maken','zien','laten','nemen','geven','vinden','denken','weten','staan','zitten','liggen','houden','krijgen','brengen','lopen','spreken','beginnen','blijven','proberen','nodig','eigen','nieuw','goed','groot','klein','lang','kort','hoog','laag','oud','jong'},
+        'pt': {'o','a','os','as','um','uma','uns','umas','de','da','do','das','dos','em','na','no','nas','nos','por','para','com','sem','que','qual','quais','como','onde','quando','porque','se','não','também','já','ainda','sempre','nunca','só','muito','pouco','mais','menos','bem','mal','ser','estar','ter','haver','fazer','dizer','ir','vir','ver','dar','poder','querer','dever','saber','ficar','passar','deixar','levar','trazer','pôr','tomar','conhecer','viver','sentir','pensar','parecer','partir','seguir','encontrar','tornar','voltar','chamar','começar','acabar','conseguir','manter','este','esta','estes','estas','esse','essa','esses','essas','aquele','aquela','aqueles','aquelas','seu','sua','seus','suas','nosso','nossa','nossos','nossas'},
+        'pl': {'i','w','nie','na','to','jest','się','z','do','jak','co','ale','za','od','tak','po','czy','tylko','lub','tym','już','jego','jej','ich','też','może','tego','tej','te','ten','ta','przez','dla','ze','być','mieć','mój','twój','swój','który','która','które','bardzo','więc','kiedy','gdzie','tutaj','tam','teraz','wtedy','zawsze','nigdy','często','rzadko','dobrze','źle','dużo','mało','pierwszy','ostatni','nowy','stary','wielki','mały','dobry','zły'},
+        'cz': {'a','i','v','na','je','se','že','to','s','z','do','pro','ale','jak','co','za','po','tak','jsou','jeho','její','jejich','být','mít','tento','tato','toto','který','která','které','nebo','jako','když','kde','tam','zde','teď','pak','vždy','nikdy','často','málo','hodně','velmi','dobře','špatně','první','poslední','nový','starý','velký','malý','dobrý','zlý'},
+        'sk': {'a','i','v','na','je','sa','že','to','s','z','do','pre','ale','ako','čo','za','po','tak','sú','jeho','jej','ich','byť','mať','tento','táto','toto','ktorý','ktorá','ktoré','alebo','keď','kde','tam','tu','teraz','potom','vždy','nikdy','často','málo','veľa','veľmi','dobre','zle','prvý','posledný','nový','starý','veľký','malý','dobrý','zlý'},
+        'hu': {'a','az','és','van','volt','lesz','nem','is','de','hogy','mint','ha','vagy','csak','meg','már','még','ki','mi','ez','az','egy','két','sok','kevés','nagy','kis','jó','rossz','új','régi','első','utolsó','itt','ott','most','akkor','mindig','soha','gyakran','ritkán','nagyon','kevéssé','jól','rosszul','én','te','ő','mi','ti','ők'},
+        'ro': {'și','în','la','de','pe','cu','un','o','nu','da','sau','că','este','sunt','a','fost','fi','avea','face','zice','merge','veni','vedea','ști','putea','trebui','vrea','acest','această','acești','aceste','care','ce','cum','unde','când','dacă','foarte','mai','mult','puțin','bine','rău','nou','vechi','mare','mic','bun','primul','ultimul','aici','acolo','acum','apoi','mereu','niciodată'},
+        'hr': {'i','u','na','je','se','da','za','s','od','ali','kao','što','ili','koji','koja','koje','ovaj','ova','ovo','taj','ta','to','onaj','ona','ono','biti','imati','moći','htjeti','trebati','znati','vidjeti','reći','ići','doći','raditi','misliti','živjeti','vrlo','više','manje','dobro','loše','novi','stari','veliki','mali','dobar','loš','prvi','zadnji','sada','onda','uvijek','nikad','često','rijetko','ovdje','tamo'},
+        'sl': {'in','v','na','je','se','da','za','s','od','ali','kot','ki','ta','to','biti','imeti','moči','hoteti','morati','vedeti','videti','reči','iti','priti','delati','misliti','živeti','zelo','več','manj','dobro','slabo','nov','star','velik','majhen','dober','slab','prvi','zadnji','zdaj','potem','vedno','nikoli','pogosto','redko','tukaj','tam','lahko','kaj','kako','kje','kdaj','zakaj'},
+        'dk': {'og','i','at','er','en','et','den','det','de','til','på','med','for','af','som','har','var','kan','vil','skal','han','hun','jeg','du','vi','ikke','men','om','eller','hvis','så','nu','da','efter','over','under','fra','ud','ind','op','ned','mange','få','stor','lille','god','dårlig','ny','gammel','første','sidste','her','der','hvor','hvad','hvem','hvordan','hvorfor','hvornår'},
+        'no': {'og','i','at','er','en','et','den','det','de','til','på','med','for','av','som','har','var','kan','vil','skal','han','hun','jeg','du','vi','ikke','men','om','eller','hvis','så','nå','da','etter','over','under','fra','ut','inn','opp','ned','mange','få','stor','liten','god','dårlig','ny','gammel','første','siste','her','der','hvor','hva','hvem','hvordan','hvorfor','når'},
+        'se': {'och','i','att','är','en','ett','den','det','de','till','på','med','för','av','som','har','var','kan','vill','ska','han','hon','jag','du','vi','inte','men','om','eller','när','så','nu','då','efter','över','under','från','ut','in','upp','ner','många','få','stor','liten','god','dålig','ny','gammal','första','sista','här','där','var','vad','vem','hur','varför'},
+        'fi': {'ja','on','ei','se','että','kun','jos','niin','tai','mutta','vaan','kanssa','ilman','ennen','jälkeen','yli','ali','sisällä','ulkona','tämä','tuo','nämä','nuo','minä','sinä','hän','me','te','he','olla','tulla','mennä','tehdä','sanoa','nähdä','tietää','voida','haluta','täytyä','saada','ottaa','antaa','pitää','jättää','löytää','etsiä','paljon','vähän','hyvin','huonosti','uusi','vanha','suuri','pieni','hyvä','huono','ensimmäinen','viimeinen','täällä','siellä','missä','mitä','kuka','miten','miksi','milloin'},
+    }
+    
+    words = set(re.findall(r'[a-zA-ZÀ-ÿ]+', t))
+    for lang, lang_words in word_rules.items():
+        matches = len(words & lang_words)
+        if matches: scores[lang] = scores.get(lang, 0) + matches * 3
+    
+    # === ПАТТЕРНЫ-ФРАЗЫ (вес 20) ===
+    phrase_rules = [
+        ('fr', r"(c'est|qu'il|qu'elle|d'un|d'une|l'on|n'est|j'ai|aujourd'hui)"),
+        ('it', r"(l'|dell'|all'|nell'|sull')"),
+        ('de', r"\\b(ich bin|du bist|er ist|wir sind|sie sind)\\b"),
+    ]
+    for lang, pattern in phrase_rules:
+        if re.search(pattern, t):
+            scores[lang] = scores.get(lang, 0) + 20
+    
+    # === ОПРЕДЕЛЕНИЕ ПОБЕДИТЕЛЯ ===
+    if not scores:
+        return 'en'  # fallback
+    
+    max_score = max(scores.values())
+    winners = [lang for lang, score in scores.items() if score == max_score]
+    
+    # При равенстве очков - приоритет по частоте использования
+    priority = ['en','de','es','fr','it','nl','pt','pl','cz','sk','hu','ro','hr','sl','no','dk','se','fi','gr','bg']
+    for lang in priority:
+        if lang in winners:
+            return lang
+    
+    return winners[0]
 
 def extract_title(text):
     match = re.search(r'^#\\s+(.+)$', text, re.MULTILINE)

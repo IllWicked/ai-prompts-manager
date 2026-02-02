@@ -30,3 +30,6 @@ function showToast(message = 'Скопировано в буфер', duration = 
         toast.classList.remove('show');
     }, duration);
 }
+
+// Экспорт
+window.showToast = showToast;

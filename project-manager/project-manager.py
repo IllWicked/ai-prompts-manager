@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 """
-Project Manager v4.0 - Менеджер AI Prompts Manager
+Project Manager - Менеджер AI Prompts Manager
 
 Полное управление проектом:
 - Управление вкладками и промптами (хранятся на GitHub)
 - Релизы приложения (версионирование + сборка + публикация)
 - Git операции (init, push, pull, tag)
-
-Версия: 4.0
 """
 import json
 import os
@@ -239,8 +237,8 @@ class PromptsManager:
             "order": max_order + 1,
             "version": "1.0.0",
             "items": [{
+                "type": "block",
                 "id": generate_item_id(),
-                "number": "1",
                 "title": "Первый блок",
                 "content": "Содержимое первого блока.\n\nОтредактируй этот текст."
             }],
@@ -911,7 +909,7 @@ def display_header(script_dir: Path, manager: PromptsManager):
         return text + ' ' * max(0, padding)
     
     print("╔" + "═" * W + "╗")
-    title = "PROJECT MANAGER v4.0 - AI Prompts Manager"
+    title = "PROJECT MANAGER - AI Prompts Manager"
     left_pad = (W - len(title)) // 2
     print("║" + " " * left_pad + title + " " * (W - left_pad - len(title)) + "║")
     print("╠" + "═" * W + "╣")
@@ -1056,7 +1054,7 @@ def display_tabs_with_github(local_tabs: List[Dict], github_data: Optional[Dict]
 # ИНТЕРФЕЙС - МЕНЮ ПРОМПТОВ
 # ═══════════════════════════════════════════════════════════════════════════
 
-def menu_prompts(script_dir: Path):
+def menu_prompts(script_dir: Path, project_dir: Path):
     """Подменю управления промптами"""
     while True:
         clear_screen()
@@ -1104,7 +1102,7 @@ def menu_prompts(script_dir: Path):
         elif choice == '3':
             submenu_reorder_tabs(script_dir)
         elif choice == '4':
-            open_in_editor(script_dir / 'RELEASE_NOTES_PROMPTS.txt')
+            open_in_editor(project_dir / 'RELEASE_NOTES_PROMPTS.txt')
             print("\n  ✓ Файл открыт в редакторе")
             press_any_key()
 
@@ -1365,7 +1363,7 @@ def submenu_reorder_tabs(script_dir: Path):
 # ИНТЕРФЕЙС - МЕНЮ GIT
 # ═══════════════════════════════════════════════════════════════════════════
 
-def menu_git(script_dir: Path):
+def menu_git(script_dir: Path, project_dir: Path):
     """Подменю Git операций"""
     while True:
         clear_screen()
@@ -1396,9 +1394,9 @@ def menu_git(script_dir: Path):
         if choice == '0':
             break
         elif choice == '1':
-            submenu_git_push(script_dir)
+            submenu_git_push(script_dir, project_dir)
 
-def submenu_git_push(script_dir: Path):
+def submenu_git_push(script_dir: Path, project_dir: Path):
     print("\n  ─── PUSH ПРОМПТОВ НА GITHUB ───")
     
     # Проверяем токен
@@ -1490,6 +1488,12 @@ def submenu_git_push(script_dir: Path):
         for i, (tab_id, info) in enumerate(tabs_sorted, 1):
             manifest['tabs'][tab_id]['order'] = i
     
+    # Обновляем release_notes из локального файла (в корне проекта)
+    release_notes_path = project_dir / "RELEASE_NOTES_PROMPTS.txt"
+    if release_notes_path.exists():
+        manifest['release_notes'] = release_notes_path.read_text(encoding='utf-8').strip()
+    manifest['updated'] = datetime.now().strftime("%Y-%m-%d")
+    
     # Добавляем манифест
     manifest_content = json.dumps(manifest, ensure_ascii=False, indent=2)
     files_to_push.append(("prompts/manifest.json", manifest_content))
@@ -1550,11 +1554,11 @@ def submenu_git_status(script_dir: Path):
 # ИНТЕРФЕЙС - МЕНЮ РЕЛИЗОВ
 # ═══════════════════════════════════════════════════════════════════════════
 
-def menu_release(script_dir: Path):
+def menu_release(project_dir: Path):
     """Подменю релизов"""
     while True:
         clear_screen()
-        app_version = get_current_app_version(script_dir)
+        app_version = get_current_app_version(project_dir)
         github_version = fetch_github_app_version()
         
         print("\n  ═══════════════════════════════════════════════════════")
@@ -1570,7 +1574,7 @@ def menu_release(script_dir: Path):
         else:
             print(f"  Последний релиз:   не удалось загрузить")
         
-        notes = get_release_notes(script_dir)
+        notes = get_release_notes(project_dir)
         if notes:
             preview = notes.split('\n')[0][:50]
             print(f"\n  Release notes: {preview}...")
@@ -1587,43 +1591,43 @@ def menu_release(script_dir: Path):
         if choice == '0':
             break
         elif choice == '1':
-            submenu_change_version(script_dir)
+            submenu_change_version(project_dir)
         elif choice == '2':
-            submenu_edit_release_notes(script_dir)
+            submenu_edit_release_notes(project_dir)
         elif choice == '3':
-            submenu_create_release(script_dir)
+            submenu_create_release(project_dir)
 
-def submenu_change_version(script_dir: Path):
-    current = get_current_app_version(script_dir)
+def submenu_change_version(project_dir: Path):
+    current = get_current_app_version(project_dir)
     print("\n  ─── ИЗМЕНЕНИЕ ВЕРСИИ ───")
     print(f"\n  Текущая: v{current}")
     
     new_version = input("  Новая версия (например 4.1.0): ").strip()
     
     if new_version:
-        changes = update_app_version(script_dir, new_version)
+        changes = update_app_version(project_dir, new_version)
         if changes:
             print(f"\n  ✓ Обновлено: {', '.join(changes)}")
         else:
             print("\n  ⚠ Ничего не изменилось")
     press_any_key()
 
-def submenu_edit_release_notes(script_dir: Path):
-    release_notes_path = script_dir / RELEASE_NOTES_FILE
+def submenu_edit_release_notes(project_dir: Path):
+    release_notes_path = project_dir / RELEASE_NOTES_FILE
     open_in_editor(release_notes_path)
     print("\n  ✓ Файл открыт в редакторе")
     press_any_key()
 
-def submenu_create_release(script_dir: Path):
+def submenu_create_release(project_dir: Path):
     """Создание полного релиза"""
     print("\n  ═══════════════════════════════════════════════════════")
     print("                    🚀 СОЗДАНИЕ РЕЛИЗА")
     print("  ═══════════════════════════════════════════════════════\n")
     
-    app_version = get_current_app_version(script_dir)
+    app_version = get_current_app_version(project_dir)
     
     # Автоматически настраиваем git если нужно
-    success, msg = ensure_git_ready(script_dir)
+    success, msg = ensure_git_ready(project_dir)
     if not success:
         print(f"\n  ✗ {msg}")
         press_any_key()
@@ -1632,7 +1636,7 @@ def submenu_create_release(script_dir: Path):
     print(f"\n  Версия приложения: v{app_version}")
     print(f"  Будет создан тег: v{app_version}")
     
-    notes = get_release_notes(script_dir)
+    notes = get_release_notes(project_dir)
     if notes:
         print("\n  Release notes:\n  ─────────────────────────")
         for line in notes.split('\n')[:5]:
@@ -1662,7 +1666,7 @@ def submenu_create_release(script_dir: Path):
     # 1. Commit
     message = f"Release v{app_version}"
     print(f"\n  [1/5] Коммит: {message}")
-    success, msg = git_commit_all(script_dir, message)
+    success, msg = git_commit_all(project_dir, message)
     print(f"        {'✓' if success else '✗'} {msg}")
     if not success and "Нет изменений" not in msg:
         press_any_key()
@@ -1671,7 +1675,7 @@ def submenu_create_release(script_dir: Path):
     # 2. Tag
     tag = f"v{app_version}"
     print(f"\n  [2/5] Создание тега: {tag}")
-    success, msg = git_tag(script_dir, tag, notes if notes else f"Release {tag}")
+    success, msg = git_tag(project_dir, tag, notes if notes else f"Release {tag}")
     print(f"        {'✓' if success else '✗'} {msg}")
     if not success:
         press_any_key()
@@ -1679,7 +1683,7 @@ def submenu_create_release(script_dir: Path):
     
     # 3. Push
     print("\n  [3/5] Push коммитов...")
-    success, msg = git_push(script_dir)
+    success, msg = git_push(project_dir)
     print(f"        {'✓' if success else '✗'} {msg}")
     if not success:
         press_any_key()
@@ -1687,7 +1691,7 @@ def submenu_create_release(script_dir: Path):
     
     # 4. Push tags
     print("\n  [4/5] Push тегов...")
-    success, msg = git_push_tags(script_dir)
+    success, msg = git_push_tags(project_dir)
     print(f"        {'✓' if success else '✗'} {msg}")
     
     print("\n  ═══════════════════════════════════════════════════════")
@@ -1704,22 +1708,23 @@ def submenu_create_release(script_dir: Path):
 
 def main_menu():
     """Главное меню"""
-    script_dir = Path(__file__).parent
+    script_dir = Path(__file__).parent  # project-manager/
+    project_dir = script_dir.parent     # корень проекта (на уровень выше)
     
     while True:
         clear_screen()
         
         # Заголовок
-        app_version = get_current_app_version(script_dir)
+        app_version = get_current_app_version(project_dir)
         print("\n╔" + "═" * 61 + "╗")
-        title = "PROJECT MANAGER v4.0 - AI Prompts Manager"
+        title = "PROJECT MANAGER - AI Prompts Manager"
         left_pad = (61 - len(title)) // 2
         print("║" + " " * left_pad + title + " " * (61 - left_pad - len(title)) + "║")
         print("╠" + "═" * 61 + "╣")
         print("║" + f"  Приложение: v{app_version}".ljust(61) + "║")
         print("╚" + "═" * 61 + "╝")
         
-        # JSON файлы к пушу
+        # JSON файлы к пушу (лежат рядом со скриптом)
         json_files = [f for f in script_dir.glob('*.json') 
                       if f.name != 'manifest.json' and f.parent == script_dir]
         if json_files:
@@ -1741,11 +1746,11 @@ def main_menu():
             print("\n  Выход...")
             break
         elif choice == '1':
-            menu_prompts(script_dir)
+            menu_prompts(script_dir, project_dir)
         elif choice == '2':
-            menu_git(script_dir)
+            menu_git(script_dir, project_dir)
         elif choice == '3':
-            menu_release(script_dir)
+            menu_release(project_dir)
 
 def main():
     try:

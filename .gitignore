@@ -1,17 +1,16 @@
 # Приватный ключ подписи - НИКОГДА не загружать!
-.tauri/keys
+.tauri/keys/
+
+# Переменные окружения (могут содержать токены)
+.env
+.env.local
+.env.*.local
 
 # JSON файлы в корне (экспортированные вкладки для импорта)
 /*.json
 
-# Разрешаем JSON в папке prompts
-!prompts/*.json
-
 # Бэкапы
 .backups/
-
-# Документация (только для локального использования)
-docs/
 
 # Rust / Tauri
 target/
@@ -19,7 +18,6 @@ Cargo.lock
 
 # Node
 node_modules/
-package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
@@ -33,6 +31,7 @@ pnpm-lock.yaml
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Build artifacts
 *.exe
@@ -40,4 +39,9 @@ Thumbs.db
 *.dmg
 *.AppImage
 *.deb
-*.zip
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

@@ -35,19 +35,21 @@
     --node-header-icon-size: 28px;
     
     /* Светлая тема (по умолчанию) */
-    --bg-primary: #F5F5F7;
-    --bg-secondary: #ffffff;
-    --bg-tertiary: #f9fafb;
-    --bg-muted: #d1d5db;
-    --bg-elevated: #ffffff;
-    --bg-header: #EAEAEC;
-    --text-primary: #1f2937;
-    --text-secondary: #525252;
-    --text-tertiary: #666666;
-    --text-muted: #9ca3af;
+    --bg-primary: #ebebed;
+    --bg-secondary: #f7f7f8;
+    --bg-tertiary: #e2e2e4;
+    --bg-hover: rgba(0, 0, 0, 0.03);
+    --bg-inset: rgba(128, 128, 128, 0.08);
+    --bg-muted: #c8c8cc;
+    --bg-elevated: #f7f7f8;
+    --bg-header: #dcdcde;
+    --text-primary: #27272a;
+    --text-secondary: #52525b;
+    --text-tertiary: #5f5f67;
+    --text-muted: #a1a1aa;
     --border-color: rgba(0, 0, 0, 0.05);
-    --border-light: #e5e7eb;
-    --border-medium: #cccccc;
+    --border-light: #d4d4d8;
+    --border-medium: #b0b0b6;
 }
 
 /* Тёмная тема */
@@ -56,6 +58,8 @@
     --bg-primary: #1a1a1a;
     --bg-secondary: #2d2d2d;
     --bg-tertiary: #3d3d3d;
+    --bg-hover: rgba(255, 255, 255, 0.05);
+    --bg-inset: rgba(128, 128, 128, 0.06); /* Для вложенных контейнеров */
     --bg-muted: #333333;
     --bg-elevated: #4a4a4a;
     --bg-header: #242424;
@@ -220,18 +224,20 @@ textarea,
 
 .context-menu-item {
     padding: 8px 16px;
-    font-size: 13px;
+    margin: 0 6px;
+    border-radius: 8px;
+    font-size: 14px;
     color: var(--text-primary);
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 10px;
-    transition: background 0.1s;
+    transition: background 0.15s;
     white-space: nowrap;
 }
 
 .context-menu-item:hover {
-    background: #f5f5f5;
+    background: var(--bg-hover);
 }
 
 .dark .context-menu-item {
@@ -239,7 +245,7 @@ textarea,
 }
 
 .dark .context-menu-item:hover {
-    background: var(--bg-tertiary);
+    background: var(--bg-hover);
 }
 
 .context-menu-item.disabled {
@@ -278,8 +284,15 @@ textarea,
 
 .context-menu-item .submenu-arrow {
     margin-left: auto;
-    font-size: 10px;
-    opacity: 0.5;
+    width: 12px;
+    height: 12px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.context-menu-item .submenu-arrow svg {
+    width: 12px;
+    height: 12px;
 }
 
 .context-submenu {
@@ -343,9 +356,6 @@ input::-webkit-scrollbar-thumb {
 .claude-accent { color: var(--claude-primary); }
 .bg-claude-accent { background-color: var(--claude-primary); }
 .text-claude-accent { color: var(--claude-primary); }
-.shadow-claude { box-shadow: 0 4px 12px var(--claude-shadow); }
-.bg-claude-light { background-color: var(--claude-light); }
-.bg-claude-code { background-color: var(--claude-code); }
 
 /* Унифицированные стили кнопок */
 /* Базовый класс кнопок */
@@ -365,9 +375,17 @@ input::-webkit-scrollbar-thumb {
 .btn svg {
     flex-shrink: 0;
     display: block;
+    width: 16px;
+    height: 16px;
 }
 .btn span {
     color: inherit;
+}
+
+/* SVG в кнопках опциональных полей */
+.show-optional-field svg {
+    width: 16px;
+    height: 16px;
 }
 
 /* Модификаторы кнопок */
@@ -550,26 +568,6 @@ body {
     100% { transform: scaleX(-1) rotate(-360deg); }
 }
 
-/* Стиль кнопки-разделителя */
-.chat-button {
-    transition: var(--transition-normal);
-    cursor: pointer;
-    background: var(--claude-primary);
-    color: white;
-    border: 1px solid var(--claude-primary);
-}
-.chat-button:hover {
-    background: var(--claude-light);
-    color: var(--claude-primary);
-}
-.dark .chat-button:hover {
-    background: var(--claude-darker);
-    color: var(--claude-dark);
-}
-.chat-button:active {
-    transform: scale(0.97);
-}
-
 /* Кнопка добавления блока */
 .add-block-btn {
     transition: var(--transition-normal);
@@ -594,43 +592,7 @@ body {
     transform: scale(0.95);
 }
 
-/* Кнопка Готово */
-.exit-edit-btn {
-    transition: var(--transition-normal);
-    cursor: pointer;
-    border: 1px solid var(--claude-primary);
-}
-.exit-edit-btn:hover {
-    background: var(--claude-light) !important;
-    color: var(--claude-primary);
-}
-.dark .exit-edit-btn:hover {
-    background: var(--claude-darker) !important;
-    color: var(--claude-dark);
-}
-.exit-edit-btn:active {
-    transform: scale(0.97);
-}
-
-/* Меню добавления элемента */
-.add-menu {
-    min-width: 150px;
-}
-.dark .add-menu {
-    background: var(--bg-secondary);
-    border-color: var(--bg-tertiary);
-}
-.dark .add-menu-item {
-    color: var(--text-primary);
-}
-.dark .add-menu-item:hover {
-    background: var(--bg-tertiary);
-}
-
-/* Универсальный акцентный цвет для иконки и нумерации */
-.claude-icon {
-    color: var(--claude-primary); /* Использование нового цвета */
-}
+/* Универсальный акцентный цвет для иконки и нумерации — UNUSED, kept for reference */
 
 /* Селекторы в хедере с оранжевой подложкой */
 .header-selector-btn {
@@ -683,21 +645,87 @@ body {
     position: absolute;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   УНИФИЦИРОВАННЫЕ СТИЛИ ДЛЯ DROPDOWN МЕНЮ
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Базовые стили пункта меню */
+.dropdown-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    margin-left: 6px;
+    margin-right: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.dropdown-option:hover {
+    background: var(--bg-hover);
+}
+
+.dropdown-option.submenu-open {
+    background: var(--bg-tertiary);
+}
+
+.dropdown-option.selected,
+.country-option.selected {
+    background: rgba(236, 116, 65, 0.9);
+    color: white;
+    font-weight: 500;
+}
+
+.dropdown-option.selected:hover,
+.country-option.selected:hover {
+    background: rgba(236, 116, 65, 0.9);
+    filter: brightness(1.15);
+}
+
+.dropdown-option.selected.submenu-open {
+    background: var(--bg-muted);
+    color: var(--text-primary);
+    filter: none;
+}
+
+.dropdown-option-text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.dropdown-option .submenu-arrow {
+    width: 12px;
+    height: 12px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+/* Разделитель */
+.dropdown-separator {
+    height: 1px;
+    background: var(--border-light);
+    margin: 6px 0;
+}
+
 /* Анимации для выпадающих меню */
 #tab-arrow,
 #language-arrow {
     transition: transform 0.2s ease;
 }
 
-/* Переопределяем hidden для анимации (вместо display:none используем visibility+opacity) */
-#tab-menu,
-#language-menu {
+/* Унифицированная анимация для ВСЕХ dropdown меню */
+.dropdown-animated {
     transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s ease;
     transform-origin: top center;
 }
 
-#tab-menu.hidden,
-#language-menu.hidden {
+.dropdown-animated.hidden {
     display: block !important;
     opacity: 0;
     visibility: hidden;
@@ -705,53 +733,492 @@ body {
     transform: translateY(-8px);
 }
 
-#tab-menu:not(.hidden),
-#language-menu:not(.hidden) {
+.dropdown-animated:not(.hidden) {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
 }
 
+/* Внутренний контейнер меню вкладок со скроллбаром */
+#tab-menu > div {
+    max-height: 400px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
+}
+
+#tab-menu > div::-webkit-scrollbar {
+    width: 6px;
+}
+
+#tab-menu > div::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 8px 0;
+}
+
+#tab-menu > div::-webkit-scrollbar-thumb {
+    background: rgba(150, 150, 150, 0.3);
+    border-radius: 3px;
+}
+
+#tab-menu > div::-webkit-scrollbar-thumb:hover {
+    background: rgba(150, 150, 150, 0.5);
+}
+
+.dark #tab-menu > div {
+    scrollbar-color: rgba(200, 200, 200, 0.25) transparent;
+}
+
+.dark #tab-menu > div::-webkit-scrollbar-thumb {
+    background: rgba(200, 200, 200, 0.25);
+}
+
+.dark #tab-menu > div::-webkit-scrollbar-thumb:hover {
+    background: rgba(200, 200, 200, 0.4);
+}
+
 #tab-dropdown.open #tab-arrow {
     transform: rotate(180deg);
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCORDION МЕНЮ ВКЛАДОК
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Контейнер списка вкладок с фиксированной высотой (5 пунктов) */
+.tab-menu-list {
+    max-height: 200px; /* ~5 пунктов по 40px */
+    overflow-y: auto;
+    padding-top: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
+}
+
+.tab-menu-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.tab-menu-list::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 8px 0;
+}
+
+.tab-menu-list::-webkit-scrollbar-thumb {
+    background: rgba(150, 150, 150, 0.3);
+    border-radius: 3px;
+}
+
+.tab-menu-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(150, 150, 150, 0.5);
+}
+
+.dark .tab-menu-list {
+    scrollbar-color: rgba(200, 200, 200, 0.25) transparent;
+}
+
+.dark .tab-menu-list::-webkit-scrollbar-thumb {
+    background: rgba(200, 200, 200, 0.25);
+}
+
+.dark .tab-menu-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(200, 200, 200, 0.4);
+}
+
+/* Группа вкладок */
+.tab-group {
+    margin: 2px 0;
+}
+
+/* Заголовок группы (раскрывающийся) */
+.tab-group-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    padding-right: 12px;
+    margin-left: 6px;
+    margin-right: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    gap: 8px;
+}
+
+.tab-group-header:hover {
+    background: var(--bg-hover);
+}
+
+/* Группа, содержащая выбранную вкладку */
+.tab-group-header.contains-selected {
+    color: var(--claude-primary);
+}
+
+/* Шеврон (стрелка раскрытия) */
+.tab-group-chevron {
+    width: 12px;
+    height: 12px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.tab-group-header.expanded .tab-group-chevron {
+    transform: rotate(90deg);
+}
+
+/* Название группы */
+.tab-group-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Счётчик вкладок в группе — сразу после названия */
+.tab-group-count {
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 50%;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-right: auto; /* Толкает tab-actions вправо */
+}
+
+/* Контент группы (скрываемый) */
+.tab-group-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.2s ease;
+}
+
+.tab-group-content.expanded {
+    max-height: 500px; /* Достаточно для любого количества вкладок */
+    background: var(--bg-inset);
+    border-radius: 8px;
+    margin: 4px 6px;
+    padding: 4px 0;
+}
+
+/* Пункт вкладки */
+.tab-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    margin-left: 6px;
+    margin-right: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.tab-option:hover {
+    background: var(--bg-hover);
+}
+
+/* Выбранная вкладка — оранжевая подсветка Claude */
 .tab-option.selected {
-    background-color: var(--bg-tertiary);
+    background: rgba(236, 116, 65, 0.9);
+    color: white;
     font-weight: 500;
 }
+
+.tab-option.selected:hover {
+    filter: brightness(1.15);
+}
+
+.tab-option.selected .tab-rename-btn,
+.tab-option.selected .tab-delete-btn,
+.tab-option.selected .tab-confirm-delete-btn {
+    color: white;
+}
+
+.tab-option.selected .tab-rename-btn:hover,
+.tab-option.selected .tab-delete-btn:hover,
+.tab-option.selected .tab-confirm-delete-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.tab-option.selected .tab-confirm-delete-btn {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.tab-option-text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Кнопки действий (rename, delete) */
+.tab-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+/* Кнопки действий для групп — уже справа благодаря margin-right: auto на счётчике */
+.tab-actions.group-actions {
+    /* Позиция определяется flex-контейнером */
+}
+
+.tab-option:hover .tab-actions,
+.tab-group-header:hover .tab-actions,
+.tab-actions.visible {
+    opacity: 1;
+}
+
+.tab-actions button {
+    padding: 4px;
+    border-radius: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+
+.tab-actions button svg {
+    width: 12px;
+    height: 12px;
+}
+
+.tab-rename-btn {
+    color: var(--text-muted);
+}
+
+.tab-rename-btn:hover {
+    background: var(--bg-secondary);
+}
+
+.tab-delete-btn {
+    color: var(--color-danger);
+}
+
+.tab-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.tab-confirm-delete-btn {
+    color: var(--color-danger);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.tab-confirm-delete-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
+.tab-actions .hidden {
+    display: none;
+}
+
+/* Разделитель */
+.tab-menu-separator {
+    height: 1px;
+    background: var(--border-light);
+    margin: 6px 0;
+}
+
+/* Блок кнопок действий (фиксированный внизу меню) */
+.tab-menu-actions {
+    flex-shrink: 0;
+    padding-bottom: 4px;
+}
+
+/* Кнопки действий (добавить, редактировать и т.д.) */
+.tab-action-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    margin-left: 6px;
+    margin-right: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.tab-action-option svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.tab-action-option:hover {
+    background: var(--bg-hover);
+}
+
+.tab-action-option.add-tab-option {
+    color: var(--claude-primary);
+}
+
+.tab-action-option.edit-tab-option.active {
+    color: var(--claude-primary);
+}
+
+/* Input для переименования */
+.tab-name-input {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0 4px;
+    margin: 0;
+    border: 1px solid var(--claude-primary);
+    border-radius: 4px;
+    outline: none;
+    background: var(--bg-secondary);
+    font-size: inherit;
+    font-family: inherit;
+    color: var(--text-primary);
+    box-sizing: border-box;
+}
+
+/* Превью переименования группы */
+.group-rename-preview {
+    position: absolute;
+    left: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 11px;
+    max-height: 120px;
+    overflow-y: auto;
+    z-index: 10001;
+    min-width: 200px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.group-rename-preview .preview-title {
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.group-rename-preview .preview-item {
+    color: var(--text-secondary);
+}
+
+.group-rename-preview .preview-item .old-name {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+.group-rename-preview .preview-item .new-name {
+    color: var(--claude-primary);
+}
+
+.group-rename-preview .preview-more {
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
 #language-dropdown.open #language-arrow {
     transform: rotate(180deg);
 }
+
+/* Пункты меню языков */
+.language-option {
+    border-radius: 8px;
+    margin-left: 6px;
+    margin-right: 6px;
+}
+
+/* Нативный CSS-скроллбар для меню языков */
+#language-menu-inner {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
+}
+
+#language-menu-inner::-webkit-scrollbar {
+    width: 6px;
+}
+
+#language-menu-inner::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 8px 0;
+}
+
+#language-menu-inner::-webkit-scrollbar-thumb {
+    background: rgba(150, 150, 150, 0.3);
+    border-radius: 3px;
+}
+
+#language-menu-inner::-webkit-scrollbar-thumb:hover {
+    background: rgba(150, 150, 150, 0.5);
+}
+
+.dark #language-menu-inner {
+    scrollbar-color: rgba(200, 200, 200, 0.25) transparent;
+}
+
+.dark #language-menu-inner::-webkit-scrollbar-thumb {
+    background: rgba(200, 200, 200, 0.25);
+}
+
+.dark #language-menu-inner::-webkit-scrollbar-thumb:hover {
+    background: rgba(200, 200, 200, 0.4);
+}
+
 .language-option.selected {
-    background-color: var(--bg-tertiary);
+    background: rgba(236, 116, 65, 0.9);
+    color: white;
     font-weight: 500;
 }
+
+.language-option.selected:hover,
+.language-option.selected.submenu-open {
+    background: rgba(236, 116, 65, 0.9);
+    filter: brightness(1.15);
+}
+
+.language-option.selected svg {
+    color: white;
+    stroke: white;
+}
+
+/* Стили для подменю стран */
+.language-option:not(.selected):hover,
+.language-option.submenu-open:not(.selected) {
+    background-color: var(--bg-tertiary);
+}
+#language-country-submenu {
+    position: absolute;
+}
+
+/* Пункты подменю стран */
 /* Кастомный скроллбар для меню языков */
-.lang-menu-scrollbar {
-    position: absolute;
-    right: 4px;
-    top: 8px;
-    bottom: 8px;
-    width: 6px;
-    background: transparent;
-    border-radius: 3px;
-    z-index: 10;
-}
-.lang-menu-scrollbar-thumb {
-    position: absolute;
-    right: 0;
-    width: 4px;
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: 2px;
-    cursor: pointer;
-    transition: background 0.15s ease, width 0.15s ease, border-radius 0.15s ease;
-}
-.lang-menu-scrollbar-thumb:hover,
-.lang-menu-scrollbar-thumb.dragging {
-    width: 6px;
-    border-radius: 3px;
-    background: rgba(0, 0, 0, 0.3);
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   УНИФИЦИРОВАННЫЙ СКРОЛЛБАР ДЛЯ DROPDOWN МЕНЮ
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 /* Скроллбар для модальных окон */
 .modal-scroll-area {
@@ -866,16 +1333,6 @@ body {
     background: rgba(255,255,255,0.35);
 }
 
-/* Стиль для кликабельной инструкции */
-.clickable-instruction {
-    cursor: pointer;
-    font-weight: 600;
-    text-decoration: underline;
-}
-.clickable-instruction:hover {
-    text-decoration: none;
-}
-
 #edit-tab-btn.text-claude-accent {
     color: var(--claude-primary);
 }
@@ -975,17 +1432,6 @@ body {
     filter: brightness(1.15);
 }
 
-.dark #lang-insert-menu {
-    background-color: var(--bg-secondary);
-    border-color: var(--border-light);
-}
-.dark .lang-insert-option {
-    color: var(--text-secondary);
-}
-.dark .lang-insert-option:hover {
-    background-color: var(--bg-tertiary);
-}
-
 /* Scroll container */
 .dark #scroll-container {
     background-color: var(--bg-primary);
@@ -1077,10 +1523,37 @@ body {
 .dark .language-option {
     color: var(--text-primary);
 }
-.dark .tab-option:hover,
-.dark .language-option:hover {
-    background-color: #4a4a4a;
-    color: #ffffff;
+.dark .tab-option:hover {
+    background-color: var(--bg-hover);
+}
+/* Выбранная вкладка в тёмной теме */
+.dark .tab-option.selected {
+    background-color: rgba(236, 116, 65, 0.9);
+    color: white;
+}
+
+.dark .tab-option.selected .tab-rename-btn,
+.dark .tab-option.selected .tab-delete-btn,
+.dark .tab-option.selected .tab-confirm-delete-btn {
+    color: white;
+}
+
+/* Заголовок группы в тёмной теме */
+.dark .tab-group-header {
+    color: var(--text-primary);
+}
+.dark .tab-group-header:hover {
+    background-color: var(--bg-hover);
+}
+.dark .tab-group-header.contains-selected {
+    color: var(--claude-primary);
+}
+.dark .tab-group-count {
+    background: var(--bg-elevated);
+}
+.dark .group-rename-preview {
+    background: var(--bg-elevated);
+    border-color: var(--border-color);
 }
 /* Выбранная вкладка */
 .dark .bg-gray-50 {
@@ -1088,31 +1561,43 @@ body {
 }
 /* Выбранный язык */
 .dark .language-option.selected {
+    background: rgba(236, 116, 65, 0.9);
+    color: white;
+}
+
+.dark .language-option.selected:hover,
+.dark .language-option.selected.submenu-open {
+    background: rgba(236, 116, 65, 0.9);
+    filter: brightness(1.15);
+}
+
+.dark .language-option.selected svg {
+    color: white;
+    stroke: white;
+}
+
+/* Тёмные стили для подменю стран */
+.dark .language-option:not(.selected):hover,
+.dark .language-option.submenu-open:not(.selected) {
     background-color: var(--bg-tertiary);
-    color: var(--text-primary);
+}
+.dark #language-country-submenu {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
 }
 /* Кнопки действий в меню вкладок */
-.dark .edit-tab-option,
-.dark .export-tab-option,
-.dark .import-tab-option {
+.dark .tab-action-option {
     color: var(--text-secondary);
 }
-.dark .add-tab-option {
+.dark .tab-action-option:hover {
+    background-color: var(--bg-tertiary);
+}
+.dark .tab-action-option.add-tab-option {
     color: var(--claude-primary);
 }
-.dark .add-tab-option:hover,
-.dark .export-tab-option:hover,
-.dark .import-tab-option:hover {
-    background-color: #4a4a4a;
-    color: #ffffff;
-}
-/* Активный режим редактирования */
-.edit-active {
-    background-color: rgba(200, 120, 100, 0.1);
-}
-.dark .edit-tab-option.edit-active {
-    color: var(--text-secondary) !important;
-    background-color: var(--bg-tertiary) !important;
+.dark .tab-action-option.edit-tab-option.active {
+    color: var(--claude-primary);
+    background-color: var(--bg-tertiary);
 }
 /* Патчноуты в модалке обновлений */
 .dark #update-notes-content {
@@ -1186,54 +1671,6 @@ body {
 /* ============================================
    SPLIT VIEW - Claude Integration
    ============================================ */
-
-.split-container {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-}
-
-.prompts-panel {
-    flex: 1;
-    min-width: 300px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    transition: flex 0.3s ease;
-}
-
-.prompts-panel.collapsed {
-    flex: 0 0 0px;
-    min-width: 0;
-    overflow: hidden;
-}
-
-/* Claude WebView container */
-.claude-webview {
-    flex: 1;
-    border: none;
-    width: 100%;
-    height: 100%;
-}
-
-/* Placeholder когда Claude не загружен */
-.claude-placeholder {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-    gap: 1rem;
-    padding: 2rem;
-    text-align: center;
-}
-
-.claude-placeholder svg {
-    width: 48px;
-    height: 48px;
-    opacity: 0.5;
-}
 
 /* Кнопка открытия Claude в header */
 /* Claude controls */
@@ -1532,7 +1969,7 @@ header .flex {
     display: inline-block;
     width: 8px;
     height: 8px;
-    margin-right: 4px;
+    margin-right: 6px;
     border-radius: 50%;
     background: currentColor;
     animation: pulse-generating 1s ease-in-out infinite;
@@ -2462,42 +2899,154 @@ header .flex {
 }
 
 /* Меню выбора формы языка */
-.workflow-lang-menu {
-    background: white;
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-md);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+/* ═══════════════════════════════════════════════════════════════════════════
+   МЕНЮ ВЫБОРА ЯЗЫКОВЫХ ФОРМ (унифицированное)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.lang-form-menu-container {
+    /* Контейнер для меню и подменю */
 }
 
-.workflow-lang-menu.dark-menu {
+.lang-form-menu {
     background: var(--bg-secondary);
-    border-color: var(--btn-border);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    min-width: 220px;
+    overflow: hidden;
 }
 
-.workflow-lang-option {
-    color: var(--text-primary);
+.dark .lang-form-menu {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.lang-form-menu-inner {
+    padding: 8px 0;
+}
+
+.lang-form-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    margin-left: 6px;
+    margin-right: 6px;
+    border-radius: 8px;
+    cursor: pointer;
     transition: background 0.15s;
-}
-
-.workflow-lang-option:hover {
-    background: #f5f5f5;
-}
-
-.workflow-lang-label {
-    color: var(--text-muted);
-}
-
-.dark-menu .workflow-lang-option {
+    font-size: 14px;
     color: var(--text-primary);
 }
 
-.dark-menu .workflow-lang-option:hover {
+.lang-form-option:hover,
+.lang-form-option.submenu-open {
     background: var(--bg-tertiary);
 }
 
-.dark-menu .workflow-lang-label {
+.lang-form-value {
+    color: var(--claude-primary);
+    font-weight: 500;
+}
+
+.lang-form-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     color: var(--text-muted);
+    font-size: 12px;
+}
+
+.lang-form-label .submenu-arrow {
+    width: 12px;
+    height: 12px;
+}
+
+.lang-form-separator {
+    height: 1px;
+    background: var(--border-light);
+    margin: 4px 0;
+}
+
+/* Подменю с падежами */
+.lang-form-submenu {
+    position: fixed;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    min-width: 220px;
+    max-height: 400px;
+    overflow: hidden;
+    z-index: 10001;
+}
+
+.dark .lang-form-submenu {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.lang-form-submenu-inner {
+    padding: 8px 0;
+    max-height: 380px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
+}
+
+.lang-form-submenu-inner::-webkit-scrollbar {
+    width: 6px;
+}
+
+.lang-form-submenu-inner::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 8px 0;
+}
+
+.lang-form-submenu-inner::-webkit-scrollbar-thumb {
+    background: rgba(150, 150, 150, 0.3);
+    border-radius: 3px;
+}
+
+.lang-form-submenu-inner::-webkit-scrollbar-thumb:hover {
+    background: rgba(150, 150, 150, 0.5);
+}
+
+.dark .lang-form-submenu-inner {
+    scrollbar-color: rgba(200, 200, 200, 0.25) transparent;
+}
+
+.dark .lang-form-submenu-inner::-webkit-scrollbar-thumb {
+    background: rgba(200, 200, 200, 0.25);
+}
+
+.dark .lang-form-submenu-inner::-webkit-scrollbar-thumb:hover {
+    background: rgba(200, 200, 200, 0.4);
+}
+
+.lang-form-submenu-header {
+    padding: 8px 16px 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    margin-left: 6px;
+    margin-right: 6px;
+}
+
+.lang-form-submenu .lang-form-option {
+    padding: 8px 16px;
+    margin-left: 6px;
+    margin-right: 6px;
+    border-radius: 8px;
+}
+
+.lang-form-submenu .lang-form-option:hover {
+    background: var(--bg-hover);
+}
+
+.lang-form-submenu .lang-form-label {
+    font-size: 11px;
+    opacity: 0.7;
 }
 
 /* Тело блока */
@@ -2989,14 +3538,6 @@ header .flex {
     transform: scale(1.1);
 }
 
-/* Временная линия при создании связи */
-.workflow-temp-line {
-    stroke: var(--claude-primary);
-    stroke-width: 2;
-    stroke-dasharray: 5,5;
-    pointer-events: none;
-}
-
 /* Модальное окно редактирования workflow */
 #workflow-edit-modal .modal-content input,
 #workflow-edit-modal .modal-content textarea {
@@ -3094,10 +3635,6 @@ header .flex {
 /* ═══════════════════════════════════════════════════════════════════════════
    GLOBAL ELEMENTS (previously Tailwind hardcodes)
    ═══════════════════════════════════════════════════════════════════════════ */
-.lang-dropdown {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-light);
-}
 
 .scroll-container {
     background: var(--bg-primary);

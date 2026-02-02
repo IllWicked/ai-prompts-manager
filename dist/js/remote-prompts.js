@@ -159,11 +159,14 @@ async function checkForPromptsUpdate(showModal = false) {
             newTabs.push({ id: tabId, name: remoteInfo.name, version: remoteInfo.version });
         } else if (remoteInfo.version !== localVersion) {
             // Обновлённая вкладка (версии отличаются)
+            // Проверяем был ли флаг userModified (пользователь изменял вкладку)
+            const isUserModified = localTab.userModified === true;
             updatedTabs.push({ 
                 id: tabId, 
                 name: remoteInfo.name, 
                 oldVersion: localVersion,
-                newVersion: remoteInfo.version 
+                newVersion: remoteInfo.version,
+                userModified: isUserModified
             });
         }
     }
@@ -208,7 +211,6 @@ function convertRemoteTabToAppFormat(tabData, version = null) {
     return {
         id: tabInfo.id,
         name: tabInfo.name,
-        order: tabInfo.order,
         version: version || tabInfo.version || '1.0.0',
         items: items.map(item => {
             // Копируем все поля item как есть
@@ -289,8 +291,7 @@ async function applyPromptsUpdate(tabs, remoteManifest, isNewTabs = false) {
         
         // Сохраняем workflow данные (всегда перезаписываем при обновлении)
         if (tabData.workflow) {
-            const workflowKey = `workflow-${tabId}`;
-            localStorage.setItem(workflowKey, JSON.stringify(tabData.workflow));
+            localStorage.setItem(STORAGE_KEYS.workflow(tabId), JSON.stringify(tabData.workflow));
         }
         
         updated.push(tabId);
@@ -360,9 +361,11 @@ function showPromptsUpdateAvailable(newTabs, updatedTabs, releaseNotes = '') {
     if (newTabs.length > 0) {
         listHtml += '<div class="mb-2"><span class="text-xs font-medium text-green-600">Новые вкладки:</span></div>';
         newTabs.forEach(tab => {
+            // Escape tab.name для защиты от XSS
+            const safeName = typeof escapeHtml === 'function' ? escapeHtml(tab.name) : tab.name;
             listHtml += `<div class="flex items-center gap-2 mb-1">
                 <span class="text-green-500">+</span>
-                <span>${tab.name}</span>
+                <span>${safeName}</span>
                 <span class="text-xs text-gray-400">v${tab.version}</span>
             </div>`;
         });
@@ -370,13 +373,28 @@ function showPromptsUpdateAvailable(newTabs, updatedTabs, releaseNotes = '') {
     if (updatedTabs.length > 0) {
         if (newTabs.length > 0) listHtml += '<div class="mt-3"></div>';
         listHtml += '<div class="mb-2"><span class="text-xs font-medium text-blue-600">Обновления:</span></div>';
+        
+        // Проверяем есть ли изменённые пользователем вкладки
+        const modifiedTabs = updatedTabs.filter(t => t.userModified);
+        
         updatedTabs.forEach(tab => {
+            const warningIcon = tab.userModified ? '<span class="text-yellow-500 ml-1" title="Вкладка была изменена">⚠️</span>' : '';
+            // Escape tab.name для защиты от XSS (defence-in-depth, данные от сервера)
+            const safeName = typeof escapeHtml === 'function' ? escapeHtml(tab.name) : tab.name;
             listHtml += `<div class="flex items-center gap-2 mb-1">
                 <span class="text-blue-500">↑</span>
-                <span>${tab.name}</span>
+                <span>${safeName}${warningIcon}</span>
                 <span class="text-xs text-gray-400">v${tab.oldVersion} → v${tab.newVersion}</span>
             </div>`;
         });
+        
+        // Если есть изменённые вкладки, показываем предупреждение
+        if (modifiedTabs.length > 0) {
+            listHtml += `<div class="mt-3 p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded text-xs text-yellow-700 dark:text-yellow-300">
+                <strong>⚠️ Внимание:</strong> ${modifiedTabs.length} вкладка(и) с пометкой ⚠️ были изменены вами. 
+                При обновлении ваши изменения будут потеряны.
+            </div>`;
+        }
     }
     if (listEl) listEl.innerHTML = listHtml;
     

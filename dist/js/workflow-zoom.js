@@ -11,6 +11,8 @@
  *   - getWorkflowContainer(), getWorkflowCanvas(), getWorkflowWrapper(), getZoomIndicator() (DOM getters)
  *   - selectedNodes, clearNodeSelection() (из index.html)
  * 
+ * @requires config.js (STORAGE_KEYS)
+ * 
  * Экспортирует (глобально):
  *   - adjustWorkflowScale(resetScroll)
  *   - calculateContentBounds()
@@ -202,7 +204,7 @@ function setupWorkflowZoom() {
                 
                 // Обновляем zoom
                 workflowZoom = roundedZoom;
-                localStorage.setItem('workflowZoom', workflowZoom);
+                localStorage.setItem(STORAGE_KEYS.WORKFLOW_ZOOM, workflowZoom);
                 canvas.style.transform = `scale(${workflowZoom})`;
                 
                 // Обновляем индикатор
@@ -417,3 +419,7 @@ function scrollToBlocks() {
     container.scrollLeft = Math.max(0, scrollX);
     container.scrollTop = scrollY;
 }
+
+// Экспорт
+window.adjustWorkflowScale = adjustWorkflowScale;
+window.scrollToBlocks = scrollToBlocks;

@@ -1,1 +1,31 @@
+# Скрываем код из статистики GitHub
 * linguist-vendored
+
+# Нормализация переносов строк
+* text=auto
+
+# Бинарные файлы
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.woff binary
+*.woff2 binary
+
+# Принудительно LF для скриптов
+*.sh text eol=lf
+*.py text eol=lf
+
+# Принудительно CRLF для Windows batch
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Rust
+*.rs text diff=rust
+
+# JavaScript/HTML/CSS
+*.js text
+*.html text
+*.css text
+*.json text

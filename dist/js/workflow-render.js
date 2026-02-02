@@ -369,7 +369,7 @@ function createWorkflowNode(block, index) {
         <button class="collapsed-files-btn" data-block-id="${blockId}" title="${filesCount > 0 ? 'Очистить файлы' : 'Прикрепить файлы'}">
             ${filesCount > 0 
                 ? `<span class="files-count">${filesCount}</span>` 
-                : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>`
+                : SVG_ICONS.plus18
             }
         </button>
     ` : '';
@@ -525,7 +525,7 @@ function createWorkflowNode(block, index) {
         const attachBtn = document.createElement('button');
         attachBtn.className = 'workflow-attach-btn';
         attachBtn.title = 'Прикрепить файлы';
-        attachBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>`;
+        attachBtn.innerHTML = SVG_ICONS.plus18;
         attachBtn.onclick = (e) => {
             e.stopPropagation();
             attachFilesToBlock(blockId);
@@ -618,9 +618,7 @@ function createWorkflowNode(block, index) {
         addAttachBtn.className = 'workflow-attachments-add';
         addAttachBtn.innerHTML = `
             <div class="flex items-center gap-2 flex-1">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
+                ${SVG_ICONS.plus18}
                 <span>Добавить файлы</span>
             </div>
         `;
@@ -684,7 +682,7 @@ function createWorkflowInstruction(block, index) {
                            data-block-number="${blockNumber}"
                            data-block-id="${block.id}"
                            placeholder="Текст инструкции"
-                           maxlength="34">
+                           maxlength="60">
                 </div>
                 <button class="workflow-instruction-config" data-block-number="${blockNumber}" title="Настроить поля">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -786,9 +784,7 @@ function createWorkflowInstruction(block, index) {
         addBtn.className = 'workflow-instruction-add';
         addBtn.innerHTML = `
             <div class="flex items-center gap-2 flex-1">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
+                ${SVG_ICONS.plus18}
                 <span>Добавить инструкцию</span>
             </div>
         `;
@@ -1307,6 +1303,17 @@ function deleteWorkflowBlock(index) {
             saveBlockScripts();
         }
         
+        // Удаляем из blockAutomation
+        if (blockAutomation[blockId]) {
+            delete blockAutomation[blockId];
+            saveBlockAutomation();
+        }
+        
+        // Удаляем из blockAttachments (runtime only)
+        if (blockAttachments[blockId]) {
+            delete blockAttachments[blockId];
+        }
+        
         // Сохраняем
         const allTabs = getAllTabs();
         allTabs[currentTab].items = items;
@@ -1337,3 +1344,10 @@ function saveBlockContent(blockId, content) {
         saveAllTabs(allTabs);
     }
 }
+
+// Экспорт
+window.initWorkflow = initWorkflow;
+window.renderWorkflow = renderWorkflow;
+window.saveBlockContent = saveBlockContent;
+window.editWorkflowNode = editWorkflowNode;
+window.deleteWorkflowBlock = deleteWorkflowBlock;

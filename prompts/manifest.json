@@ -15,11 +15,6 @@
       "version": "1.0.1",
       "order": 2
     },
-    "bet-sportwetten": {
-      "name": "BET-SPORTWETTEN",
-      "version": "1.0.2",
-      "order": 6
-    },
     "gamble-test": {
       "name": "GAMBLE-TEST",
       "version": "1.0.1",

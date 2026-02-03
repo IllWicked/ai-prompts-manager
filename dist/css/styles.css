@@ -907,15 +907,19 @@ body {
 .tab-group-content {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.2s ease;
+    background: var(--bg-inset);
+    border-radius: 8px;
+    margin: 0 6px;
+    padding: 0;
+    opacity: 0;
+    transition: max-height 0.2s ease, opacity 0.15s ease, padding 0.2s ease, margin 0.2s ease;
 }
 
 .tab-group-content.expanded {
     max-height: 500px; /* Достаточно для любого количества вкладок */
-    background: var(--bg-inset);
-    border-radius: 8px;
     margin: 4px 6px;
     padding: 4px 0;
+    opacity: 1;
 }
 
 /* Пункт вкладки */

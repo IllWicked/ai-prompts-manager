@@ -1,10 +1,5 @@
 {
   "tabs": {
-    "bet-clusters": {
-      "name": "BET-CLUSTERS",
-      "version": "1.0.2",
-      "order": 2
-    },
     "bet-linkbuilding": {
       "name": "BET-LINKBUILDING",
       "version": "1.0.3",

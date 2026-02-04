@@ -1,16 +1,16 @@
 {
   "version": 2,
-  "exportDate": "2026-02-02T14:38:48.560Z",
+  "exportDate": "2026-02-04T08:42:58.478Z",
   "tab": {
     "id": "gamble-test",
     "name": "GAMBLE-TEST",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "items": [
       {
         "id": "item_1769876977067_my28ffv1l",
         "type": "block",
         "title": "Подготовка",
-        "content": "1. Задача\nСобрать данные и составить контент-план для SEO-лендинга о Example Casino.\nGEO: Швейцария.\nАудитория: франкоязычная.\n\n2. Источники и анализ\nОфициальный сайт: example.com.\nОтзывы: Trustpilot, Askgamblers — выделить преимущества, жалобы, уникальные особенности.\nКонкуренты: ТОП-5 казино в GEO.\n\n3. Данные для сбора\nЛицензия и регулятор (название, номер).\n\n4. Структура создаваемой страницы\nH1 с USP и гео-привязкой.\nТриггеры: регистрация, ограниченные предложения, отзывы, гарантии безопасности.\n\nПорядок секций:\n— Фиксированное начало: hero-section.\n— Середина (перемешать): welcome-pack, popular-slots, benefits, casino-review, sports-betting, how-to-deposit, bonuses, games-showcase, banner-welcome-offer, registration-steps, testimonials, providers, payment-methods.\n— Фиксированный конец: faq-section, cta-section.\n\nДополнение к содержанию секций: введение, преимущества, обзор казино (лицензия, софт), игры и слоты, бонусы, live-казино, ставки на спорт, мобильная версия, VIP-программа, методы оплаты, поддержка, вердикт.\n\nМеню: 5–8 ключевых секций в порядке появления.\n\n5. SEO-данные для статьи\nКлючи: example\nLSI: example\n\n6. Результат\nСохрани как content-plan.md.",
+        "content": "1. Задача\nСобрать данные и составить контент-план для SEO-лендинга о Example Casino.\nGEO: Швейцария.\nАудитория: франкоязычная.\n\n2. Источники и анализ\nОфициальный сайт: example.com.\nОтзывы: Trustpilot, Askgamblers — выделить преимущества, жалобы, уникальные особенности.\nКонкуренты: ТОП-5 казино в GEO.\n\n3. Данные для сбора\nЛицензия и регулятор (название, номер).\n\n4. Структура создаваемой страницы\nH1 с USP и гео-привязкой.\nТриггеры: регистрация, ограниченные предложения, отзывы, гарантии безопасности.\n\nПорядок секций:\n— Фиксированное начало: hero-section.\n— Середина (перемешать): welcome-pack, popular-slots, benefits, casino-review, sports-betting, how-to-deposit, bonuses, games-showcase, banner-welcome-offer, registration-steps, testimonials, providers, payment-methods.\n— Фиксированный конец: faq-section, cta-section.\n\nДополнение к содержанию секций: введение, преимущества, обзор казино (лицензия, софт), игры и слоты, бонусы, live-казино, ставки на спорт, мобильная версия, VIP-программа, методы оплаты, поддержка, вердикт.\n\nМеню: 5–8 ключевых секций в порядке появления.\n\n5. SEO-данные для статьи\nСохраняй диакритику и написание.\nКлючи: example\nLSI: example\n\n6. Результат\nСохрани как content-plan.md.",
         "instruction": {
           "type": "input",
           "icon": "info",
@@ -119,8 +119,7 @@
         ],
         "collapsed": true
       }
-    ],
-    "userModified": true
+    ]
   },
   "workflow": {
     "positions": {

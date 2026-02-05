@@ -13,14 +13,19 @@
     "bet-pillar-default": {
       "name": "BET-PILLAR-DEFAULT",
       "version": "1.0.1",
-      "order": 5
+      "order": 4
     },
     "bet-addcl": {
       "name": "BET-ADDCL",
       "version": "1.0.0",
       "order": 2
+    },
+    "gamble-mirror": {
+      "name": "GAMBLE-MIRROR",
+      "version": "1.0.0",
+      "order": 5
     }
   },
-  "release_notes": "ЧТО НОВОГО:\n- Новый пайплайн LinkBuilding\n- Новый пайплайн Casino (В тестовом режиме)",
-  "updated": "2026-02-04"
+  "release_notes": "ЧТО НОВОГО:\n- Запуск STREAM 3: GAMBLE-MIRROR",
+  "updated": "2026-02-05"
 }

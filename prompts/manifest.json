@@ -10,11 +10,6 @@
       "version": "1.0.2",
       "order": 3
     },
-    "gamble-test": {
-      "name": "GAMBLE-TEST",
-      "version": "1.0.2",
-      "order": 4
-    },
     "bet-pillar-default": {
       "name": "BET-PILLAR-DEFAULT",
       "version": "1.0.1",

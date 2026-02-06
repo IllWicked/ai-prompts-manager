@@ -1186,11 +1186,19 @@ function initApp() {
     });
     
     // 9. Асинхронная инициализация
-    (async () => {
+    const initPromise = (async () => {
         initThemeListener();
         
         await initializePersistence();
         await initializeDefaultTabs();
+        
+        // Перезагружаем состояние блоков из localStorage (страховка после reset + remote load)
+        loadBlockScripts();
+        loadCollapsedBlocks();
+        loadBlockAutomation();
+        
+        // Fallback: если хранилища пустые, но items содержат данные — синхронизируем
+        syncBlockStatesFromItems();
         
         // Проверка currentTab
         const allTabs = getAllTabs();
@@ -1251,8 +1259,12 @@ function initApp() {
         initPromptsUpdateHandlers();
     }
     
-    // 13. Фоновая проверка обновлений
+    // 13. Фоновая проверка обновлений (ждём завершения инициализации)
     setTimeout(async () => {
+        // Дождаться завершения async инициализации (шаг 9)
+        // чтобы не было гонки между initializeRemotePrompts и autoCheckPromptsUpdates
+        await initPromise;
+        
         const settings = getSettings();
         
         if (settings.autoUpdate) {

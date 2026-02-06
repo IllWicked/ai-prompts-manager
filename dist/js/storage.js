@@ -182,31 +182,23 @@ function getAllTabs() {
                     return _tabsCache;
                 }
                 
-                // Если восстановить не удалось - инициализируем заново
-                
-                initializeDefaultTabs();
-                _tabsCache = JSON.parse(localStorage.getItem(STORAGE_KEYS.TABS) || '{}');
+                // Восстановить не удалось — возвращаем пустой объект
+                // (initializeDefaultTabs вызывается явно из initApp)
+                _tabsCache = {};
                 return _tabsCache;
             }
             
             _tabsCache = parsed;
             return _tabsCache;
         }
-        // Если нет данных - инициализируем из дефолтной конфигурации
-        initializeDefaultTabs();
-        _tabsCache = JSON.parse(localStorage.getItem(STORAGE_KEYS.TABS) || '{}');
+        // Нет данных — возвращаем пустой объект
+        // (initializeDefaultTabs вызывается явно из initApp)
+        _tabsCache = {};
         return _tabsCache;
     } catch (e) {
         
-        // При ошибке парсинга пытаемся инициализировать заново
-        try {
-            initializeDefaultTabs();
-            _tabsCache = JSON.parse(localStorage.getItem(STORAGE_KEYS.TABS) || '{}');
-            return _tabsCache;
-        } catch (e2) {
-            
-            return {};
-        }
+        _tabsCache = {};
+        return _tabsCache;
     }
 }
 

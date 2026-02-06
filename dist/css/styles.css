@@ -800,6 +800,7 @@ body {
     max-height: 200px; /* ~5 пунктов по 40px */
     overflow-y: auto;
     padding-top: 6px;
+    padding-bottom: 6px;
     scrollbar-width: thin;
     scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
 }

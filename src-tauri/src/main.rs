@@ -108,8 +108,12 @@ fn main() {
             // Запускаем фоновые задачи
             let app_handle = app.handle().clone();
             std::thread::spawn(move || {
+                // Сначала ресайзим UI под реальный размер окна
+                std::thread::sleep(std::time::Duration::from_millis(50));
+                let _ = webview::resize_webviews(&app_handle);
+                
                 // Создаём все три Claude webview при старте
-                std::thread::sleep(std::time::Duration::from_millis(500));
+                std::thread::sleep(std::time::Duration::from_millis(450));
                 let _ = webview::ensure_claude_webview(&app_handle, 1, None);
                 
                 std::thread::sleep(std::time::Duration::from_millis(200));

@@ -39,7 +39,7 @@ python project-manager.py
 ╔═══════════════════════════════════════════════════════════════╗
 ║              PROJECT MANAGER - AI Prompts Manager              ║
 ╠═══════════════════════════════════════════════════════════════╣
-║  Приложение: v4.2.0                                           ║
+║  Приложение: v4.2.5                                           ║
 ╚═══════════════════════════════════════════════════════════════╝
 
   📁 JSON файлов к пушу: 2
@@ -136,15 +136,17 @@ python project-manager.py
 
 | Пункт | Описание |
 |-------|----------|
-| **Изменить версию** | Обновить версию в tauri.conf.json и Cargo.toml |
+| **Изменить версию** | Обновить версию в tauri.conf.json, Cargo.toml, index.html, docs/INDEX.md |
 | **Редактировать Release Notes** | Открыть RELEASE_NOTES.txt в редакторе |
 | **Создать релиз** | Полный цикл: commit → tag → push |
 
 ### Изменение версии
 
-Обновляет версию в двух файлах:
+Обновляет версию в четырёх файлах:
 - `src-tauri/tauri.conf.json` → `"version": "X.Y.Z"`
 - `src-tauri/Cargo.toml` → `version = "X.Y.Z"`
+- `dist/index.html` → `<span id="settings-version">` + ASCII-баннер
+- `docs/INDEX.md` → `**Версия:** X.Y.Z`
 
 ### Создание релиза
 
@@ -153,12 +155,12 @@ python project-manager.py
                     🚀 СОЗДАНИЕ РЕЛИЗА
   ═══════════════════════════════════════════════════════
 
-  Версия приложения: v4.2.0
-  Будет создан тег: v4.2.0
+  Версия приложения: v4.2.5
+  Будет создан тег: v4.2.5
 
   Release notes:
   ─────────────────────────
-  Версия 4.2.0
+  Версия 4.2.5
   - Улучшена документация
   ...
 
@@ -166,7 +168,7 @@ python project-manager.py
   Это действие выполнит:
     1. git add -A
     2. git commit
-    3. git tag v4.2.0
+    3. git tag v4.2.5
     4. git push
     5. git push --tags
 
@@ -275,6 +277,8 @@ JSON-файлы должны лежать **в папке `project-manager/`** (
 Скрипт ищет паттерны:
 - `"version": "X.Y.Z"` в tauri.conf.json
 - `version = "X.Y.Z"` в Cargo.toml
+- `<span id="settings-version">X.Y.Z</span>` в index.html
+- `**Версия:** X.Y.Z` в docs/INDEX.md
 
 Если формат отличается — версия не обновится.
 

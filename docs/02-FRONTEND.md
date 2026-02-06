@@ -28,9 +28,9 @@
 | Workflow | workflow-state.js, workflow-grid.js, workflow-zoom.js, workflow-render.js, workflow-interactions.js, connections.js | ~40 |
 | Claude | claude-state.js, claude-ui.js, claude-api.js | ~45 (5+5+35) |
 | Инициализация | init.js | ~30 |
-| **Всего** | **35 файлов** | **~290** |
+| **Всего** | **35 файлов** | **~289** |
 
-> **Примечание:** Число ~290 включает все функции (публичные API + внутренние helpers). Публичных API функций около 100 — см. [INDEX-HTML-API.md](frontend/INDEX-HTML-API.md).
+> **Примечание:** Число ~289 включает все функции (публичные API + внутренние helpers). Публичных API функций около 94 — см. [INDEX-HTML-API.md](frontend/INDEX-HTML-API.md).
 
 ## Быстрый доступ
 
@@ -39,9 +39,6 @@
 ```javascript
 // Создать вкладку
 const newTab = createNewTab('My Prompts');
-
-// Добавить блок
-addBlockToTab('my-prompts');
 
 // Получить блоки
 const blocks = getTabBlocks('my-prompts');
@@ -197,11 +194,11 @@ graph TD
 <script src="js/toast.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/modals.js"></script>
-<script src="js/dropdown.js"></script>
 
 <!-- 2. UI компоненты -->
 <script src="js/undo.js"></script>
 <script src="js/tabs.js"></script>
+<script src="js/dropdown.js"></script>
 <script src="js/tab-selector.js"></script>
 <script src="js/blocks.js"></script>
 <script src="js/block-ui.js"></script>

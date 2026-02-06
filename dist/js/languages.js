@@ -198,12 +198,14 @@ const LANGUAGE_COUNTRIES = {
         { code: 'gb', name: 'Великобритания', locale: 'en-GB' },
         { code: 'ca', name: 'Канада', locale: 'en-CA' },
         { code: 'au', name: 'Австралия', locale: 'en-AU' },
-        { code: 'nz', name: 'Новая Зеландия', locale: 'en-NZ' }
+        { code: 'nz', name: 'Новая Зеландия', locale: 'en-NZ' },
+        { code: 'ie', name: 'Ирландия', locale: 'en-IE' }
     ],
     de: [
         { code: 'de', name: 'Германия', locale: 'de-DE' },
         { code: 'at', name: 'Австрия', locale: 'de-AT' },
-        { code: 'ch', name: 'Швейцария', locale: 'de-CH' }
+        { code: 'ch', name: 'Швейцария', locale: 'de-CH' },
+        { code: 'be', name: 'Бельгия', locale: 'de-BE' }
     ],
     fr: [
         { code: 'fr', name: 'Франция', locale: 'fr-FR' },
@@ -491,21 +493,6 @@ function findLanguageByWord(word) {
     return null;
 }
 
-/**
- * Получить все формы для языка (для поиска в тексте)
- * @param {string} langCode - код языка
- * @returns {string[]} - все формы lang + native
- */
-function getAllLanguageForms(langCode) {
-    const langData = LANGUAGES[langCode];
-    if (!langData) return [];
-    
-    return [
-        ...getAllWordForms(langData.lang),
-        ...getAllWordForms(langData.native)
-    ];
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // МЕТКИ ДЛЯ UI (формы для меню вставки)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -525,16 +512,6 @@ const GENDER_LABELS = {
     'n': 'ср.р.',
     'pl': 'мн.ч.'
 };
-
-/**
- * Получить человекочитаемую метку для формы
- * @param {string} formKey - ключ формы (nom.m, gen.f, etc.)
- * @returns {string}
- */
-function getFormLabel(formKey) {
-    const [caseName, gender] = formKey.split('.');
-    return `${CASE_LABELS[caseName]} ${GENDER_LABELS[gender]}`;
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ОБРАТНАЯ СОВМЕСТИМОСТЬ
@@ -570,5 +547,3 @@ window.getLanguageWithCountry = getLanguageWithCountry;
 window.hasCountrySelection = hasCountrySelection;
 window.getCountriesForLanguage = getCountriesForLanguage;
 window.findLanguageByWord = findLanguageByWord;
-window.getAllLanguageForms = getAllLanguageForms;
-window.getFormLabel = getFormLabel;

@@ -2,7 +2,7 @@
 
 [← Назад к Frontend](../02-FRONTEND.md)
 
-> **Примечание:** Три модуля Claude содержат в сумме **45 функций**: claude-state.js (5) + claude-ui.js (5) + claude-api.js (35).
+> **Примечание:** Три модуля Claude содержат в сумме **43 функции**: claude-state.js (5) + claude-ui.js (5) + claude-api.js (33).
 
 ## claude-state.js (5 функций)
 
@@ -28,9 +28,9 @@
 
 ---
 
-## claude-api.js (35 функций)
+## claude-api.js (33 функции)
 
-### Core (9 функций)
+### Core (7 функций)
 
 | Функция | Описание |
 |---------|----------|

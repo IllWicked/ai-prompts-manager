@@ -3,7 +3,7 @@
  * Функции для работы с localStorage, инициализации данных и сброса приложения
  * 
  * @requires config.js (STORAGE_KEYS, CURRENT_DATA_VERSION, DEFAULT_TAB)
- * @requires storage.js (getAllTabs, saveAllTabs)
+ * @requires storage.js (getAllTabs, saveAllTabs, setTabsCache)
  * @requires blocks.js (hasBlockScript, toggleBlockScript, collapsedBlocks, 
  *                      blockAutomation, saveCollapsedBlocks, saveBlockAutomation)
  * @requires utils.js (generateItemId, debounce, getAppVersion)
@@ -21,69 +21,6 @@
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
-// КОНВЕРТАЦИЯ ДАННЫХ
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Конвертируем старые массивы в структуру вкладок
- * @param {string} id - ID вкладки
- * @param {string} name - название вкладки
- * @param {number} order - порядок сортировки
- * @param {Array} blocks - массив блоков
- * @returns {Object} - структура вкладки
- */
-function convertToTabStructure(id, name, order, blocks) {
-    const items = [];
-    
-    blocks.forEach(b => {
-        // Добавляем блок (используем фиксированный ID если есть)
-        const block = {
-            type: 'block',
-            id: b.id || generateItemId(),
-            title: b.title,
-            content: b.content || '',
-            instruction: b.instruction ? b.instruction : (b.note ? { type: "info", text: b.note } : null)
-        };
-        
-        // Добавляем hasAttachments если есть
-        if (b.hasAttachments) {
-            block.hasAttachments = true;
-        }
-        
-        // Добавляем scripts в blockScripts если есть
-        if (b.scripts && b.scripts.length > 0) {
-            b.scripts.forEach(scriptKey => {
-                if (!hasBlockScript(block.id, scriptKey)) {
-                    toggleBlockScript(block.id, scriptKey);
-                }
-            });
-        }
-        
-        // Добавляем collapsed если есть
-        if (b.collapsed) {
-            collapsedBlocks[block.id] = true;
-        }
-        
-        // Добавляем automation если есть
-        if (b.automation) {
-            blockAutomation[block.id] = { ...b.automation };
-        }
-        
-        items.push(block);
-    });
-    
-    // Сохраняем collapsed и automation после обработки всех блоков
-    saveCollapsedBlocks();
-    saveBlockAutomation();
-    
-    return {
-        id,
-        name,
-        order,
-        items
-    };
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // ИНИЦИАЛИЗАЦИЯ ДАННЫХ
 // ═══════════════════════════════════════════════════════════════════════════
@@ -222,6 +159,9 @@ async function performReset(options = {}) {
     collapsedBlocks = {};
     blockScripts = {};
     blockAutomation = {};
+    
+    // Сбрасываем кэш вкладок (иначе getAllTabs() вернёт старые данные)
+    setTabsCache(null);
     
     // Сохраняем настройки перед сбросом
     const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
@@ -366,7 +306,6 @@ function loadPrompts(preserveScroll = null) {
 // ЭКСПОРТ
 // ═══════════════════════════════════════════════════════════════════════════
 
-window.convertToTabStructure = convertToTabStructure;
 window.initializeDefaultTabs = initializeDefaultTabs;
 window.getCurrentStorageKey = getCurrentStorageKey;
 window.saveToLocalStorage = saveToLocalStorage;

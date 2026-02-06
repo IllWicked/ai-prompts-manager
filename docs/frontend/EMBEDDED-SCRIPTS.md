@@ -159,9 +159,10 @@ const LANGUAGE_COUNTRIES = {
         { code: 'gb', name: 'Великобритания', locale: 'en-GB' },
         { code: 'ca', name: 'Канада', locale: 'en-CA' },
         { code: 'au', name: 'Австралия', locale: 'en-AU' },
-        { code: 'nz', name: 'Новая Зеландия', locale: 'en-NZ' }
+        { code: 'nz', name: 'Новая Зеландия', locale: 'en-NZ' },
+        { code: 'ie', name: 'Ирландия', locale: 'en-IE' }
     ],
-    de: [...],  // Германия, Австрия, Швейцария
+    de: [...],  // Германия, Австрия, Швейцария, Бельгия
     fr: [...],  // Франция, Канада, Швейцария, Бельгия
     nl: [...],  // Нидерланды, Бельгия
     pt: [...]   // Португалия, Бразилия
@@ -256,7 +257,6 @@ findLanguageByWord('английского');
 - `currentCountry` — текущая выбранная страна (глобальная переменная)
 - `getActiveLanguageData()` — получить данные языка с учётом текущей страны
 - `detectLanguageInText(text)` — определение языка по любой форме слова
-- `replaceLanguage(text, fromLang, toLang)` — замена с автоопределением падежа
 - `showLanguageFormMenu(textarea, anchorBtn)` — меню вставки форм с подменю падежей
 
 ### Меню вставки форм

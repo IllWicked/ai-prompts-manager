@@ -90,6 +90,10 @@ Object.defineProperty(window, 'isEditMode', {
     get() { return window.AppState.app.isEditMode; },
     set(v) { window.AppState.app.isEditMode = v; }
 });
+Object.defineProperty(window, 'isAdminMode', {
+    get() { return window.AppState.app.isAdminMode; },
+    set(v) { window.AppState.app.isAdminMode = v; }
+});
 Object.defineProperty(window, 'currentLanguage', {
     get() { return window.AppState.app.currentLanguage; },
     set(v) { window.AppState.app.currentLanguage = v; }
@@ -228,7 +232,6 @@ Object.defineProperty(window, 'updateScheduled', {
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Флаг для защиты выделения текста от сброса при mouseup вне элемента
-let isTextSelecting = false;
 window.isTextSelecting = false;
 
 /**
@@ -238,9 +241,7 @@ window.isTextSelecting = false;
 function initAdminMode() {
     const settings = typeof getSettings === 'function' ? getSettings() : {};
     const adminMode = settings.adminMode || false;
-    window.AppState.app.isAdminMode = adminMode;
-    // Для обратной совместимости
-    window.isAdminMode = adminMode;
+    window.isAdminMode = adminMode; // defineProperty синхронизирует AppState.app.isAdminMode
 }
 
 // Экспорт для использования в других модулях

@@ -131,7 +131,7 @@ function cacheManifest(manifest) {
 /**
  * Проверяет наличие обновлений промптов
  * @param {boolean} showModal - показать модалку с результатом
- * @returns {Promise<{hasUpdates: boolean, newTabs: string[], updatedTabs: string[]}>}
+ * @returns {Promise<{hasUpdates: boolean, newTabs: string[], updatedTabs: string[], removedTabs: string[]}>}
  */
 async function checkForPromptsUpdate(showModal = false) {
     const remoteManifest = await fetchRemoteManifest();
@@ -139,18 +139,20 @@ async function checkForPromptsUpdate(showModal = false) {
         if (showModal) {
             showPromptsUpdateError('Не удалось связаться с сервером');
         }
-        return { hasUpdates: false, newTabs: [], updatedTabs: [] };
+        return { hasUpdates: false, newTabs: [], updatedTabs: [], removedTabs: [] };
     }
     
     const cachedManifest = getCachedManifest();
     const newTabs = [];
     const updatedTabs = [];
+    const removedTabs = [];
     
     // Получаем реальные версии вкладок из приложения
     const localTabs = typeof getAllTabs === 'function' ? getAllTabs() : {};
+    const remoteTabs = remoteManifest.tabs || {};
     
     // Проверяем каждую вкладку в удалённом манифесте
-    for (const [tabId, remoteInfo] of Object.entries(remoteManifest.tabs || {})) {
+    for (const [tabId, remoteInfo] of Object.entries(remoteTabs)) {
         const localTab = localTabs[tabId];
         const localVersion = localTab?.version || '0.0.0';
         
@@ -171,26 +173,37 @@ async function checkForPromptsUpdate(showModal = false) {
         }
     }
     
-    const hasUpdates = newTabs.length > 0 || updatedTabs.length > 0;
+    // Обратная проверка: локальные remote-вкладки, которых НЕТ в манифесте → удалены
+    for (const [tabId, localTab] of Object.entries(localTabs)) {
+        // Только remote-вкладки (у них есть version), пропускаем пользовательские
+        if (!localTab.version) continue;
+        
+        if (!remoteTabs[tabId]) {
+            removedTabs.push({ id: tabId, name: localTab.name || tabId });
+        }
+    }
+    
+    const hasUpdates = newTabs.length > 0 || updatedTabs.length > 0 || removedTabs.length > 0;
     
     // Сохраняем результат для модалки
     lastPromptsCheck = {
         hasUpdates,
         newTabs,
         updatedTabs,
+        removedTabs,
         remoteManifest,
         releaseNotes: remoteManifest.release_notes || ''
     };
     
     if (showModal) {
         if (hasUpdates) {
-            showPromptsUpdateAvailable(newTabs, updatedTabs, remoteManifest.release_notes);
+            showPromptsUpdateAvailable(newTabs, updatedTabs, remoteManifest.release_notes, removedTabs);
         } else {
             showPromptsUpdateLatest();
         }
     }
     
-    return { hasUpdates, newTabs, updatedTabs, remoteManifest };
+    return { hasUpdates, newTabs, updatedTabs, removedTabs, remoteManifest };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -227,9 +240,10 @@ function convertRemoteTabToAppFormat(tabData, version = null) {
  * @param {Object[]} tabs - список вкладок для обновления [{id, ...}]
  * @param {Object} remoteManifest - удалённый манифест
  * @param {boolean} isNewTabs - это новые вкладки (не обновление)
+ * @param {boolean} skipReload - не вызывать loadPrompts/initTabSelector (при инициализации)
  * @returns {Promise<{success: boolean, updated: string[], failed: string[]}>}
  */
-async function applyPromptsUpdate(tabs, remoteManifest, isNewTabs = false) {
+async function applyPromptsUpdate(tabs, remoteManifest, isNewTabs = false, skipReload = false) {
     const updated = [];
     const failed = [];
     
@@ -316,16 +330,118 @@ async function applyPromptsUpdate(tabs, remoteManifest, isNewTabs = false) {
         // Обновляем кэшированный манифест
         cacheManifest(remoteManifest);
         
-        // Перезагружаем UI если есть функция
-        if (typeof loadPrompts === 'function') {
-            loadPrompts();
-        }
-        if (typeof initTabSelector === 'function') {
-            initTabSelector();
+        // Перезагружаем UI (пропускаем при инициализации — initApp вызовет сам)
+        if (!skipReload) {
+            if (typeof loadPrompts === 'function') {
+                loadPrompts();
+            }
+            if (typeof initTabSelector === 'function') {
+                initTabSelector();
+            }
         }
     }
     
     return { success: failed.length === 0, updated, failed };
+}
+
+/**
+ * Удаляет локальные remote-вкладки, которых больше нет в манифесте GitHub.
+ * Полная очистка: вкладка + workflow + collapsed + scripts + automation + промпт-данные.
+ * 
+ * @param {Object[]} removedTabs - список вкладок для удаления [{id, name}]
+ * @returns {{removed: string[], skipped: string[]}}
+ */
+function removeObsoleteTabs(removedTabs) {
+    if (!removedTabs || removedTabs.length === 0) return { removed: [], skipped: [] };
+    
+    const allTabs = typeof getAllTabs === 'function' ? getAllTabs() : {};
+    const removed = [];
+    const skipped = [];
+    
+    // Загружаем отдельные хранилища для cleanup
+    let collapsedBlocks = {};
+    let blockScripts = {};
+    let blockAutomation = {};
+    
+    try {
+        collapsedBlocks = JSON.parse(localStorage.getItem(STORAGE_KEYS.COLLAPSED_BLOCKS) || '{}');
+        blockScripts = JSON.parse(localStorage.getItem(STORAGE_KEYS.BLOCK_SCRIPTS) || '{}');
+        blockAutomation = JSON.parse(localStorage.getItem(STORAGE_KEYS.BLOCK_AUTOMATION) || '{}');
+    } catch (e) {
+        console.error('[RemotePrompts] Error loading block data for cleanup:', e);
+    }
+    
+    for (const tab of removedTabs) {
+        const tabId = tab.id;
+        const localTab = allTabs[tabId];
+        
+        if (!localTab) {
+            skipped.push(tabId);
+            continue;
+        }
+        
+        // Нельзя удалить последнюю вкладку
+        if (Object.keys(allTabs).length <= 1) {
+            console.warn('[RemotePrompts] Skipping removal of last tab:', tabId);
+            skipped.push(tabId);
+            continue;
+        }
+        
+        // Очищаем per-block данные
+        const tabItems = localTab.items || [];
+        for (const item of tabItems) {
+            if (!item.id) continue;
+            delete collapsedBlocks[item.id];
+            delete blockScripts[item.id];
+            delete blockAutomation[item.id];
+            // Runtime attachments
+            if (typeof blockAttachments !== 'undefined' && blockAttachments[item.id]) {
+                delete blockAttachments[item.id];
+            }
+        }
+        
+        // Очищаем undo history
+        if (typeof tabHistories !== 'undefined' && tabHistories[tabId]) {
+            delete tabHistories[tabId];
+        }
+        
+        // Удаляем localStorage ключи вкладки
+        localStorage.removeItem(STORAGE_KEYS.workflow(tabId));
+        localStorage.removeItem(STORAGE_KEYS.promptsData(tabId));
+        localStorage.removeItem(`ai-prompts-manager-${tabId}`);
+        
+        // Удаляем вкладку
+        delete allTabs[tabId];
+        removed.push(tabId);
+        
+        console.log(`[RemotePrompts] Removed obsolete tab: ${tabId} (${tab.name})`);
+    }
+    
+    if (removed.length > 0) {
+        // Если удалённая вкладка была текущей — переключаемся на первую доступную
+        if (typeof currentTab !== 'undefined' && !allTabs[currentTab]) {
+            const firstTabId = Object.keys(allTabs)[0];
+            if (firstTabId) {
+                currentTab = firstTabId;
+                window.currentTab = firstTabId;
+            }
+        }
+        
+        // Сохраняем всё
+        if (typeof saveAllTabs === 'function') {
+            saveAllTabs(allTabs, true);
+        }
+        localStorage.setItem(STORAGE_KEYS.COLLAPSED_BLOCKS, JSON.stringify(collapsedBlocks));
+        localStorage.setItem(STORAGE_KEYS.BLOCK_SCRIPTS, JSON.stringify(blockScripts));
+        localStorage.setItem(STORAGE_KEYS.BLOCK_AUTOMATION, JSON.stringify(blockAutomation));
+        
+        // Перезагружаем данные в память
+        if (typeof loadCollapsedBlocks === 'function') loadCollapsedBlocks();
+        if (typeof loadBlockScripts === 'function') loadBlockScripts();
+        if (typeof loadBlockAutomation === 'function') loadBlockAutomation();
+    }
+    
+    return { removed, skipped };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -335,7 +451,7 @@ async function applyPromptsUpdate(tabs, remoteManifest, isNewTabs = false) {
 /**
  * Показывает модалку "Обновление доступно"
  */
-function showPromptsUpdateAvailable(newTabs, updatedTabs, releaseNotes = '') {
+function showPromptsUpdateAvailable(newTabs, updatedTabs, releaseNotes = '', removedTabs = []) {
     if (typeof closeAllModals === 'function') closeAllModals();
     
     const modal = document.getElementById('prompts-update-modal');
@@ -361,7 +477,6 @@ function showPromptsUpdateAvailable(newTabs, updatedTabs, releaseNotes = '') {
     if (newTabs.length > 0) {
         listHtml += '<div class="mb-2"><span class="text-xs font-medium text-green-600">Новые вкладки:</span></div>';
         newTabs.forEach(tab => {
-            // Escape tab.name для защиты от XSS
             const safeName = typeof escapeHtml === 'function' ? escapeHtml(tab.name) : tab.name;
             listHtml += `<div class="flex items-center gap-2 mb-1">
                 <span class="text-green-500">+</span>
@@ -374,12 +489,10 @@ function showPromptsUpdateAvailable(newTabs, updatedTabs, releaseNotes = '') {
         if (newTabs.length > 0) listHtml += '<div class="mt-3"></div>';
         listHtml += '<div class="mb-2"><span class="text-xs font-medium text-blue-600">Обновления:</span></div>';
         
-        // Проверяем есть ли изменённые пользователем вкладки
         const modifiedTabs = updatedTabs.filter(t => t.userModified);
         
         updatedTabs.forEach(tab => {
             const warningIcon = tab.userModified ? '<span class="text-yellow-500 ml-1" title="Вкладка была изменена">⚠️</span>' : '';
-            // Escape tab.name для защиты от XSS (defence-in-depth, данные от сервера)
             const safeName = typeof escapeHtml === 'function' ? escapeHtml(tab.name) : tab.name;
             listHtml += `<div class="flex items-center gap-2 mb-1">
                 <span class="text-blue-500">↑</span>
@@ -388,13 +501,23 @@ function showPromptsUpdateAvailable(newTabs, updatedTabs, releaseNotes = '') {
             </div>`;
         });
         
-        // Если есть изменённые вкладки, показываем предупреждение
         if (modifiedTabs.length > 0) {
             listHtml += `<div class="mt-3 p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded text-xs text-yellow-700 dark:text-yellow-300">
                 <strong>⚠️ Внимание:</strong> ${modifiedTabs.length} вкладка(и) с пометкой ⚠️ были изменены вами. 
                 При обновлении ваши изменения будут потеряны.
             </div>`;
         }
+    }
+    if (removedTabs.length > 0) {
+        if (newTabs.length > 0 || updatedTabs.length > 0) listHtml += '<div class="mt-3"></div>';
+        listHtml += '<div class="mb-2"><span class="text-xs font-medium text-red-600">Будут удалены:</span></div>';
+        removedTabs.forEach(tab => {
+            const safeName = typeof escapeHtml === 'function' ? escapeHtml(tab.name) : tab.name;
+            listHtml += `<div class="flex items-center gap-2 mb-1">
+                <span class="text-red-500">−</span>
+                <span>${safeName}</span>
+            </div>`;
+        });
     }
     if (listEl) listEl.innerHTML = listHtml;
     
@@ -462,10 +585,10 @@ function hidePromptsUpdateModal() {
 async function applyPendingPromptsUpdate() {
     if (!lastPromptsCheck || !lastPromptsCheck.hasUpdates) return;
     
-    const { newTabs, updatedTabs, remoteManifest, releaseNotes } = lastPromptsCheck;
+    const { newTabs, updatedTabs, removedTabs = [], remoteManifest, releaseNotes } = lastPromptsCheck;
     const allTabs = [...newTabs, ...updatedTabs];
     
-    if (allTabs.length === 0) return;
+    if (allTabs.length === 0 && removedTabs.length === 0) return;
     
     // Показываем индикатор загрузки
     const applyBtn = document.getElementById('prompts-update-apply-btn');
@@ -475,13 +598,24 @@ async function applyPendingPromptsUpdate() {
     }
     
     try {
-        const result = await applyPromptsUpdate(allTabs, remoteManifest, newTabs.length > 0);
+        // Удаляем устаревшие вкладки
+        if (removedTabs.length > 0) {
+            removeObsoleteTabs(removedTabs);
+        }
+        
+        // Применяем обновления/добавления
+        let result = { updated: [], failed: [] };
+        if (allTabs.length > 0) {
+            result = await applyPromptsUpdate(allTabs, remoteManifest, newTabs.length > 0);
+        }
+        
+        // Обновляем кэш манифеста
+        cacheManifest(remoteManifest);
         
         hidePromptsUpdateModal();
         
-        if (result.updated.length > 0) {
-            // Показываем модалку "Что нового" после обновления
-            showPromptsReleaseNotes(newTabs, updatedTabs, releaseNotes);
+        if (result.updated.length > 0 || removedTabs.length > 0) {
+            showPromptsReleaseNotes(newTabs, updatedTabs, releaseNotes, removedTabs);
         }
         if (result.failed.length > 0) {
             if (typeof showToast === 'function') {
@@ -521,8 +655,8 @@ async function initializeRemotePrompts() {
         version: manifest.tabs[t.id].version
     }));
     
-    // Загружаем все вкладки
-    const result = await applyPromptsUpdate(tabIds, manifest, true);
+    // Загружаем все вкладки (skipReload=true — initApp вызовет loadPrompts сам)
+    const result = await applyPromptsUpdate(tabIds, manifest, true, true);
     
     if (result.success) {
         return { 
@@ -548,18 +682,30 @@ async function autoCheckPromptsUpdates() {
         if (result.hasUpdates) {
             const releaseNotes = result.remoteManifest.release_notes || '';
             
+            // Удаляем вкладки, которых больше нет в манифесте
+            if (result.removedTabs.length > 0) {
+                removeObsoleteTabs(result.removedTabs);
+            }
+            
             // Новые вкладки добавляем автоматически
             if (result.newTabs.length > 0) {
-                await applyPromptsUpdate(result.newTabs, result.remoteManifest, true);
+                await applyPromptsUpdate(result.newTabs, result.remoteManifest, true, true);
             }
             
             // Обновления существующих вкладок - тоже автоматически
             if (result.updatedTabs.length > 0) {
-                await applyPromptsUpdate(result.updatedTabs, result.remoteManifest, false);
+                await applyPromptsUpdate(result.updatedTabs, result.remoteManifest, false, true);
             }
             
+            // Обновляем кэш манифеста (чтобы removedTabs не детектились повторно)
+            cacheManifest(result.remoteManifest);
+            
+            // Перезагружаем UI после всех изменений
+            if (typeof loadPrompts === 'function') loadPrompts();
+            if (typeof initTabSelector === 'function') initTabSelector();
+            
             // Показываем модалку "Что нового" после обновления
-            showPromptsReleaseNotes(result.newTabs, result.updatedTabs, releaseNotes);
+            showPromptsReleaseNotes(result.newTabs, result.updatedTabs, releaseNotes, result.removedTabs);
         }
     } catch (e) {
         console.error('[RemotePrompts] Auto-check failed:', e);
@@ -569,7 +715,7 @@ async function autoCheckPromptsUpdates() {
 /**
  * Показывает модалку "Что нового" после автоматического обновления
  */
-function showPromptsReleaseNotes(newTabs, updatedTabs, releaseNotes = '') {
+function showPromptsReleaseNotes(newTabs, updatedTabs, releaseNotes = '', removedTabs = []) {
     if (typeof closeAllModals === 'function') closeAllModals();
     
     const modal = document.getElementById('prompts-update-modal');
@@ -610,6 +756,17 @@ function showPromptsReleaseNotes(newTabs, updatedTabs, releaseNotes = '') {
                 <span class="text-blue-500">↑</span>
                 <span>${tab.name}</span>
                 <span class="text-xs text-gray-400">v${tab.oldVersion || tab.version} → v${tab.newVersion || tab.version}</span>
+            </div>`;
+        });
+    }
+    if (removedTabs.length > 0) {
+        if (newTabs.length > 0 || updatedTabs.length > 0) listHtml += '<div class="mt-3"></div>';
+        listHtml += '<div class="mb-2"><span class="text-xs font-medium text-red-600">Удалены:</span></div>';
+        removedTabs.forEach(tab => {
+            const safeName = typeof escapeHtml === 'function' ? escapeHtml(tab.name) : tab.name;
+            listHtml += `<div class="flex items-center gap-2 mb-1">
+                <span class="text-red-500">−</span>
+                <span>${safeName}</span>
             </div>`;
         });
     }
@@ -674,6 +831,7 @@ window.fetchRemoteManifest = fetchRemoteManifest;
 window.fetchRemoteTab = fetchRemoteTab;
 window.checkForPromptsUpdate = checkForPromptsUpdate;
 window.applyPromptsUpdate = applyPromptsUpdate;
+window.removeObsoleteTabs = removeObsoleteTabs;
 window.initializeRemotePrompts = initializeRemotePrompts;
 window.autoCheckPromptsUpdates = autoCheckPromptsUpdates;
 window.initPromptsUpdateHandlers = initPromptsUpdateHandlers;

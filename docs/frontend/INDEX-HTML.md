@@ -2,7 +2,7 @@
 
 [← Назад к Frontend](../02-FRONTEND.md)
 
-Каталог основных функций UI, определённых в модулях `dist/js/*.js` (~96 UI-функций из общих ~284 функций в 34 JS модулях).
+Каталог основных функций UI, определённых в модулях `dist/js/*.js` (~94 UI-функций из общих ~289 функций в 35 JS модулях).
 
 > **Полный API reference:** [INDEX-HTML-API.md](INDEX-HTML-API.md) (функции по модулям)
 
@@ -38,11 +38,10 @@
 
 ---
 
-## Language (11+ функций)
+## Language (10+ функций)
 
 | Функция | Описание |
 |---------|----------|
-| `replaceLanguage(text, from, to)` | Замена с автоопределением падежа |
 | `detectLanguageInText(text)` | Найти язык по любой форме |
 | `detectAllLanguagesInText(text)` | Найти все языки |
 | `detectLanguageFromText()` | Из контента блоков |
@@ -114,11 +113,10 @@
 
 ---
 
-## Persistence (8 функций)
+## Persistence (7 функций)
 
 | Функция | Описание |
 |---------|----------|
-| `convertToTabStructure(id, name, order, blocks)` | Конвертация |
 | `initializeDefaultTabs()` | Дефолтные вкладки |
 | `getCurrentStorageKey()` | Ключ хранения |
 | `saveToLocalStorage(key, content)` | Сохранение (debounced) |
@@ -180,7 +178,6 @@
 |---------|----------|
 | `updateEditModeToggle()` | Обновить кнопку |
 | `toggleEditToolbar(show)` | Показать/скрыть тулбар |
-| `showPromptTools()` | Инструменты |
 | `getInstructionIconSvg(iconType)` | SVG иконка |
 
 ---

@@ -2325,6 +2325,7 @@ header .flex {
     display: flex;
     flex-direction: column;
     overflow: visible;
+    container-type: inline-size;
 }
 
 /* Курсор move только в режиме редактирования */
@@ -3296,6 +3297,7 @@ header .flex {
     display: flex;
     gap: 10px;
     width: 100%;
+    overflow: hidden;
 }
 
 .dark .workflow-node-footer {
@@ -3441,6 +3443,7 @@ header .flex {
 
 .workflow-node-btn {
     flex: 1;
+    min-width: 0;
     padding: 12px 18px;
     font-size: 24px;
     font-weight: 500;
@@ -3454,6 +3457,8 @@ header .flex {
     align-items: center;
     justify-content: center;
     gap: 8px;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .workflow-node-btn svg {
@@ -3490,6 +3495,25 @@ header .flex {
 .dark .workflow-node-btn:hover {
     background: var(--btn-hover-bg);
     border-color: var(--btn-hover-border);
+}
+
+/* ─── Responsive footer buttons (container queries) ─── */
+
+/* Default: полный текст, иконка скрыта */
+.edit-btn > svg { display: none; width: 22px; height: 22px; }
+.edit-btn .btn-label-short { display: none; }
+
+/* Medium: иконка + "Ред." для edit, скрыть "Чат" для chat */
+@container (max-width: 600px) {
+    .edit-btn .btn-label-full { display: none; }
+    .edit-btn > svg { display: block; }
+    .edit-btn .btn-label-short { display: inline; }
+    .chat-btn .btn-label-chat { display: none; }
+}
+
+/* Narrow: только иконка для edit */
+@container (max-width: 500px) {
+    .edit-btn .btn-label-short { display: none; }
 }
 
 /* Привязка блока к чату Claude */

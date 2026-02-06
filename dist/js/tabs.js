@@ -73,18 +73,6 @@ function createNewTab(name) {
 }
 
 /**
- * Обновить данные вкладки
- * @param {string} id - ID вкладки
- * @param {Object} updates - Объект с обновлениями
- */
-function updateTab(id, updates) {
-    const tabs = getAllTabs();
-    if (tabs[id]) {
-        tabs[id] = { ...tabs[id], ...updates };
-        saveAllTabs(tabs, true); // skipUndo - переименование вкладки не записывается
-    }
-}
-
 /**
  * Переименовать вкладку (меняет и name, и id)
  * @param {string} oldId - Текущий ID вкладки
@@ -219,30 +207,6 @@ function deleteTab(id) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Добавить блок в вкладку
- * @param {string} tabId - ID вкладки
- * @returns {string|undefined} ID нового блока
- */
-function addBlockToTab(tabId) {
-    const tabs = getAllTabs();
-    if (!tabs[tabId]?.items) return;
-    
-    const items = tabs[tabId].items;
-    const blockCount = items.filter(i => i.type === 'block').length;
-    const newBlock = {
-        type: 'block',
-        id: generateItemId(),
-        title: `Блок ${blockCount + 1}`,
-        content: ''
-    };
-    items.push(newBlock);
-    markTabAsModified(tabId);
-    saveAllTabs(tabs);
-    
-    return newBlock.id;
-}
-
-/**
  * Удалить item из вкладки по ID (с cleanup связанных данных)
  * @param {string} tabId - ID вкладки
  * @param {string} itemId - ID элемента
@@ -294,30 +258,6 @@ function removeItemFromTab(tabId, itemId) {
     // autoSaveToUndo() вызывается в вызывающем коде
     tabs[tabId].items = items.filter(i => i.id !== itemId);
     saveAllTabs(tabs);
-}
-
-/**
- * Обновить заголовок блока
- * @param {string} tabId - ID вкладки
- * @param {string} blockNumber - Номер блока
- * @param {string} newTitle - Новый заголовок
- */
-function updateBlockTitle(tabId, blockNumber, newTitle) {
-    const tabs = getAllTabs();
-    if (!tabs[tabId] || !tabs[tabId].items) return;
-    
-    // Находим блок по номеру
-    const blocks = getTabBlocks(tabId);
-    const block = blocks.find(b => b.number === blockNumber);
-    if (!block) return;
-    
-    // Обновляем в items
-    const item = tabs[tabId].items.find(i => i.id === block.id);
-    if (item) {
-        item.title = newTitle;
-        markTabAsModified(tabId);
-        saveAllTabs(tabs);
-    }
 }
 
 /**

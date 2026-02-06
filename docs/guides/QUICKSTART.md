@@ -44,8 +44,8 @@ ai-prompts-manager/
 │
 ├── src-tauri/               # ⚙️ Backend (Rust)
 │   ├── src/                 # Модульная структура (20 файлов)
-│   │   ├── main.rs          # Точка входа (~131 строка)
-│   │   ├── commands/        # Tauri команды (45 команд)
+│   │   ├── main.rs          # Точка входа (~142 строки)
+│   │   ├── commands/        # Tauri команды (46 команд)
 │   │   ├── webview/         # Управление WebView
 │   │   └── utils/           # Утилиты
 │   ├── scripts/
@@ -72,14 +72,14 @@ ai-prompts-manager/
 
 ### Добавить UI-функцию
 ```
-dist/js/*.js          — 35 JavaScript модулей (~290 функций)
+dist/js/*.js          — 35 JavaScript модулей (~289 функций)
 dist/index.html       — HTML разметка + подключение модулей
 dist/css/styles.css   — стили (TailwindCSS)
 ```
 
 ### Добавить Tauri command
 ```
-src-tauri/src/commands/   — Tauri команды (6 модулей, 45 команд)
+src-tauri/src/commands/   — Tauri команды (6 модулей, 46 команд)
 src-tauri/src/main.rs     — регистрация команд в invoke_handler
 ```
 
@@ -101,7 +101,7 @@ src-tauri/scripts/claude_helpers.js
 |------|------------|
 | `dist/index.html` | UI + подключение JS модулей (основной файл frontend) |
 | `src-tauri/src/main.rs` | Точка входа Rust, регистрация команд |
-| `src-tauri/src/commands/` | Tauri команды (45 команд в 6 модулях) |
+| `src-tauri/src/commands/` | Tauri команды (46 команд в 6 модулях) |
 | `dist/js/claude-api.js` | Claude интеграция |
 | `dist/js/workflow-render.js` | Рендеринг workflow |
 | `dist/js/remote-prompts.js` | Обновление промптов |

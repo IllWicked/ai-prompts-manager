@@ -61,7 +61,7 @@ const TIMEOUTS = {
 
 ---
 
-## remote-prompts.js (18 функций)
+## remote-prompts.js (19 функций)
 
 Загрузка и обновление промптов с GitHub.
 
@@ -73,17 +73,18 @@ const TIMEOUTS = {
 | `fetchRemoteTab(tabId)` | Загрузить данные вкладки |
 | `getCachedManifest()` | Манифест из localStorage |
 | `cacheManifest(manifest)` | Сохранить манифест |
-| `checkForPromptsUpdate(showModal)` | Проверка обновлений |
+| `checkForPromptsUpdate(showModal)` | Проверка обновлений (new + updated + removed) |
 | `convertRemoteTabToAppFormat(tabData, version)` | Конвертация формата |
 | `applyPromptsUpdate(tabs, manifest, isNew)` | Применить обновления |
-| `showPromptsUpdateAvailable(newTabs, updatedTabs, notes)` | Модалка обновления |
+| `removeObsoleteTabs(removedTabs)` | Удалить вкладки, которых нет в манифесте |
+| `showPromptsUpdateAvailable(newTabs, updatedTabs, notes, removedTabs)` | Модалка обновления |
 | `showPromptsUpdateLatest()` | Модалка "актуально" |
 | `showPromptsUpdateError(message)` | Модалка ошибки |
 | `hidePromptsUpdateModal()` | Закрыть модалку |
 | `applyPendingPromptsUpdate()` | Применить ожидающее |
 | `initializeRemotePrompts()` | Инициализация |
-| `autoCheckPromptsUpdates()` | Автопроверка |
-| `showPromptsReleaseNotes(newTabs, updatedTabs, notes)` | Release notes |
+| `autoCheckPromptsUpdates()` | Автопроверка (add + update + remove) |
+| `showPromptsReleaseNotes(newTabs, updatedTabs, notes, removedTabs)` | Release notes |
 | `initPromptsUpdateHandlers()` | Обработчики |
 
 ### Пример
@@ -98,7 +99,7 @@ await autoCheckPromptsUpdates();
 
 ---
 
-## utils.js (8 функций)
+## utils.js (9 функций)
 
 | Функция | Описание |
 |---------|----------|
@@ -107,9 +108,10 @@ await autoCheckPromptsUpdates();
 | `escapeHtml(str)` | XSS protection |
 | `getCanvasScale(canvas)` | Scale из CSS transform |
 | `getAppVersion()` | Версия через Tauri |
-| `generateTabId()` | Уникальный ID вкладки |
 | `generateItemId()` | Уникальный ID элемента |
 | `getGeneratingAnimationDelay()` | Синхронизированная задержка для generating-indicator (1000ms) |
+| `initCustomScrollbar(scrollable, scrollbar)` | Инициализация кастомного скроллбара |
+| `initScrollbarGlobalHandlers()` | Глобальные обработчики перетаскивания скроллбара |
 
 ### DOM Getters (с кэшированием)
 
@@ -119,8 +121,8 @@ getWorkflowCanvas()     // #workflow-canvas
 getWorkflowSvg()        // .workflow-svg
 getWorkflowWrapper()    // .workflow-wrapper
 getEditModal()          // #workflow-edit-modal
-getEditTitle()          // #edit-block-title
-getEditContent()        // #edit-block-content
+getEditTitle()          // #workflow-edit-title
+getEditContent()        // #workflow-edit-content
 getZoomIndicator()      // #zoom-indicator
 getUndoBtn()            // #undo-btn
 getRedoBtn()            // #redo-btn
@@ -158,7 +160,7 @@ showToast('Ошибка загрузки', 3000);
 
 ---
 
-## storage.js (10 функций)
+## storage.js (11 функций)
 
 | Функция | Описание |
 |---------|----------|
@@ -166,6 +168,7 @@ showToast('Ошибка загрузки', 3000);
 | `saveSettings(settings)` | Сохранить настройки |
 | `loadFromStorage(key, defaultValue)` | Загрузить JSON |
 | `saveToStorage(key, value)` | Сохранить JSON |
+| `safeSetItem(key, value)` | localStorage.setItem с QuotaExceeded protection |
 | `getAllTabs()` | Все вкладки (кэш + валидация) |
 | `saveAllTabs(tabs, skipUndo)` | Сохранить вкладки |
 | `setTabsCache(tabs)` | Установить кэш (для undo) |
@@ -195,15 +198,18 @@ const data = loadFromStorage('my-key', {});
 
 ---
 
-## modals.js (5 функций)
+## modals.js (8 функций)
 
 | Функция | Описание |
 |---------|----------|
 | `closeAllModals()` | Закрыть все модалки |
 | `hideModal(modalId)` | Скрыть по ID |
 | `showAlert(message, title)` | Уведомление |
+| `hideAlert()` | Закрыть alert |
 | `showResetModal()` | Модалка сброса |
+| `hideResetModal()` | Закрыть модалку сброса |
 | `showEditModeConfirmModal()` | Подтверждение edit mode |
+| `hideEditModeConfirmModal()` | Закрыть подтверждение |
 
 ### Примеры
 

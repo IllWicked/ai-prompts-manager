@@ -40,38 +40,69 @@ function initAutocompleteDisable() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Защита выделения текста от сброса при mouseup вне текстового элемента
+ * Глобальная защита от закрытия модалок/dropdown/inline-элементов
+ * при выделении текста с уводом курсора за пределы поля.
+ * 
+ * Проблема: mousedown на textarea → drag за пределы → mouseup на оверлее →
+ * браузер генерирует click на общем предке (оверлей) → обработчик закрывает модалку.
+ * 
+ * Решение: capture-фаза перехватывает click/mousedown и блокирует их,
+ * если mousedown начался на текстовом поле, а событие пришло на другой элемент.
  */
 function initTextSelectionProtection() {
+    // Элемент, на котором начался mousedown
+    let mousedownTarget = null;
+    // Флаг: mousedown был на текстовом поле
+    let mousedownOnText = false;
+    
+    const TEXT_SELECTOR = 'textarea, input[type="text"], input[type="search"], input[type="number"], input[type="url"], input[type="email"], input[type="password"], input:not([type]), [contenteditable="true"]';
+    
+    // 1. Отслеживаем mousedown — запоминаем откуда начали
     document.addEventListener('mousedown', (e) => {
         const target = e.target;
-        const isTextElement = target.tagName === 'TEXTAREA' || 
-                              target.tagName === 'INPUT' ||
-                              target.isContentEditable ||
-                              target.closest('textarea, input, [contenteditable="true"]');
-        if (isTextElement) {
-            isTextSelecting = true;
+        const isTextElement = target.matches?.(TEXT_SELECTOR) || 
+                              target.closest?.(TEXT_SELECTOR);
+        
+        mousedownTarget = target;
+        mousedownOnText = !!isTextElement;
+        
+        if (mousedownOnText) {
             window.isTextSelecting = true;
         }
     }, true);
     
+    // 2. На mouseup сбрасываем флаг с задержкой (после click)
     document.addEventListener('mouseup', () => {
         setTimeout(() => {
-            isTextSelecting = false;
+            mousedownTarget = null;
+            mousedownOnText = false;
             window.isTextSelecting = false;
-        }, 10);
+        }, 50);
     }, true);
-}
-
-/**
- * Предотвращение закрытия модалок при клике на контент
- */
-function initModalClickProtection() {
+    
+    // 3. CAPTURE-фаза click — блокируем если это результат drag из текстового поля
     document.addEventListener('click', (e) => {
-        if (e.target.closest('.modal-content')) {
-            e.stopPropagation();
-        }
-    });
+        if (!mousedownOnText) return;
+        
+        // Если click target совпадает с mousedown target — это обычный клик, пропускаем
+        if (e.target === mousedownTarget) return;
+        
+        // Если click внутри того же текстового поля (дочерний элемент) — пропускаем
+        if (mousedownTarget?.contains?.(e.target) || e.target?.contains?.(mousedownTarget)) return;
+        
+        // mousedown был на текстовом поле, а click пришёл на другой элемент —
+        // это drag-release при выделении текста. Блокируем.
+        e.stopImmediatePropagation();
+        e.preventDefault();
+    }, true);
+    
+    // 4. CAPTURE-фаза mousedown на оверлеях — дополнительная защита
+    //    Некоторые модалки закрываются по mousedown на оверлее.
+    //    Если mousedown начался на тексте и всплыл до оверлея — блокируем.
+    //    (Не нужно — mousedown на оверлее имеет e.target === оверлей,
+    //    а mousedown на textarea имеет e.target === textarea,
+    //    поэтому проверки e.target.id === modalId уже защищают.
+    //    Оставляем только click-protection выше.)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -145,14 +176,6 @@ function setupDownloadListeners() {
 // ═══════════════════════════════════════════════════════════════════════════
 // LANGUAGE MENU
 // ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Обновить меню языковых форм для текущего языка
- */
-function updateLangMenu() {
-    // Эта функция больше не нужна - используем showLanguageFormMenu
-    // Оставлена для обратной совместимости
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONTEXT MENU HANDLERS
@@ -1098,7 +1121,6 @@ function initApp() {
     // 0. Базовые настройки
     initAutocompleteDisable();
     initTextSelectionProtection();
-    initModalClickProtection();
     
     // 1. Загружаем состояние блоков
     loadBlockScripts();
@@ -1260,7 +1282,6 @@ function initApp() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 window.initApp = initApp;
-window.updateLangMenu = updateLangMenu;
 window.setupDownloadListeners = setupDownloadListeners;
 
 // Запуск при загрузке DOM

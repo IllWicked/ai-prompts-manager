@@ -2,21 +2,18 @@
 
 [← Назад к Frontend](../02-FRONTEND.md)
 
-## tabs.js (12 функций)
+## tabs.js (10 функций)
 
 | Функция | Описание |
 |---------|----------|
 | `getTabItems(tabId)` | Все items вкладки (блоки + разделители) |
 | `getTabBlocks(tabId)` | Только блоки с нумерацией |
 | `createNewTab(name)` | Создать вкладку |
-| `updateTab(id, updates)` | Обновить данные |
 | `renameTab(oldId, newName)` | Переименовать (меняет и name, и id) |
 | `deleteTab(id)` | Удалить (кроме последней) |
-| `addBlockToTab(tabId)` | Добавить блок |
 | `removeItemFromTab(tabId, itemId)` | Удалить item по ID |
-| `removeBlockFromTab(tabId, blockNumber)` | Удалить блок по номеру |
-| `updateBlockTitle(tabId, blockNumber, title)` | Обновить заголовок |
 | `updateBlockInstruction(tabId, blockNumber, instr)` | Обновить инструкцию |
+| `markTabAsModified(tabId)` | Пометить remote-вкладку как изменённую |
 | `showAddTabModal()` / `hideAddTabModal()` | Модалка добавления |
 
 ### Примеры
@@ -26,9 +23,6 @@
 const newTab = createNewTab('My Prompts');
 // { id: 'my-prompts', name: 'My Prompts', order: 2, items: [] }
 
-// Добавить блок
-addBlockToTab('my-prompts');
-
 // Получить блоки с нумерацией
 const blocks = getTabBlocks('my-prompts');
 // [{ block: {...}, number: 1 }, { block: {...}, number: 2 }]
@@ -36,11 +30,8 @@ const blocks = getTabBlocks('my-prompts');
 // Получить все items (включая разделители)
 const items = getTabItems('my-prompts');
 
-// Обновить заголовок
-updateBlockTitle('my-prompts', 1, 'New Title');
-
-// Удалить блок
-removeBlockFromTab('my-prompts', 1);
+// Удалить item по ID
+removeItemFromTab('my-prompts', 'item_123456');
 
 // Переименовать вкладку
 renameTab('my-prompts', 'Better Name');
@@ -136,7 +127,6 @@ Per-tab система истории изменений.
 
 | Функция | Описание |
 |---------|----------|
-| `initTabHistory(tabId)` | Инициализация истории для вкладки |
 | `captureCurrentTabState()` | Захват текущего состояния |
 | `applyCurrentTabState(state)` | Применить состояние |
 | `autoSaveToUndo()` | Автосохранение (debounced) |
@@ -152,7 +142,7 @@ Per-tab система истории изменений.
 autoSaveToUndo();
 
 // Выполнить изменение
-updateBlockTitle('my-tab', 1, 'New Title');
+updateBlockInstruction('my-tab', 1, { type: 'info', text: 'New note' });
 
 // Отмена
 undo();

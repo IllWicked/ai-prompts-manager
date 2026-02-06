@@ -266,17 +266,18 @@ function autoPositionNodes(promptsData) {
 function generateExpandedFooterHtml(index, chatTabs, options = {}) {
     const { showChatButtons = true } = options;
     const arrowSvg = SVG_ICONS.arrow;
+    const editSvg = SVG_ICONS.edit;
     
-    // Кнопка редактирования
-    let html = `<button class="workflow-node-btn" onclick="editWorkflowNode(${index})" title="Редактировать"><span>Редактировать</span></button>`;
+    // Кнопка редактирования: полный текст → иконка + "Ред." → только иконка
+    let html = `<button class="workflow-node-btn edit-btn" onclick="editWorkflowNode(${index})" title="Редактировать">${editSvg}<span class="btn-label-full">Редактировать</span><span class="btn-label-short">Ред.</span></button>`;
     
     // Кнопки отправки в чаты (если разрешено)
     if (showChatButtons) {
         if (chatTabs.length === 1) {
-            html += `<button class="workflow-node-btn primary" onclick="sendNodeToClaude(${index}, ${chatTabs[0]})" title="Отправить в чат">${arrowSvg}<span>Чат</span></button>`;
+            html += `<button class="workflow-node-btn primary chat-btn" onclick="sendNodeToClaude(${index}, ${chatTabs[0]})" title="Отправить в чат">${arrowSvg}<span class="btn-label-chat">Чат</span></button>`;
         } else {
             chatTabs.forEach(tab => {
-                html += `<button class="workflow-node-btn primary" onclick="sendNodeToClaude(${index}, ${tab})" title="Отправить в Чат ${tab}">${arrowSvg}<span>Чат ${tab}</span></button>`;
+                html += `<button class="workflow-node-btn primary chat-btn" onclick="sendNodeToClaude(${index}, ${tab})" title="Отправить в Чат ${tab}">${arrowSvg}<span class="btn-label-chat">Чат\u00A0</span><span class="btn-label-num">${tab}</span></button>`;
             });
         }
     }

@@ -191,7 +191,7 @@ const modalState = {
 
 ---
 
-## connections.js (9 функций)
+## connections.js (10 функций)
 
 | Функция | Описание |
 |---------|----------|
@@ -204,6 +204,7 @@ const modalState = {
 | `renderConnections()` | Рендеринг всех связей |
 | `onConnectionDrag(e)` | Обработчик drag связи |
 | `onConnectionEnd(e)` | Завершение создания |
+| `setupPortEvents(port)` | Настройка обработчиков событий на порте |
 
 ### Порты
 

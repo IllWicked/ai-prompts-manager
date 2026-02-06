@@ -35,7 +35,6 @@ window.AppState = {
     claude: {
         isVisible: false,        // Панель Claude открыта
         activeTab: 1,            // Активный таб (1-3)
-        existingTabs: [1, 2, 3], // Все три таба (создаются при старте)
         generatingTabs: {},      // {tab: boolean}
         tabUrls: {},             // {tab: url}
         tabNames: {},            // {tab: name}
@@ -58,7 +57,6 @@ window.AppState = {
         isAdminMode: false,      // Режим администратора
         isAppInitialized: false, // Приложение инициализировано
         currentLanguage: 'en',   // Текущий язык
-        currentCountry: null     // Текущая страна для мультигео (gb, us, etc.)
     }
 };
 ```
@@ -76,7 +74,6 @@ currentTab ↔ AppState.app.currentTab
 isEditMode ↔ AppState.app.isEditMode
 isAdminMode ↔ AppState.app.isAdminMode
 currentLanguage ↔ AppState.app.currentLanguage
-currentCountry ↔ AppState.app.currentCountry  // Для мультигео языков (gb, us, etc.)
 ```
 
 ### Workflow
@@ -98,6 +95,7 @@ resizeDirection ↔ AppState.interaction.resizeDirection
 selectedNodes ↔ AppState.interaction.selectedNodes
 isDraggingNode ↔ AppState.interaction.isDragging
 dragOffsets ↔ AppState.interaction.dragOffsets
+clipboard ↔ AppState.interaction.clipboard
 isCreatingConnection ↔ AppState.interaction.isCreatingConnection
 connectionStart ↔ AppState.interaction.connectionStart
 tempLineEl ↔ AppState.interaction.tempLineEl
@@ -108,7 +106,6 @@ tempLineEl ↔ AppState.interaction.tempLineEl
 ```javascript
 isClaudeVisible ↔ AppState.claude.isVisible
 activeClaudeTab ↔ AppState.claude.activeTab
-existingTabs ↔ AppState.claude.existingTabs
 generatingTabs ↔ AppState.claude.generatingTabs
 tabUrls ↔ AppState.claude.tabUrls
 tabNames ↔ AppState.claude.tabNames

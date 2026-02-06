@@ -29,86 +29,6 @@ function getActiveLanguageData() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ЗАМЕНА ЯЗЫКА В ТЕКСТЕ
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Заменяет все формы одного языка на другой в тексте
- * Автоматически определяет падеж/род и подставляет соответствующую форму
- * @param {string} text - исходный текст
- * @param {string} fromLang - код исходного языка
- * @param {string} toLang - код целевого языка
- * @returns {string} - текст с заменёнными формами
- */
-function replaceLanguage(text, fromLang, toLang) {
-    if (!fromLang || !toLang || fromLang === toLang) return text;
-    
-    const from = LANGUAGES[fromLang];
-    const to = LANGUAGES[toLang];
-    
-    if (!from || !to) return text;
-    
-    let result = text;
-    
-    // Названия технических страниц (точная замена)
-    if (from.privacyPolicy && to.privacyPolicy) {
-        result = result.split(from.privacyPolicy).join(to.privacyPolicy);
-    }
-    if (from.aboutUs && to.aboutUs) {
-        result = result.split(from.aboutUs).join(to.aboutUs);
-    }
-    if (from.legalInfo && to.legalInfo) {
-        result = result.split(from.legalInfo).join(to.legalInfo);
-    }
-    if (from.cookiePolicy && to.cookiePolicy) {
-        result = result.split(from.cookiePolicy).join(to.cookiePolicy);
-    }
-    
-    // Замена названия страны
-    if (from.country && to.country && from.country !== to.country) {
-        result = result.split(from.country).join(to.country);
-    }
-    
-    // Замена кода локали
-    if (from.locale && to.locale && from.locale !== to.locale) {
-        result = result.split(from.locale).join(to.locale);
-    }
-    
-    // Функция замены с сохранением регистра первой буквы
-    function replacePreservingCase(text, fromWord, toWord) {
-        const escaped = fromWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        // Ищем case-insensitive
-        return text.replace(new RegExp(escaped, 'gi'), (match) => {
-            // Если первая буква была заглавной, делаем заглавной в замене
-            if (match[0] === match[0].toUpperCase()) {
-                return toWord[0].toUpperCase() + toWord.slice(1);
-            }
-            return toWord;
-        });
-    }
-    
-    // Замена форм lang (английский → немецкий) с автоопределением падежа
-    const fromLangForms = getAllWordForms(from.lang);
-    for (const form of fromLangForms) {
-        const transformed = transformWord(form, from.lang, to.lang);
-        if (transformed) {
-            result = replacePreservingCase(result, form, transformed);
-        }
-    }
-    
-    // Замена форм native (англоязычный → немецкоязычный) с автоопределением падежа
-    const fromNativeForms = getAllWordForms(from.native);
-    for (const form of fromNativeForms) {
-        const transformed = transformWord(form, from.native, to.native);
-        if (transformed) {
-            result = replacePreservingCase(result, form, transformed);
-        }
-    }
-    
-    return result;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // ДЕТЕКТИРОВАНИЕ ЯЗЫКА
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -533,7 +453,7 @@ function initLanguageSelector() {
             countryOption.className = 'dropdown-option country-option';
             countryOption.dataset.lang = langCode;
             countryOption.dataset.country = country.code;
-            countryOption.textContent = country.name;
+            countryOption.textContent = `${country.code.toUpperCase()} ${country.name}`;
             
             if (currentLanguage === langCode && currentCountry === country.code) {
                 countryOption.classList.add('selected');
@@ -878,7 +798,6 @@ function initLanguageSelector() {
 
 window.currentCountry = currentCountry;
 window.getActiveLanguageData = getActiveLanguageData;
-window.replaceLanguage = replaceLanguage;
 window.detectLanguageInText = detectLanguageInText;
 window.detectAllLanguagesInText = detectAllLanguagesInText;
 window.detectLanguageFromText = detectLanguageFromText;

@@ -108,26 +108,22 @@ fn main() {
             // Запускаем фоновые задачи
             let app_handle = app.handle().clone();
             std::thread::spawn(move || {
-                // Ресайзим UI под реальный размер окна
-                std::thread::sleep(std::time::Duration::from_millis(30));
-                let _ = webview::resize_webviews(&app_handle);
-                
-                // Создаём все три Claude webview
-                std::thread::sleep(std::time::Duration::from_millis(70));
+                // Создаём все три Claude webview при старте
+                std::thread::sleep(std::time::Duration::from_millis(500));
                 let _ = webview::ensure_claude_webview(&app_handle, 1, None);
                 
-                std::thread::sleep(std::time::Duration::from_millis(100));
+                std::thread::sleep(std::time::Duration::from_millis(200));
                 let _ = webview::ensure_claude_webview(&app_handle, 2, None);
                 
-                std::thread::sleep(std::time::Duration::from_millis(100));
+                std::thread::sleep(std::time::Duration::from_millis(200));
                 let _ = webview::ensure_claude_webview(&app_handle, 3, None);
                 
-                // Пересоздаём toolbar чтобы был поверх
-                std::thread::sleep(std::time::Duration::from_millis(50));
+                // Пересоздаём toolbar один раз чтобы он был поверх всех Claude
+                std::thread::sleep(std::time::Duration::from_millis(100));
                 let _ = webview::recreate_toolbar(&app_handle);
                 
-                // Финальная синхронизация позиций
-                std::thread::sleep(std::time::Duration::from_millis(30));
+                // Синхронизируем позиции всех webview
+                std::thread::sleep(std::time::Duration::from_millis(50));
                 let _ = webview::resize_webviews(&app_handle);
             });
             

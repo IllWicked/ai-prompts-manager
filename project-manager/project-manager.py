@@ -874,6 +874,19 @@ def update_app_version(script_dir: Path, new_version: str) -> List[str]:
             index_html.write_text(content, encoding='utf-8')
             changes.append("index.html")
     
+    # docs/INDEX.md — версия документации
+    index_md = script_dir / 'docs' / 'INDEX.md'
+    if index_md.exists():
+        content = index_md.read_text(encoding='utf-8')
+        new_content = re.sub(
+            r'(\*\*Версия:\*\*\s*)[0-9]+\.[0-9]+\.[0-9]+',
+            f'\\g<1>{new_version}',
+            content
+        )
+        if new_content != content:
+            index_md.write_text(new_content, encoding='utf-8')
+            changes.append("docs/INDEX.md")
+    
     return changes
 
 def get_release_notes(script_dir: Path) -> str:

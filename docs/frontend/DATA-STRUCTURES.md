@@ -136,7 +136,6 @@ erDiagram
 {
     isVisible: false,          // Панель Claude открыта
     activeTab: 1,              // Активный таб (1-3)
-    existingTabs: [1, 2, 3],   // Все три таба (всегда существуют)
     tabUrls: {                 // URL каждого таба
         "1": "https://claude.ai/chat/...",
         "2": "https://claude.ai/chat/..."

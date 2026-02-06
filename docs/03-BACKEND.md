@@ -8,11 +8,11 @@ Backend разбит на модули по функциональности:
 
 ```
 src-tauri/src/
-├── main.rs              (131 строк)  — точка входа, Tauri Builder
+├── main.rs              (142 строки)  — точка входа, Tauri Builder
 ├── lib.rs               (23 строки)  — реэкспорт модулей
 ├── types.rs             (57 строк)   — структуры данных
 ├── state.rs             (35 строк)  — глобальные состояния
-├── commands/            (45 команд)  — Tauri команды
+├── commands/            (46 команд)  — Tauri команды
 │   ├── mod.rs           — реэкспорт
 │   ├── app.rs           — управление приложением
 │   ├── claude.rs        — взаимодействие с Claude
@@ -40,7 +40,7 @@ src-tauri/src/
 |--------|----------|
 | `types` | Структуры: `ArchiveLogEntry`, `DownloadEntry`, `DownloadsSettings`, `FileData` |
 | `state` | Глобальные: `CLAUDE_VISIBLE`, `ACTIVE_TAB`, `PANEL_RATIO`, Mutex locks |
-| `commands` | 45 Tauri команд, разбитых по доменам |
+| `commands` | 46 Tauri команд, разбитых по доменам |
 | `downloads` | Пути к логам, настройкам, генерация уникальных имён |
 | `utils` | MIME-типы, платформо-зависимые функции, константы |
 | `webview` | JS скрипты, создание/resize webview, обработка загрузок |
@@ -49,7 +49,7 @@ src-tauri/src/
 
 ## Полный список Tauri Commands
 
-Всего **45 команд**. Вызов из JS: `window.__TAURI__.core.invoke('command', { params })`
+Всего **46 команд**. Вызов из JS: `window.__TAURI__.core.invoke('command', { params })`
 
 ### Downloads & Files (`commands/downloads.rs`)
 
@@ -96,7 +96,6 @@ src-tauri/src/
 | `recreate_claude_tab` | `tab` | — | Пересоздать webview (для зависших табов) |
 | `navigate_claude_tab` | `tab, url` | — | Навигация |
 | `notify_url_change` | `tab, url` | — | От helpers.js |
-| `close_claude_tab` | `tab` | `u8` | Закрыть (не используется) |
 | `reset_claude_state` | — | — | Сбросить |
 
 ### Claude Interaction (`commands/claude.rs`)
@@ -125,6 +124,7 @@ src-tauri/src/
 | `toolbar_back` | — | — | Назад |
 | `toolbar_forward` | — | — | Вперёд |
 | `toolbar_reload` | — | — | Перезагрузить |
+| `toolbar_recreate` | — | — | Пересоздать webview (двойной клик reload в toolbar) |
 | `show_downloads` | — | — | Показать менеджер |
 | `hide_downloads` | — | — | Скрыть |
 | `forward_scroll` | `delta_y` | — | Проброс скролла |

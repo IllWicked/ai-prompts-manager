@@ -45,14 +45,6 @@ function toggleEditToolbar(show) {
         }
     }
 }
-
-/**
- * Показать инструменты промпта
- */
-function showPromptTools() {
-    document.getElementById('prompt-tools')?.classList.remove('hidden');
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // ВСТАВКА ТЕКСТА
 // ═══════════════════════════════════════════════════════════════════════════
@@ -183,7 +175,6 @@ function selectChatForNode(index) {
 // ═══════════════════════════════════════════════════════════════════════════
 window.getInstructionIconSvg = getInstructionIconSvg;
 window.toggleEditToolbar = toggleEditToolbar;
-window.showPromptTools = showPromptTools;
 window.insertTextIntoTextarea = insertTextIntoTextarea;
 window.insertTextAtCursor = insertTextAtCursor;
 window.updateEditModeToggle = updateEditModeToggle;

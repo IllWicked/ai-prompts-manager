@@ -22,10 +22,10 @@
     },
     "gamble-mirror": {
       "name": "GAMBLE-MIRROR",
-      "version": "1.0.6",
+      "version": "1.0.7",
       "order": 5
     }
   },
-  "release_notes": "ЧТО НОВОГО:\n- Пока ничего",
-  "updated": "2026-02-07"
+  "release_notes": "ЧТО НОВОГО:\n- Ничего",
+  "updated": "2026-02-12"
 }

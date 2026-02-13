@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "exportDate": "2026-02-04T04:34:26.617Z",
+  "exportDate": "2026-02-13T08:37:03.872Z",
   "tab": {
     "id": "bet-addcl",
     "name": "BET-ADDCL",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "items": [
       {
         "type": "block",
@@ -68,7 +68,10 @@
           "icon": "paperclip",
           "text": "Прикрепить content-plan.md"
         },
-        "hasAttachments": true
+        "hasAttachments": true,
+        "automation": {
+          "newChat": true
+        }
       },
       {
         "type": "block",

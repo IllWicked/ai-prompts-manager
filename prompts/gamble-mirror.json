@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "exportDate": "2026-02-12T06:30:03.412Z",
+  "exportDate": "2026-02-13T07:09:25.004Z",
   "tab": {
     "id": "gamble-mirror",
     "name": "GAMBLE-MIRROR",
-    "version": "1.0.8",
+    "version": "1.0.9",
     "items": [
       {
         "id": "item_1769876977067_my28ffv1l",
@@ -70,7 +70,7 @@
         "id": "item_1769877193939_t5vzsx2qe",
         "type": "block",
         "title": "Дизайн",
-        "content": "1. Задача\nСоздать HTML-шаблон дизайна для лендинга казино.\nДизайн на основе референсного скриншота.\nИз content-plan.md взять: название казино, порядок секций, пункты меню, отзывы.\n\n2. Макет\nРасставь и кратко разметь структуру секций статьи, разделов и элементов на основе контент-плана. Контент должен быть в контейнерах, основной текст и изображения будут вставлены позже.\nСобери карусель с отзывами, отзывы вставляй целиком и не меняя.\nКарусель: overflow:hidden на обёртке, display:flex на track, slide с flex:0 0 33.333%, движение через translateX по пикселям из getBoundingClientRect().width.\n\n3. Мета и head\nlang — оставить пустым (заполнится при конвертации).\n<title></title> — пустой.\n<meta name=\"description\"> — пустой.\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\">\nOG-разметка для соцсетей (пустые значения).\n<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\nFont Awesome с defer.\nКритические стили инлайново.\n\n4. Header и навигация\nHeader: sticky, логотип слева, навигация центр/справа, кнопки Login/Register справа.\nМеню: якорные ссылки на секции (пустые href).\nАдаптивное меню: >1024px горизонтальное, ≤1024px гамбургер (плавная анимация, overlay, закрытие по клику вне меню).\n\n5. Дизайн и UX\nMobile-first, кроссбраузерная совместимость.\nCSS-анимации: hover-эффекты, параллакс.\nАнимированные CTA-кнопки.\nSmooth hover animations (transform, opacity для GPU).\nResponsive typography с clamp().\nТени и градиенты для глубины.\nDark theme через CSS variables и prefers-color-scheme.\nСтилизованные блоки, избегай текстовой простыни.\n\n6. CSS-селекторы для контента\nСтилизовать элементы статьи: h1, h2, h3, p, ul, ol, li, strong, em, blockquote, figure, figcaption, table, thead, tbody, th, td.\nПодготовить стили для классов изображений.\nТаблицы: оборачивать в контейнер с overflow-x:auto.\n\n7. Footer\n<footer></footer> — многоуровневый с навигацией (пустые ссылки).\n\n8. Технические требования\nМинимизировать вложенность DOM (3-4 уровня).\nCSS Grid и Flexbox вместо обёрток.\nCSS variables для повторяющихся значений.\nСемантические теги вместо div.\nКонтраст минимум 4.5:1.\n:focus стили для клавиатурной навигации.\nДокумент читаем без CSS и JS.\n\nЗапрещено: эмодзи, плейсхолдеры текста.\n\n9. Результат\nСохрани как design.html.",
+        "content": "1. Задача\nСоздать HTML-шаблон дизайна для лендинга казино.\nДизайн на основе референсного скриншота.\nИз content-plan.md взять: название казино, порядок секций, пункты меню, отзывы.\n\n2. Макет\nРасставь и кратко разметь структуру секций статьи, разделов и элементов на основе контент-плана. Контент должен быть в контейнерах, основной текст и изображения будут вставлены позже.\nСобери карусель с отзывами, отзывы вставляй целиком и не меняя.\nКарусель: overflow:hidden на обёртке, display:flex на track, slide с flex:0 0 33.333%, движение через translateX по пикселям из getBoundingClientRect().width.\n\n3. Мета и head\nlang — оставить пустым (заполнится при конвертации).\n<title></title> — пустой.\n<meta name=\"description\"> — пустой.\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\">\nOG-разметка для соцсетей (пустые значения).\n<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\nFont Awesome с defer.\nКритические стили инлайново.\n\n4. Header и навигация\nTOC в начале страницы.\nHeader: sticky, логотип слева, навигация центр/справа, кнопки Login/Register справа.\nМеню: якорные ссылки на секции (пустые href).\nАдаптивное меню: >1024px горизонтальное, ≤1024px гамбургер (плавная анимация, overlay, закрытие по клику вне меню).\n\n5. Дизайн и UX\nMobile-first, кроссбраузерная совместимость.\nCSS-анимации: hover-эффекты, параллакс.\nАнимированные CTA-кнопки.\nSmooth hover animations (transform, opacity для GPU).\nResponsive typography с clamp().\nТени и градиенты для глубины.\nDark theme через CSS variables и prefers-color-scheme.\nСтилизованные блоки, избегай текстовой простыни.\n\n6. CSS-селекторы для контента\nСтилизовать элементы статьи: h1, h2, h3, p, ul, ol, li, strong, em, blockquote, figure, figcaption, table, thead, tbody, th, td.\nПодготовить стили для классов изображений.\nТаблицы: оборачивать в контейнер с overflow-x:auto.\n\n7. Footer\n<footer></footer> — многоуровневый с навигацией (пустые ссылки).\n\n8. Технические требования\nМинимизировать вложенность DOM (3-4 уровня).\nCSS Grid и Flexbox вместо обёрток.\nCSS variables для повторяющихся значений.\nСемантические теги вместо div.\nКонтраст минимум 4.5:1.\n:focus стили для клавиатурной навигации.\nДокумент читаем без CSS и JS.\n\nЗапрещено: эмодзи, плейсхолдеры текста.\n\n9. Результат\nСохрани как design.html.",
         "instruction": {
           "type": "info",
           "icon": "paperclip",
@@ -126,8 +126,7 @@
         ],
         "collapsed": true
       }
-    ],
-    "userModified": true
+    ]
   },
   "workflow": {
     "positions": {

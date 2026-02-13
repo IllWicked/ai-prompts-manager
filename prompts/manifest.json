@@ -22,15 +22,15 @@
     },
     "gamble-mirror": {
       "name": "GAMBLE-MIRROR",
-      "version": "1.0.8",
-      "order": 5
+      "version": "1.0.9",
+      "order": 6
     },
     "livetvsx": {
       "name": "LIVETVSX",
       "version": "1.0.1",
-      "order": 6
+      "order": 5
     }
   },
   "release_notes": "ЧТО НОВОГО:\n- Ничего",
-  "updated": "2026-02-12"
+  "updated": "2026-02-13"
 }

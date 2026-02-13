@@ -8,27 +8,27 @@
     "bet-pillar-clkeys": {
       "name": "BET-PILLAR-CLKEYS",
       "version": "1.0.2",
-      "order": 3
+      "order": 2
     },
     "bet-pillar-default": {
       "name": "BET-PILLAR-DEFAULT",
       "version": "1.0.1",
-      "order": 4
+      "order": 3
     },
     "bet-addcl": {
       "name": "BET-ADDCL",
-      "version": "1.0.0",
-      "order": 2
+      "version": "1.0.1",
+      "order": 6
     },
     "gamble-mirror": {
       "name": "GAMBLE-MIRROR",
       "version": "1.0.9",
-      "order": 6
+      "order": 5
     },
     "livetvsx": {
       "name": "LIVETVSX",
       "version": "1.0.1",
-      "order": 5
+      "order": 4
     }
   },
   "release_notes": "ЧТО НОВОГО:\n- Ничего",

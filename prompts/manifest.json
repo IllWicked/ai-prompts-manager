@@ -18,12 +18,12 @@
     "bet-addcl": {
       "name": "BET-ADDCL",
       "version": "1.0.1",
-      "order": 6
+      "order": 5
     },
     "gamble-mirror": {
       "name": "GAMBLE-MIRROR",
-      "version": "1.0.9",
-      "order": 5
+      "version": "1.0.10",
+      "order": 6
     },
     "livetvsx": {
       "name": "LIVETVSX",

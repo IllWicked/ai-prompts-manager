@@ -1211,8 +1211,8 @@ function initApp() {
         const tabIds = Object.keys(allTabs);
         if (!currentTab || !allTabs[currentTab]) {
             if (tabIds.length > 0) {
-                const firstTab = Object.values(allTabs).sort((a, b) => a.name.localeCompare(b.name))[0];
-                currentTab = firstTab.id;
+                const sortedIds = tabIds.sort((a, b) => (allTabs[a].name || '').localeCompare(allTabs[b].name || ''));
+                currentTab = sortedIds[0];
                 localStorage.setItem(STORAGE_KEYS.CURRENT_TAB, currentTab);
             }
         }

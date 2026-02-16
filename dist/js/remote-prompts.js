@@ -313,6 +313,19 @@ async function applyPromptsUpdate(tabs, remoteManifest, isNewTabs = false, skipR
     
     // Сохраняем все вкладки
     if (updated.length > 0) {
+        // Удаляем fallback-вкладку DEFAULT если она была создана при неудачной загрузке
+        if (allTabs['default'] && allTabs['default'].name === 'DEFAULT') {
+            delete allTabs['default'];
+            // Чистим localStorage от fallback-данных
+            localStorage.removeItem(STORAGE_KEYS.promptsData('default'));
+            localStorage.removeItem(STORAGE_KEYS.workflow('default'));
+            // Переключаемся на первую реальную вкладку если были на default
+            if (currentTab === 'default') {
+                const firstTab = Object.keys(allTabs)[0];
+                if (firstTab) currentTab = firstTab;
+            }
+        }
+        
         if (typeof saveAllTabs === 'function') {
             saveAllTabs(allTabs, true);
         }

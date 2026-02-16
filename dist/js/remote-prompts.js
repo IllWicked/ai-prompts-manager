@@ -322,7 +322,10 @@ async function applyPromptsUpdate(tabs, remoteManifest, isNewTabs = false, skipR
             // Переключаемся на первую реальную вкладку если были на default
             if (currentTab === 'default') {
                 const firstTab = Object.keys(allTabs)[0];
-                if (firstTab) currentTab = firstTab;
+                if (firstTab) {
+                    currentTab = firstTab;
+                    localStorage.setItem(STORAGE_KEYS.CURRENT_TAB, firstTab);
+                }
             }
         }
         

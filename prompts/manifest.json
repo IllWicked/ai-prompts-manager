@@ -24,11 +24,6 @@
       "name": "GAMBLE-MIRROR",
       "version": "1.0.10",
       "order": 6
-    },
-    "livetvsx": {
-      "name": "LIVETVSX",
-      "version": "1.0.1",
-      "order": 4
     }
   },
   "release_notes": "ЧТО НОВОГО:\n- Ничего",

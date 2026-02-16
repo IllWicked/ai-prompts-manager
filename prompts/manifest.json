@@ -10,11 +10,6 @@
       "version": "1.0.2",
       "order": 2
     },
-    "bet-pillar-default": {
-      "name": "BET-PILLAR-DEFAULT",
-      "version": "1.0.1",
-      "order": 3
-    },
     "bet-addcl": {
       "name": "BET-ADDCL",
       "version": "1.0.1",
@@ -24,6 +19,11 @@
       "name": "GAMBLE-MIRROR",
       "version": "1.0.10",
       "order": 6
+    },
+    "livetvsx": {
+      "name": "LIVETVSX",
+      "version": "1.0.1",
+      "order": 4
     }
   },
   "release_notes": "ЧТО НОВОГО:\n- Ничего",

@@ -802,6 +802,7 @@ function initSettingsHandlers() {
     
     // Режим редактирования
     initEditModeHandlers();
+    updateEditModeToggle();
     
     // Дополнительные настройки
     initAdvancedSettings();
@@ -1130,7 +1131,12 @@ function initApp() {
     // 2. Настраиваем download listeners
     setupDownloadListeners();
     
-    // 3. Инициализация workflow
+    // 3. Восстанавливаем режим редактирования из настроек
+    if (typeof initAdminMode === 'function') {
+        initAdminMode();
+    }
+    
+    // 4. Инициализация workflow
     initWorkflow();
     
     // 4. Восстанавливаем состояние проекта
@@ -1214,6 +1220,12 @@ function initApp() {
         loadPrompts();
         initTabSelector();
         initLanguageSelector();
+        
+        // Восстанавливаем adminMode после возможного сброса
+        if (typeof initAdminMode === 'function') {
+            initAdminMode();
+            if (typeof updateEditModeToggle === 'function') updateEditModeToggle();
+        }
         
         // Обработчики вкладок
         document.getElementById('confirm-add-tab-btn')?.addEventListener('click', () => {

@@ -731,7 +731,7 @@
             <!-- Версия и кнопка закрытия -->
             <div class="pt-3 border-t border-gray-200 flex items-center justify-between">
                 <span id="version-label" class="text-xs text-gray-400 cursor-default select-none">
-                    Версия: <span id="settings-version">4.2.6</span>
+                    Версия: <span id="settings-version">4.2.8</span>
                 </span>
                 <button id="settings-close-btn" class="btn btn-primary">
                     Закрыть
@@ -795,7 +795,7 @@
     <script>
         /**
          * ╔═══════════════════════════════════════════════════════════════════════════╗
-         * ║                    AI PROMPTS MANAGER v4.2.6                              ║
+         * ║                    AI PROMPTS MANAGER v4.2.8                              ║
          * ║                                                                           ║
          * ║  Tauri 2.0 приложение для управления промптами с интеграцией Claude AI   ║
          * ╚═══════════════════════════════════════════════════════════════════════════╝
@@ -820,7 +820,6 @@
 
         // Инициализация isAdminMode из настроек (AppState уже загружен)
         initAdminMode();
-        let isAdminMode = window.AppState.app.isAdminMode;
         
         // getTabItems, getTabBlocks — вынесены в tabs.js
         

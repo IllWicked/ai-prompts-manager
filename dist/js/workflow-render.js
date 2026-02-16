@@ -101,6 +101,72 @@ function scrollToCanvasCenter(container) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ADAPTIVE FOOTER BUTTONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** @type {ResizeObserver|null} */
+let _footerResizeObserver = null;
+
+/**
+ * Подстраивает кнопку «Редактировать» под ширину контейнера.
+ * Использует стандартную проверку overflow: scrollWidth > clientWidth.
+ * 
+ * Логика:
+ *   1. Сбросить в полный режим
+ *   2. Если edit-кнопка overflow → переключить на compact (иконка + «Ред.»)
+ *   3. Если всё ещё overflow → переключить на icon (только иконка)
+ */
+function adaptFooterButtons(container) {
+    if (!container) return;
+    
+    const editBtn = container.querySelector('.edit-btn');
+    const chatBtns = container.querySelectorAll('.chat-btn');
+    
+    // 1. Сбросить все адаптации
+    container.classList.remove('compact-edit', 'icon-edit', 'compact-chat');
+    
+    // 2. Адаптация edit-кнопки
+    if (editBtn && editBtn.scrollWidth > editBtn.clientWidth) {
+        container.classList.add('compact-edit');
+        if (editBtn.scrollWidth > editBtn.clientWidth) {
+            container.classList.remove('compact-edit');
+            container.classList.add('icon-edit');
+        }
+    }
+    
+    // 3. Адаптация chat-кнопок: если хоть одна overflow — скрыть «Чат» у всех
+    for (const btn of chatBtns) {
+        if (btn.scrollWidth > btn.clientWidth) {
+            container.classList.add('compact-chat');
+            break;
+        }
+    }
+}
+
+/**
+ * Устанавливает ResizeObserver на ноды для адаптации кнопок футера.
+ * Observer реагирует на любое изменение ширины ноды (drag resize, zoom, etc).
+ */
+function observeFooterButtons(canvas) {
+    if (_footerResizeObserver) {
+        _footerResizeObserver.disconnect();
+        _footerResizeObserver = null;
+    }
+    
+    const nodes = canvas.querySelectorAll('.workflow-node:not(.collapsed)');
+    if (!nodes.length) return;
+    
+    _footerResizeObserver = new ResizeObserver(entries => {
+        for (const entry of entries) {
+            const bc = entry.target.querySelector('.workflow-node-footer-buttons');
+            if (bc) adaptFooterButtons(bc);
+        }
+    });
+    
+    nodes.forEach(node => _footerResizeObserver.observe(node));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN RENDER FUNCTION
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -170,6 +236,10 @@ function renderWorkflow(preserveScroll = null) {
         const node = createWorkflowNode(block, index);
         canvas.appendChild(node);
     });
+    
+    // Адаптивные кнопки футера: ResizeObserver подстраивает
+    // состояние кнопки "Редактировать" под ширину футера
+    observeFooterButtons(canvas);
     
     // Выравниваем collapsed блоки по нечётной сетке
     requestAnimationFrame(() => {
@@ -274,10 +344,12 @@ function generateExpandedFooterHtml(index, chatTabs, options = {}) {
     // Кнопки отправки в чаты (если разрешено)
     if (showChatButtons) {
         if (chatTabs.length === 1) {
-            html += `<button class="workflow-node-btn primary chat-btn" onclick="sendNodeToClaude(${index}, ${chatTabs[0]})" title="Отправить в чат">${arrowSvg}<span class="btn-label-chat">Чат</span></button>`;
+            const isGen = generatingTabs[chatTabs[0]] || false;
+            html += `<button class="workflow-node-btn primary chat-btn" onclick="sendNodeToClaude(${index}, ${chatTabs[0]})" title="Отправить в чат"${isGen ? ' disabled' : ''}>${arrowSvg}<span class="btn-label-chat">Чат</span></button>`;
         } else {
             chatTabs.forEach(tab => {
-                html += `<button class="workflow-node-btn primary chat-btn" onclick="sendNodeToClaude(${index}, ${tab})" title="Отправить в Чат ${tab}">${arrowSvg}<span class="btn-label-chat">Чат\u00A0</span><span class="btn-label-num">${tab}</span></button>`;
+                const isGen = generatingTabs[tab] || false;
+                html += `<button class="workflow-node-btn primary chat-btn" onclick="sendNodeToClaude(${index}, ${tab})" title="${isGen ? 'Claude генерирует...' : 'Отправить в Чат ' + tab}"${isGen ? ' disabled' : ''}>${arrowSvg}<span class="btn-label-chat">Чат\u00A0</span><span class="btn-label-num">${tab}</span></button>`;
             });
         }
     }

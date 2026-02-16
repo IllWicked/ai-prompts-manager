@@ -50,9 +50,10 @@ function adjustWorkflowScale() {
         // Устанавливаем CSS переменную для обратного зума (для масштабирования кликабельных зон)
         canvas.style.setProperty('--zoom-inverse', 1 / workflowZoom);
         
-        // Edit mode - wrapper сбрасываем
-        wrapper.style.width = '';
-        wrapper.style.height = '';
+        // Edit mode - wrapper размер = canvas * zoom (чтобы scrollable area соответствовала визуальному размеру)
+        const canvasSize = WORKFLOW_CONFIG.CANVAS_SIZE;
+        wrapper.style.width = (canvasSize * workflowZoom) + 'px';
+        wrapper.style.height = (canvasSize * workflowZoom) + 'px';
         
         // Показываем и обновляем индикатор зума
         if (indicator) {
@@ -242,8 +243,8 @@ function setupWorkflowZoom() {
             }
             
             // Обычный скролл — ограничиваем пределами холста
-            // Canvas имеет фиксированный размер, transform: scale не меняет scrollable area
-            const canvasSize = WORKFLOW_CONFIG.CANVAS_SIZE;
+            // Scrollable area = canvas size * zoom (wrapper задаёт размер)
+            const canvasSize = WORKFLOW_CONFIG.CANVAS_SIZE * workflowZoom;
             const maxScrollX = Math.max(0, canvasSize - container.clientWidth);
             const maxScrollY = Math.max(0, canvasSize - container.clientHeight);
             
@@ -266,7 +267,28 @@ function setupWorkflowZoom() {
         // Shift + scroll = горизонтальный скролл (обрабатывается выше через shiftKey)
     }, { passive: false });
     
-    // Panning холста (средняя кнопка мыши или Space + левая кнопка)
+    // ── Space key tracking (Space + drag = panning) ──
+    let isSpacePressed = false;
+    
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && !e.target.matches('input, textarea, [contenteditable]')) {
+            if (!isSpacePressed) {
+                isSpacePressed = true;
+                if (isEditMode) container.style.cursor = 'grab';
+            }
+            // Предотвращаем скролл страницы по Space
+            e.preventDefault();
+        }
+    });
+    
+    window.addEventListener('keyup', (e) => {
+        if (e.code === 'Space') {
+            isSpacePressed = false;
+            if (!isPanning) container.style.cursor = '';
+        }
+    });
+    
+    // ── Panning + Marquee selection ──
     let isPanning = false;
     let panStartX = 0;
     let panStartY = 0;
@@ -296,29 +318,26 @@ function setupWorkflowZoom() {
         
         if (!isEditMode) return;
         
-        // Средняя кнопка мыши (button === 1) или пустое место на холсте с левой кнопкой
         const isMiddleButton = e.button === 1;
         
         if (isMiddleButton || (e.button === 0 && isEmptyCanvas)) {
-            // Снимаем выделение при клике на пустое место
-            if (e.button === 0 && isEmptyCanvas && selectedNodes.size > 0) {
-                clearNodeSelection();
-            }
+            e.preventDefault();
             
-            // Для левой кнопки на пустом месте - начинаем panning
-            if (e.button === 0 && isEmptyCanvas) {
+            // Средняя кнопка или Space+левая = panning
+            if (isMiddleButton || isSpacePressed) {
                 isPanning = true;
-            } else if (isMiddleButton) {
-                isPanning = true;
-            }
-            
-            if (isPanning) {
-                e.preventDefault();
                 panStartX = e.clientX;
                 panStartY = e.clientY;
                 panScrollLeft = container.scrollLeft;
                 panScrollTop = container.scrollTop;
                 container.style.cursor = 'grabbing';
+            } else {
+                // Левая кнопка на пустом месте без Space = marquee selection
+                // Ctrl — добавляем к текущему выделению, иначе сбрасываем
+                if (!e.ctrlKey && selectedNodes.size > 0) {
+                    clearNodeSelection();
+                }
+                startMarqueeSelection(container, e);
             }
         }
     });
@@ -341,25 +360,29 @@ function setupWorkflowZoom() {
     });
     
     container.addEventListener('mousemove', (e) => {
-        if (!isPanning) return;
-        
-        e.preventDefault();
-        const dx = e.clientX - panStartX;
-        const dy = e.clientY - panStartY;
-        
-        // Ограничения scroll - не выходить за пределы холста
-        const canvasSize = WORKFLOW_CONFIG.CANVAS_SIZE;
-        const maxScrollX = Math.max(0, canvasSize - container.clientWidth);
-        const maxScrollY = Math.max(0, canvasSize - container.clientHeight);
-        
-        container.scrollLeft = Math.max(0, Math.min(maxScrollX, panScrollLeft - dx));
-        container.scrollTop = Math.max(0, Math.min(maxScrollY, panScrollTop - dy));
+        if (isPanning) {
+            e.preventDefault();
+            const dx = e.clientX - panStartX;
+            const dy = e.clientY - panStartY;
+            
+            // Ограничения scroll - не выходить за пределы холста
+            const canvasSize = WORKFLOW_CONFIG.CANVAS_SIZE * workflowZoom;
+            const maxScrollX = Math.max(0, canvasSize - container.clientWidth);
+            const maxScrollY = Math.max(0, canvasSize - container.clientHeight);
+            
+            container.scrollLeft = Math.max(0, Math.min(maxScrollX, panScrollLeft - dx));
+            container.scrollTop = Math.max(0, Math.min(maxScrollY, panScrollTop - dy));
+        } else {
+            updateMarqueeSelection(container, e);
+        }
     });
     
     container.addEventListener('mouseup', () => {
         if (isPanning) {
             isPanning = false;
-            container.style.cursor = '';
+            container.style.cursor = isSpacePressed ? 'grab' : '';
+        } else {
+            endMarqueeSelection(container);
         }
     });
     
@@ -367,6 +390,8 @@ function setupWorkflowZoom() {
         if (isPanning) {
             isPanning = false;
             container.style.cursor = '';
+        } else {
+            endMarqueeSelection(container);
         }
     });
 }

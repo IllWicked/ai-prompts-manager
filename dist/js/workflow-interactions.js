@@ -256,4 +256,134 @@ function resetDragResizeState() {
     document.removeEventListener('mouseup', onNodeDragEnd);
     
     clearGridOverlay();
+    
+    // Сброс marquee если активен
+    _marqueeActive = false;
+    const rect = document.getElementById('marquee-selection-rect');
+    if (rect) rect.remove();
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MARQUEE SELECTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _marqueeActive = false;
+let _marqueeStartX = 0;
+let _marqueeStartY = 0;
+let _marqueeCtrl = false;
+let _marqueePreSelection = new Set(); // ноды выделенные до marquee (для Ctrl)
+
+/**
+ * Начать marquee selection
+ * @param {HTMLElement} container - workflow-container
+ * @param {MouseEvent} e
+ */
+function startMarqueeSelection(container, e) {
+    _marqueeActive = true;
+    _marqueeCtrl = e.ctrlKey;
+    
+    // Запоминаем что было выделено до marquee (для Ctrl+drag)
+    _marqueePreSelection = new Set(selectedNodes);
+    
+    // Стартовая точка в координатах контейнера (с учётом скролла)
+    _marqueeStartX = e.clientX - container.getBoundingClientRect().left + container.scrollLeft;
+    _marqueeStartY = e.clientY - container.getBoundingClientRect().top + container.scrollTop;
+    
+    // Создаём элемент прямоугольника
+    let rect = document.getElementById('marquee-selection-rect');
+    if (!rect) {
+        rect = document.createElement('div');
+        rect.id = 'marquee-selection-rect';
+        container.appendChild(rect);
+    }
+    rect.style.left = _marqueeStartX + 'px';
+    rect.style.top = _marqueeStartY + 'px';
+    rect.style.width = '0';
+    rect.style.height = '0';
+    rect.style.display = 'block';
+}
+
+/**
+ * Обновить marquee selection при движении мыши
+ * @param {HTMLElement} container - workflow-container
+ * @param {MouseEvent} e
+ */
+function updateMarqueeSelection(container, e) {
+    if (!_marqueeActive) return;
+    
+    const currentX = e.clientX - container.getBoundingClientRect().left + container.scrollLeft;
+    const currentY = e.clientY - container.getBoundingClientRect().top + container.scrollTop;
+    
+    // Вычисляем прямоугольник (может быть в любом направлении)
+    const left = Math.min(_marqueeStartX, currentX);
+    const top = Math.min(_marqueeStartY, currentY);
+    const width = Math.abs(currentX - _marqueeStartX);
+    const height = Math.abs(currentY - _marqueeStartY);
+    
+    const rect = document.getElementById('marquee-selection-rect');
+    if (rect) {
+        rect.style.left = left + 'px';
+        rect.style.top = top + 'px';
+        rect.style.width = width + 'px';
+        rect.style.height = height + 'px';
+    }
+    
+    // Порог: не считаем за marquee если движение < 5px
+    if (width < 5 && height < 5) return;
+    
+    // Конвертируем marquee rect из container-scroll координат в canvas координат
+    const scale = workflowZoom;
+    const mLeft = left / scale;
+    const mTop = top / scale;
+    const mRight = (left + width) / scale;
+    const mBottom = (top + height) / scale;
+    
+    // Проверяем пересечение с каждой нодой
+    document.querySelectorAll('.workflow-node').forEach(node => {
+        const blockId = node.dataset.blockId;
+        if (!blockId) return;
+        
+        const nx = parseFloat(node.style.left) || 0;
+        const ny = parseFloat(node.style.top) || 0;
+        const nw = node.offsetWidth || 0;
+        const nh = node.offsetHeight || 0;
+        
+        const intersects = !(nx + nw < mLeft || nx > mRight || ny + nh < mTop || ny > mBottom);
+        
+        if (intersects) {
+            selectedNodes.add(blockId);
+            node.classList.add('selected');
+        } else if (_marqueeCtrl) {
+            // Ctrl+marquee: восстанавливаем pre-selection состояние
+            if (_marqueePreSelection.has(blockId)) {
+                selectedNodes.add(blockId);
+                node.classList.add('selected');
+            } else {
+                selectedNodes.delete(blockId);
+                node.classList.remove('selected');
+            }
+        } else {
+            selectedNodes.delete(blockId);
+            node.classList.remove('selected');
+        }
+    });
+}
+
+/**
+ * Завершить marquee selection
+ * @param {HTMLElement} container - workflow-container
+ */
+function endMarqueeSelection(container) {
+    if (!_marqueeActive) return;
+    _marqueeActive = false;
+    
+    const rect = document.getElementById('marquee-selection-rect');
+    if (rect) rect.style.display = 'none';
+    
+    _marqueePreSelection.clear();
+}
+
+// Экспорт
+window.startMarqueeSelection = startMarqueeSelection;
+window.updateMarqueeSelection = updateMarqueeSelection;
+window.endMarqueeSelection = endMarqueeSelection;

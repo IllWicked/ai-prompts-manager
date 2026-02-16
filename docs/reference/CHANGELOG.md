@@ -8,6 +8,67 @@
 
 ---
 
+## [4.2.8] - 2026-02-13 {#v428}
+
+### Исправления
+
+#### isAdminMode double declaration (#4)
+- Убрано дублирование `let isAdminMode` в index.html:823 — `defineProperty` в app-state.js уже создаёт глобальный алиас
+
+#### Zoom scroll conflict (#2)
+- Canvas wrapper получает размер `canvasSize * zoom` в edit mode
+- `maxScroll` в wheel и pan обработчиках учитывает `workflowZoom`
+
+#### Project unblocking after finishProject (#9)
+- `updateWorkflowChatButtons()` теперь снимает/ставит `project-restricted` класс на collapsed нодах
+
+#### Dynamic Input field limit (#10)
+- Лимит кастомных полей увеличен 4 → 10 (скролл уже работал через `modal-scroll-area`)
+
+#### Lang form menu в модалке (#7)
+- `onClickOutside` listener теперь вешается и на `.modal-overlay` (обход `stopPropagation` на `.modal-content`)
+
+#### Toolbar исчезает при recreate (#6)
+- `recreate_claude_tab` вызывает `recreate_toolbar()` после создания webview для восстановления z-order
+
+#### Generation blocking (#1)
+- Early return в `sendNodeToClaude` при `generatingTabs[targetTab]`
+- Кнопки чатов получают `disabled` атрибут при генерации (expanded + collapsed)
+- CSS `.workflow-node-btn.primary:disabled`
+
+#### Chat tabs redesign (#8)
+- Кнопки чатов переделаны в равноширинные табы (`flex: 1`, `border-bottom` indicator вместо `background`)
+- Убраны gap, border-radius, фоновый цвет у неактивных табов
+
+### Новые возможности
+
+#### Marquee selection (#3)
+- Left click + drag на пустом месте в edit mode → прямоугольник выделения нод
+- Ctrl + drag → добавление к текущему выделению
+- Space + drag → panning (перенесено с обычного левого клика)
+- Средняя кнопка → panning (без изменений)
+- CSS: `#marquee-selection-rect` с dashed border цвета claude-primary
+
+### Обновления скриптов (#11)
+
+#### convert.py → unified (895 строк)
+- Объединён старый (MD → HTML) и новый (HTML-merge v3.1) в один скрипт
+- Автоопределение: `content.html` + `design.html` → ACTUAL, иначе → LEGACY
+- Флаги `--actual` / `--legacy` для принудительного режима
+- ACTUAL: мерж data-content блоков, авто-фикс структурных div, data-component → class, FAQ details/summary, data-preserve
+- LEGACY: без изменений (pillar/clusters, scoring языков)
+
+#### count.py
+- Добавлена `clean_html()` для подсчёта слов в HTML файлах
+- Поддержка `.html`, `.htm` в дополнение к `.md`
+
+#### spellcheck.py
+- `clean_markdown()` → `clean_markup()`: убирает и HTML-теги, и MD-разметку
+- Поддержка `.html` файлов
+
+#### Документация
+- Обновлён EMBEDDED-SCRIPTS.md (convert.py unified, count.py MD/HTML, spellcheck.py MD/HTML)
+
 ## [4.2.5] - 2026-02-06 {#v425}
 
 ### Исправления

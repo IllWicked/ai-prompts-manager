@@ -11,27 +11,59 @@
 ```javascript
 const EMBEDDED_SCRIPTS = {
     convert: {
-        name: 'convert.py',     // Имя файла
-        label: 'Конвертация',   // Метка в UI
-        badge: 'C',             // Буква для бейджа
-        content: `...`          // Содержимое скрипта
+        name: 'convert.py',             // Имя файла
+        label: 'Конвертация (unified)', // Метка в UI
+        badge: 'C',                     // Буква для бейджа
+        content: `...`                  // Содержимое скрипта (~895 строк)
     },
     count: {
         name: 'count.py',
-        label: 'Подсчёт слов',
+        label: 'Подсчёт слов (MD/HTML)',
         badge: 'W',
         content: `...`
     }
 };
 ```
 
-### convert.py
+### convert.py (unified, ~895 строк)
 
-**Назначение:** Конвертация Markdown в HTML.
+**Назначение:** Объединённый конвертер с двумя режимами работы — для текущих и legacy пайплайнов.
 
-**Режимы работы:**
-1. **Pillar** (есть `design.html`) — вставляет контент в шаблон
-2. **Clusters** (нет шаблона) — генерирует standalone HTML
+**Автоопределение режима:**
+- Есть `content.html` + `design.html` → **ACTUAL** (HTML-merge)
+- Только `.md` файлы → **LEGACY** (MD → HTML)
+- Принудительно: `--actual` или `--legacy`
+
+#### ACTUAL — HTML-merge v3.1
+
+Для текущих пайплайнов с data-content блоками.
+
+**Вход:** `content.html` + `design.html` → `index.html`
+
+**Возможности:**
+- Мерж innerHTML каждого `data-content` блока из content в design
+- Автоматическое обнаружение и фикс структурных расхождений (сравнение дочерних `<div>` по CSS-классам)
+- Восстановление структурных (пустых) div-ов из design
+- Конвертация `data-component="X"` → `class="X"` по пулу классов design
+- FAQ: автоконвертация `div+h3` (schema.org) → `details+summary` если design использует accordion
+- `data-preserve` поддержка: предупреждение о потерянных элементах
+- Валидация дубликатов data-content id
+- Pre-merge и post-merge диагностика
+
+**Использование:**
+```bash
+python convert.py                              # авто: content.html + design.html
+python convert.py content.html design.html     # явные пути
+python convert.py --actual src.html tpl.html out.html
+```
+
+#### LEGACY — MD → HTML конвертер
+
+Для старых пайплайнов с .md файлами.
+
+**Режимы:**
+1. **Pillar** (есть `design.html`) — вставляет контент в шаблон через `{{CONTENT}}`
+2. **Clusters** (нет шаблона) — генерирует standalone HTML для каждого .md
 
 **Возможности:**
 - Заголовки (`# ## ###`) с поддержкой якорей `{#id}`
@@ -40,11 +72,9 @@ const EMBEDDED_SCRIPTS = {
 - Блоки кода с подсветкой языка
 - Ссылки и изображения
 - Жирный, курсив, зачёркнутый текст
-- Автоопределение языка (20 языков) на основе системы подсчёта очков
+- Автоопределение языка (20 языков) на основе scoring-системы
 
-**Автоопределение языка (scoring-система):**
-
-Новая система использует подсчёт очков вместо цепочки if-else:
+**Автоопределение языка (scoring-система, только LEGACY):**
 
 | Тип признака | Вес | Примеры |
 |--------------|-----|---------|
@@ -61,13 +91,13 @@ const EMBEDDED_SCRIPTS = {
 - При равенстве очков — приоритет по частоте использования
 - Решена проблема en↔es путём подсчёта характерных слов обоих языков
 
-**Использование:**
+**Использование (LEGACY):**
 ```bash
 # Clusters: все .md файлы → отдельные .html
-python convert.py
+python convert.py --legacy
 
 # Pillar: article.md + design.html → index.html
-python convert.py article.md
+python convert.py --legacy article.md
 ```
 
 **Выход:**
@@ -77,24 +107,25 @@ python convert.py article.md
 
 ### count.py
 
-**Назначение:** Подсчёт слов в Markdown (только видимый текст).
+**Назначение:** Подсчёт слов в Markdown и HTML файлах (только видимый текст).
 
 **Что убирается:**
-- Markdown-разметка (ссылки, изображения)
-- Форматирование (жирный, курсив)
-- Заголовки и маркеры списков
-- Блоки кода
-- HTML-теги
+- **MD:** Markdown-разметка (ссылки, изображения, форматирование, заголовки, маркеры списков, блоки кода)
+- **HTML:** `<style>`, `<script>` блоки, HTML-комментарии, все теги, HTML-сущности
+
+**Поддерживаемые форматы:** `.md`, `.html`, `.htm`
 
 **Использование:**
 ```bash
 python count.py file.md
-python count.py *.md
+python count.py file.html
+python count.py *.md *.html
 ```
 
 **Выход:**
 ```
 article.md: 1523 слов
+index.html: 2105 слов
 ```
 
 ---
@@ -112,6 +143,7 @@ article.md: 1523 слов
 - Поиск смешанных алфавитов (кириллица + латиница)
 - Баланс парной пунктуации (скобки, кавычки)
 - Поддержка множества языков
+- Поддержка `.md` и `.html` файлов (`clean_markup` убирает и HTML-теги, и MD-разметку)
 
 **Зависимости:**
 - Python 3.8+
@@ -120,11 +152,12 @@ article.md: 1523 слов
 
 **Использование:**
 ```bash
-python spellcheck.py <lang> <file.md> [file2.md ...]
+python spellcheck.py <lang> <file> [file2 ...]
 
 # Примеры:
 python spellcheck.py en article.md
-python spellcheck.py de *.md
+python spellcheck.py de page.html
+python spellcheck.py es *.md *.html
 ```
 
 ---

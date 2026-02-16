@@ -320,10 +320,19 @@ function showLanguageFormMenu(textarea, anchorBtn) {
         if (!dropdown.contains(e.target)) {
             closeMenu();
             document.removeEventListener('click', onClickOutside);
+            if (parentModal) {
+                parentModal.removeEventListener('click', onClickOutside);
+            }
         }
     }
+    // Если меню открыто из модалки — слушаем клики и на модалке
+    // (modal-content имеет stopPropagation, поэтому document listener не сработает)
+    const parentModal = anchorBtn?.closest('.modal-overlay');
     setTimeout(() => {
         document.addEventListener('click', onClickOutside);
+        if (parentModal) {
+            parentModal.addEventListener('click', onClickOutside);
+        }
     }, 0);
 }
 

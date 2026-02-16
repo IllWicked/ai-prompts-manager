@@ -636,6 +636,14 @@ async function sendNodeToClaude(index, chatTab) {
     const blocks = getTabBlocks(currentTab);
     if (!blocks[index]) return;
     
+    const targetTab = chatTab || activeClaudeTab;
+    
+    // Защита от отправки в таб с активной генерацией
+    if (generatingTabs[targetTab]) {
+        showToast(`Чат ${targetTab}: Claude ещё генерирует...`);
+        return;
+    }
+    
     isSendingToClaudeInProgress = true;
     
     const block = blocks[index];
@@ -644,7 +652,6 @@ async function sendNodeToClaude(index, chatTab) {
     const files = blockAttachments[blockId] || [];
     const scripts = getBlockScripts(blockId);
     const automation = getBlockAutomationFlags(blockId);
-    const targetTab = chatTab || activeClaudeTab;
     
     try {
         // Открываем Claude если закрыт

@@ -82,8 +82,8 @@ function addConstructorFieldElement(fieldData = {}, index = null) {
         index = container.children.length;
     }
     
-    // Ограничение на 4 поля
-    if (index >= 4) {
+    // Ограничение на 10 полей
+    if (index >= 10) {
         return;
     }
     
@@ -135,7 +135,7 @@ function addConstructorFieldElement(fieldData = {}, index = null) {
 function updateAddFieldButton() {
     const container = document.getElementById('constructor-fields');
     const addBtn = document.getElementById('add-constructor-field-btn');
-    if (container.children.length >= 4) {
+    if (container.children.length >= 10) {
         addBtn.classList.add('hidden');
     } else {
         addBtn.classList.remove('hidden');

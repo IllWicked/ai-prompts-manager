@@ -12,7 +12,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::state::{CLAUDE_VISIBLE, ACTIVE_TAB, PANEL_RATIO};
 use crate::webview::scripts::get_generation_monitor_script;
-use crate::webview::manager::{ensure_claude_webview, ensure_toolbar, resize_webviews};
+use crate::webview::manager::{ensure_claude_webview, ensure_toolbar, recreate_toolbar, resize_webviews};
 use crate::utils::dimensions::animation::{ANIMATION_STEPS, ANIMATION_DELAY_MS};
 
 /// Предзагружает Claude webview в фоне (без показа)
@@ -223,6 +223,9 @@ pub async fn recreate_claude_tab(app: AppHandle, tab: u8) -> Result<(), String> 
     
     // Создаём заново
     ensure_claude_webview(&app, tab, None)?;
+    
+    // Пересоздаём toolbar чтобы он был поверх нового webview (z-order)
+    recreate_toolbar(&app)?;
     
     // Если это активный таб — обновляем layout
     if ACTIVE_TAB.load(Ordering::SeqCst) == tab {

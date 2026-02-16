@@ -213,6 +213,11 @@ function updateWorkflowChatButtons() {
         const index = parseInt(node.dataset.index);
         if (isNaN(index)) return;
         
+        // Обновляем класс project-restricted на collapsed блоках
+        if (node.classList.contains('collapsed')) {
+            node.classList.toggle('project-restricted', !showChatButtons);
+        }
+        
         // Обновляем кнопки в footer (развёрнутый блок)
         const buttonsContainer = node.querySelector('.workflow-node-footer-buttons');
         if (buttonsContainer) {
@@ -224,11 +229,12 @@ function updateWorkflowChatButtons() {
         if (collapsedButtons) {
             if (showChatButtons) {
                 const arrowSvgSmall = SVG_ICONS.arrowSmall;
-                const collapsedHtml = chatTabs.slice(0, 3).map(tab => 
-                    chatTabs.length === 1
-                        ? `<button class="collapsed-send-btn" onclick="event.stopPropagation(); sendNodeToClaude(${index}, ${tab})" title="Отправить в чат">${arrowSvgSmall}</button>`
-                        : `<button class="collapsed-send-btn" onclick="event.stopPropagation(); sendNodeToClaude(${index}, ${tab})" title="Отправить в Чат ${tab}">${arrowSvgSmall}<span>${tab}</span></button>`
-                ).join('');
+                const collapsedHtml = chatTabs.slice(0, 3).map(tab => {
+                    const isGen = generatingTabs[tab] || false;
+                    return chatTabs.length === 1
+                        ? `<button class="collapsed-send-btn" onclick="event.stopPropagation(); sendNodeToClaude(${index}, ${tab})" title="Отправить в чат"${isGen ? ' disabled' : ''}>${arrowSvgSmall}</button>`
+                        : `<button class="collapsed-send-btn" onclick="event.stopPropagation(); sendNodeToClaude(${index}, ${tab})" title="${isGen ? 'Claude генерирует...' : 'Отправить в Чат ' + tab}"${isGen ? ' disabled' : ''}>${arrowSvgSmall}<span>${tab}</span></button>`;
+                }).join('');
                 collapsedButtons.innerHTML = collapsedHtml;
             } else {
                 collapsedButtons.innerHTML = '';

@@ -9,7 +9,9 @@ EMBEDDED_SCRIPTS.spellcheck = {
     content: `#!/usr/bin/env python3
 """
 Комплексная проверка текстов на разных языках.
-Использование: python spellcheck.py <lang_code> <file.md> [file2.md ...]
+Использование: python spellcheck.py <lang_code> <file> [file2 ...]
+
+Поддерживает .md и .html файлы.
 
 Проверки:
 1. Орфография (hunspell) — слова не в словаре
@@ -111,13 +113,14 @@ PAIRED_PUNCTUATION = {
 # ПРОВЕРКА 1: ОРФОГРАФИЯ (HUNSPELL)
 # =============================================================================
 
-def clean_markdown(text: str) -> str:
-    """Убирает markdown-разметку для проверки орфографии."""
+def clean_markup(text: str) -> str:
+    """Убирает HTML и markdown-разметку для проверки орфографии."""
+    text = re.sub(r'<[^>]+>', ' ', text)
     text = re.sub(r'^#{1,6}\\s+', '', text, flags=re.MULTILINE)
     text = re.sub(r'\\*\\*([^*]+)\\*\\*', r'\\1', text)
     text = re.sub(r'\\*([^*]+)\\*', r'\\1', text)
     text = re.sub(r'\\[([^\\]]+)\\]\\([^)]+\\)', r'\\1', text)
-    text = re.sub(r'\`[^\`]+\`', '', text)
+    text = re.sub(r'\\\`[^\\\`]+\\\`', '', text)
     return text
 
 
@@ -166,7 +169,7 @@ def check_spelling(text: str, lang: str) -> list:
     if not exists:
         return [f'[{message}]']
     
-    clean_text = clean_markdown(text)
+    clean_text = clean_markup(text)
     
     try:
         result = subprocess.run(

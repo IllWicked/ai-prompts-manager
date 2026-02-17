@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "exportDate": "2026-02-17T10:16:19.041Z",
+  "exportDate": "2026-02-17T10:40:24.607Z",
   "tab": {
     "id": "bet-pillar-main",
     "name": "BET-PILLAR-MAIN",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "items": [
       {
         "type": "block",
@@ -136,11 +136,19 @@
         "type": "block",
         "id": "item_1768308167100_tnsbethzj",
         "title": "Экспорт",
-        "content": "Упакуй все файлы в архив .zip.\nМетод:\nСоздай python-скрипт для упаковки на основе нижеуказанной структуры.\nСтруктура архива:\nНазвание: BET-S2-XX-PILLAR-ключевое-слово. XX — код geo. И он, и ключ указаны в конце content-plan.md. Сохраняй написание и кодировку ключа при именовании архива, но все пробелы заменяй на дефисы (всё название только через дефисы).\nСодержимое:\n├── ADD PAGES/              → технические страницы (названия локализированы под язык)\n├── CLUSTERS MAIN/\n│   ├── CL1/                → index1.html + prompt1.txt\n│   ├── CL2/                → index2.html + prompt2.txt\n│   ├── CL3/                → index3.html + prompt3.txt\n│   ├── CL4/                → index4.html + prompt4.txt\n│   └── CL5/                → index5.html + prompt5.txt\n├── CLUSTERS ADD/\n│   ├── CL1/                → index1.html + prompt1.txt\n│   ├── CL2/                → index2.html + prompt2.txt\n│   │   ...\n│   └── CL30/               → index30.html + prompt30.txt\n└── PILLAR/                 → index.html + prompts.txt + images-styles.css\nContent-plan.md не нужен в архиве, он только для тебя.",
+        "content": "Упакуй все файлы в архив .zip.\nМетод:\nСоздай python-скрипт для упаковки на основе нижеуказанной структуры.\nСтруктура архива:\nНазвание: BET-SX-XX-PILLAR-ключевое-слово. XX — код geo. И он, и ключ указаны в конце content-plan.md. Сохраняй написание и кодировку ключа при именовании архива, но все пробелы заменяй на дефисы (всё название только через дефисы). SX — номер (X) стрима (S), текущий стрим: 0.\nСодержимое:\n├── ADD PAGES/              → технические страницы (названия локализированы под язык)\n├── CLUSTERS MAIN/\n│   ├── CL1/                → index1.html + prompt1.txt\n│   ├── CL2/                → index2.html + prompt2.txt\n│   ├── CL3/                → index3.html + prompt3.txt\n│   ├── CL4/                → index4.html + prompt4.txt\n│   └── CL5/                → index5.html + prompt5.txt\n├── CLUSTERS ADD/\n│   ├── CL1/                → index1.html + prompt1.txt\n│   ├── CL2/                → index2.html + prompt2.txt\n│   │   ...\n│   └── CL30/               → index30.html + prompt30.txt\n└── PILLAR/                 → index.html + prompts.txt + images-styles.css\nContent-plan.md не нужен в архиве, он только для тебя.",
         "instruction": {
-          "type": "info",
+          "type": "input",
           "icon": "paperclip",
-          "text": "Прикрепить все готовые файлы"
+          "text": "Прикрепить все готовые файлы / Указать стрим",
+          "fields": [
+            {
+              "label": "Стрим",
+              "placeholder": "0",
+              "prefix": "стрим:",
+              "optional": false
+            }
+          ]
         },
         "hasAttachments": true,
         "automation": {

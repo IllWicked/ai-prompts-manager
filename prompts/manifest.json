@@ -7,13 +7,13 @@
     },
     "bet-pillar-clkeys": {
       "name": "BET-PILLAR-CLKEYS",
-      "version": "1.0.4",
-      "order": 4
+      "version": "1.0.5",
+      "order": 3
     },
     "bet-addcl": {
       "name": "BET-ADDCL",
-      "version": "1.0.3",
-      "order": 5
+      "version": "1.0.4",
+      "order": 4
     },
     "gamble-mirror": {
       "name": "GAMBLE-MIRROR",
@@ -22,8 +22,8 @@
     },
     "bet-pillar-main": {
       "name": "BET-PILLAR-MAIN",
-      "version": "1.0.5",
-      "order": 3
+      "version": "1.0.6",
+      "order": 5
     }
   },
   "release_notes": "ЧТО НОВОГО:",

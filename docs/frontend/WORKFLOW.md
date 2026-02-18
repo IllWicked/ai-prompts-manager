@@ -55,7 +55,7 @@
 
 | Функция | Описание |
 |---------|----------|
-| `saveWorkflowState(skipUndo)` | Сохранить в `workflow-{tabId}` |
+| `saveWorkflowState()` | Сохранить в `workflow-{tabId}` |
 | `loadWorkflowState()` | Загрузить состояние |
 
 ### Примеры
@@ -63,9 +63,6 @@
 ```javascript
 // После перемещения блока
 saveWorkflowState();
-
-// С пропуском записи в undo
-saveWorkflowState(true);
 
 // При загрузке вкладки
 loadWorkflowState();

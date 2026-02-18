@@ -170,7 +170,7 @@ showToast('Ошибка загрузки', 3000);
 | `saveToStorage(key, value)` | Сохранить JSON |
 | `safeSetItem(key, value)` | localStorage.setItem с QuotaExceeded protection |
 | `getAllTabs()` | Все вкладки (кэш + валидация) |
-| `saveAllTabs(tabs, skipUndo)` | Сохранить вкладки |
+| `saveAllTabs(tabs)` | Сохранить вкладки |
 | `setTabsCache(tabs)` | Установить кэш (для undo) |
 | `isValidTab(tab)` | Валидация структуры |
 | `isValidTabsStructure(tabs)` | Валидация всех |

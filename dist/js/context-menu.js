@@ -217,6 +217,7 @@ function renameBlockInline(blockId) {
         if (tabs[currentTab]) {
             const item = tabs[currentTab].items.find(i => i.id === blockId);
             if (item) {
+                UndoManager.snapshot(true);
                 item.title = newTitle;
                 saveAllTabs(tabs);
             }

@@ -8,7 +8,62 @@
 
 ---
 
-## [4.2.11] - 2026-02-13 {#v4211}
+## [4.2.12] - 2026-02-18 {#v4212}
+
+### Исправления
+
+#### Undo после удаления блока теряет позицию (#13)
+- **Баг:** После удаления блока и нажатия Ctrl+Z блок восстанавливался в позиции (0,0) — левый верхний угол за пределами холста
+- **Причина:** Позиция блока удалялась из `workflowPositions` до создания undo-snapshot
+
+#### Undo/Redo система переписана с нуля (#14)
+- **Проблемы v1:** двойные записи (одно действие → 2-3 snapshot), откат по 2 шага, snapshot из localStorage (неконсистентный), debounce 500ms не привязан к действиям, redo мог ломаться из-за debounced save после undo, 6+ файлов напрямую манипулировали стеками
+- **Решение:** Command-based архитектура — snapshot создаётся один раз перед каждым действием пользователя. Save-функции (`saveAllTabs`, `saveWorkflowState`, `saveToLocalStorage`) больше не триггерят undo
+- **UndoManager API:** единый модуль с методами `snapshot(force)`, `undo()`, `redo()`, `init()`, `switchTab()`, `renameTab()`, `deleteTab()`, `isRestoring`
+- **Snapshot из памяти:** состояние захватывается из глобальных переменных и кэша `getAllTabs()` через `structuredClone`, а не парсится из localStorage
+- **Debounce только для набора текста:** деструктивные операции (удаление, вставка, переименование) — принудительный snapshot; набор текста — debounce 1s; blur — force-snapshot (граница редактирования)
+- **Autosave не создаёт лишних записей:** `saveBlockContent` пропускает snapshot если контент не изменился
+- **Убран параметр `skipUndo`** из `saveAllTabs()`, `saveWorkflowState()`, `removeItemFromTab()`
+
+### Точки snapshot (действия пользователя)
+
+| Действие | Файл |
+|---|---|
+| Удаление блоков (Del/кнопка) | init.js, workflow-render.js |
+| Создание блока (+) | init.js |
+| Вставка блоков (Ctrl+V) | init.js |
+| Перемещение стрелками | init.js |
+| Drag (начало перемещения) | workflow-render.js |
+| Resize (начало ресайза) | workflow-render.js |
+| Редактирование текста (blur/debounce) | workflow-render.js |
+| Сохранение модалки | workflow-render.js |
+| Создание/удаление соединения | connections.js |
+| Переименование блока | context-menu.js |
+| Dynamic input (применение) | dynamic-input.js |
+| Изменение instruction | tabs.js |
+| Изменение chatTab | edit-helpers.js |
+| Изменение аттачментов | attachments.js |
+| Смена языка | language-ui.js |
+
+### Затронутые файлы (15)
+
+`undo.js` (перезапись), `storage.js`, `workflow-state.js`, `persistence.js`, `tabs.js`, `init.js`, `workflow-render.js`, `workflow-interactions.js`, `connections.js`, `context-menu.js`, `dynamic-input.js`, `tab-selector.js`, `edit-helpers.js`, `attachments.js`, `language-ui.js` + cleanup в `block-ui.js`, `export-import.js`, `remote-prompts.js`
+
+---
+
+## [4.2.11] - 2026-02-17 {#v4211}
+
+### Исправления
+
+#### Ложное срабатывание детекции языка на подстроках (#12)
+- **Баг:** Тост «Ошибка языка в: Pillar — дизайн» при открытии вкладки с промптами, не содержащими языковых форм
+- **Причина:** `detectAllLanguagesInText()` и `detectLanguageInText()` использовали `String.includes()` для поиска названий стран — подстрока «дания» находилась внутри слов «создания», «основания», «издания», «здания», «задания»
+- **Исправление:** Добавлена функция `includesWholeWord()` с Unicode-aware проверкой границ слов через `\p{L}` (т.к. стандартный `\b` не работает с кириллицей). Заменены все `includes()` в функциях детекции языка на `includesWholeWord()`
+- **Затронутые файлы:** `dist/js/language-ui.js`
+
+---
+
+## [4.2.10] - 2026-02-13 {#v4210}
 
 ### Исправления
 

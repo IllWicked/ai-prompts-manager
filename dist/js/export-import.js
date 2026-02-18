@@ -221,7 +221,7 @@ async function handleImportFile(event) {
     
     // Сливаем вкладки
     const mergedTabs = { ...tabs, ...allImportedTabs };
-    saveAllTabs(mergedTabs, true); // skipUndo - импорт не записывается
+    saveAllTabs(mergedTabs);
     
     // Извлекаем scripts, collapsed и automation из импортированных блоков
     Object.values(allImportedTabs).forEach(tab => {

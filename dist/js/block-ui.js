@@ -165,7 +165,7 @@ function alignCollapsedToOddGrid(node, blockId) {
         y: parseFloat(node.style.top) || 0 
     };
     
-    saveWorkflowState(true);
+    saveWorkflowState();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

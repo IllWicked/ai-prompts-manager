@@ -7,7 +7,7 @@
  * @requires blocks.js (hasBlockScript, toggleBlockScript, collapsedBlocks, 
  *                      blockAutomation, saveCollapsedBlocks, saveBlockAutomation)
  * @requires utils.js (generateItemId, debounce, getAppVersion)
- * @requires undo.js (autoSaveToUndo, isUndoRedoAction)
+ * @requires undo.js (UndoManager)
  * @requires remote-prompts.js (initializeRemotePrompts, showPromptsReleaseNotes)
  * @requires claude-api.js (stopGenerationMonitor)
  * @requires app-state.js (isResetting, isClaudeVisible, tabUrls, generatingTabs, 
@@ -63,7 +63,7 @@ async function initializeDefaultTabs() {
         }
     };
     
-    saveAllTabs(defaultTabs, true);
+    saveAllTabs(defaultTabs);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -84,8 +84,8 @@ function getCurrentStorageKey() {
  * @param {string} content - Содержимое для сохранения
  */
 function saveToLocalStorage(key, content) {
-    // Не записываем в undo во время undo/redo операций
-    if (isUndoRedoAction) return;
+    // Не сохраняем во время восстановления undo/redo
+    if (UndoManager.isRestoring) return;
     
     try {
         const storageKey = getCurrentStorageKey();
@@ -94,7 +94,6 @@ function saveToLocalStorage(key, content) {
         localStorage.setItem(storageKey, JSON.stringify(storedData));
         // Сохраняем версию данных
         localStorage.setItem(STORAGE_KEYS.DATA_VERSION, CURRENT_DATA_VERSION.toString());
-        autoSaveToUndo();
     } catch (e) {
         // Игнорируем ошибки
     }

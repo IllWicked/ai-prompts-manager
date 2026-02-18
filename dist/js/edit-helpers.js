@@ -155,6 +155,8 @@ function selectChatForNode(index) {
     const blocks = items.filter(item => item.type === 'block');
     
     if (blocks && blocks[index]) {
+        UndoManager.snapshot(true);
+        
         if (chat === '' || chat === '0') {
             delete blocks[index].chatTab;
         } else if (['1', '2', '3'].includes(chat)) {

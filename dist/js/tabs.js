@@ -67,7 +67,7 @@ function createNewTab(name) {
         name: upperName,
         items: []
     };
-    saveAllTabs(tabs, true); // skipUndo - создание вкладки не записывается
+    saveAllTabs(tabs);
     
     return finalId;
 }
@@ -95,7 +95,7 @@ function renameTab(oldId, newName) {
     // Если ID не изменился — просто обновляем name
     if (newId === oldId) {
         tabs[oldId].name = upperName;
-        saveAllTabs(tabs, true);
+        saveAllTabs(tabs);
         return;
     }
     
@@ -122,10 +122,7 @@ function renameTab(oldId, newName) {
     }
     
     // Переносим историю undo/redo
-    if (typeof tabHistories !== 'undefined' && tabHistories[oldId]) {
-        tabHistories[finalId] = tabHistories[oldId];
-        delete tabHistories[oldId];
-    }
+    UndoManager.renameTab(oldId, finalId);
     
     // Обновляем currentTab если это текущая вкладка
     if (typeof currentTab !== 'undefined' && currentTab === oldId) {
@@ -141,7 +138,7 @@ function renameTab(oldId, newName) {
         localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT, JSON.stringify(window.AppState.claude.project));
     }
     
-    saveAllTabs(tabs, true);
+    saveAllTabs(tabs);
     
     // Перерендериваем UI
     if (typeof renderTabMenu === 'function') {
@@ -186,15 +183,13 @@ function deleteTab(id) {
     });
     
     // Очищаем историю undo/redo для этой вкладки
-    if (typeof tabHistories !== 'undefined' && tabHistories[id]) {
-        delete tabHistories[id];
-    }
+    UndoManager.deleteTab(id);
     
     // Удаляем workflow данные
     localStorage.removeItem(STORAGE_KEYS.workflow(id));
     
     delete tabs[id];
-    saveAllTabs(tabs, true); // skipUndo - удаление вкладки не записывается
+    saveAllTabs(tabs);
     // Удаляем данные контента вкладки
     localStorage.removeItem(`ai-prompts-manager-${id}`);
     localStorage.removeItem(STORAGE_KEYS.promptsData(id));
@@ -276,6 +271,7 @@ function updateBlockInstruction(tabId, blockNumber, instruction) {
     
     const item = tabs[tabId].items.find(i => i.id === block.id);
     if (item) {
+        UndoManager.snapshot(true);
         item.instruction = instruction;
         markTabAsModified(tabId);
         saveAllTabs(tabs);

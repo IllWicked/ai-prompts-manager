@@ -203,10 +203,7 @@ function getAllTabs() {
 }
 
 // Сохранить все вкладки (обновляет кэш)
-function saveAllTabs(tabs, skipUndo = false) {
+function saveAllTabs(tabs) {
     _tabsCache = tabs; // Обновляем кэш
-    const saved = safeSetItem(STORAGE_KEYS.TABS, JSON.stringify(tabs));
-    if (saved && !skipUndo) {
-        autoSaveToUndo();
-    }
+    safeSetItem(STORAGE_KEYS.TABS, JSON.stringify(tabs));
 }

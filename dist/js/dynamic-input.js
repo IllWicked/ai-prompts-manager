@@ -6,8 +6,7 @@
  * @requires storage.js (getAllTabs, saveAllTabs)
  * @requires modals.js (closeAllModals)
  * @requires utils.js (escapeHtml)
- * @requires undo.js (captureCurrentTabState, undoStack, redoStack, tabHistories, 
- *                    updateUndoRedoButtons, MAX_HISTORY_SIZE)
+ * @requires undo.js (UndoManager)
  * @requires workflow-render.js (renderWorkflow)
  */
 
@@ -500,25 +499,8 @@ function hideDynamicInputModal() {
 function applyDynamicInput() {
     if (!currentDynamicInputBlock) return;
     
-    // ВАЖНО: Сохраняем состояние ПЕРЕД изменениями (принудительно, без debounce)
-    // Это гарантирует что undo вернёт к состоянию до применения модалки
-    const stateBefore = captureCurrentTabState();
-    // Принудительно добавляем, игнорируя debounce
-    if (undoStack.length === 0 || 
-        JSON.stringify(undoStack[undoStack.length - 1].tabData) !== JSON.stringify(stateBefore.tabData) ||
-        JSON.stringify(undoStack[undoStack.length - 1].fieldValues) !== JSON.stringify(stateBefore.fieldValues)) {
-        undoStack.push(stateBefore);
-        if (undoStack.length > MAX_HISTORY_SIZE) {
-            undoStack.shift();
-        }
-        redoStack = [];
-        // Сохраняем историю для текущей вкладки
-        tabHistories[currentTab] = {
-            undoStack: [...undoStack],
-            redoStack: [...redoStack]
-        };
-        updateUndoRedoButtons();
-    }
+    // Snapshot ПЕРЕД изменениями
+    UndoManager.snapshot(true);
     
     // Получаем блок из свежих данных localStorage
     const tabs = getAllTabs();
@@ -718,22 +700,6 @@ function applyDynamicInput() {
         
         // Перерендериваем workflow чтобы обновить превью
         renderWorkflow();
-        
-        // Принудительно сохраняем состояние ПОСЛЕ изменений в undo стек
-        setTimeout(() => {
-            const stateAfter = captureCurrentTabState();
-            if (undoStack.length === 0 || JSON.stringify(undoStack[undoStack.length - 1]) !== JSON.stringify(stateAfter)) {
-                undoStack.push(stateAfter);
-                if (undoStack.length > MAX_HISTORY_SIZE) {
-                    undoStack.shift();
-                }
-                tabHistories[currentTab] = {
-                    undoStack: [...undoStack],
-                    redoStack: [...redoStack]
-                };
-                updateUndoRedoButtons();
-            }
-        }, 50);
     }
     
     hideDynamicInputModal();

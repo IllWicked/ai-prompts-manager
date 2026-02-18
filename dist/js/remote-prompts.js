@@ -319,19 +319,18 @@ async function applyPromptsUpdate(tabs, remoteManifest, isNewTabs = false, skipR
             // Чистим localStorage от fallback-данных
             localStorage.removeItem(STORAGE_KEYS.promptsData('default'));
             localStorage.removeItem(STORAGE_KEYS.workflow('default'));
-        }
-        
-        // Если currentTab невалиден — переключаемся на первую реальную вкладку
-        if (!allTabs[currentTab]) {
-            const firstTab = Object.keys(allTabs)[0];
-            if (firstTab) {
-                currentTab = firstTab;
-                localStorage.setItem(STORAGE_KEYS.CURRENT_TAB, firstTab);
+            // Переключаемся на первую реальную вкладку если были на default
+            if (currentTab === 'default') {
+                const firstTab = Object.keys(allTabs)[0];
+                if (firstTab) {
+                    currentTab = firstTab;
+                    localStorage.setItem(STORAGE_KEYS.CURRENT_TAB, firstTab);
+                }
             }
         }
         
         if (typeof saveAllTabs === 'function') {
-            saveAllTabs(allTabs, true);
+            saveAllTabs(allTabs);
         }
         
         // Сохраняем отдельные хранилища
@@ -418,9 +417,7 @@ function removeObsoleteTabs(removedTabs) {
         }
         
         // Очищаем undo history
-        if (typeof tabHistories !== 'undefined' && tabHistories[tabId]) {
-            delete tabHistories[tabId];
-        }
+        UndoManager.deleteTab(tabId);
         
         // Удаляем localStorage ключи вкладки
         localStorage.removeItem(STORAGE_KEYS.workflow(tabId));
@@ -446,7 +443,7 @@ function removeObsoleteTabs(removedTabs) {
         
         // Сохраняем всё
         if (typeof saveAllTabs === 'function') {
-            saveAllTabs(allTabs, true);
+            saveAllTabs(allTabs);
         }
         localStorage.setItem(STORAGE_KEYS.COLLAPSED_BLOCKS, JSON.stringify(collapsedBlocks));
         localStorage.setItem(STORAGE_KEYS.BLOCK_SCRIPTS, JSON.stringify(blockScripts));
@@ -720,15 +717,6 @@ async function autoCheckPromptsUpdates() {
             // Перезагружаем UI после всех изменений
             if (typeof loadPrompts === 'function') loadPrompts();
             if (typeof initTabSelector === 'function') initTabSelector();
-            
-            // Safety: если currentTab невалиден после обновления — принудительно переключаемся
-            const allTabsAfter = typeof getAllTabs === 'function' ? getAllTabs() : {};
-            if (!allTabsAfter[currentTab]) {
-                const firstId = Object.keys(allTabsAfter)[0];
-                if (firstId && typeof window.switchToTab === 'function') {
-                    window.switchToTab(firstId);
-                }
-            }
             
             // Показываем модалку "Что нового" после обновления
             showPromptsReleaseNotes(result.newTabs, result.updatedTabs, releaseNotes, result.removedTabs);

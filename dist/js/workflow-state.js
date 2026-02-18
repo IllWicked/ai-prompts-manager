@@ -9,20 +9,18 @@
  *   - window.AppState (shared state)
  *   - currentTab, DEFAULT_TAB (алиасы)
  *   - workflowPositions, workflowConnections, workflowSizes (алиасы)
- *   - autoSaveToUndo() из undo.js
  * 
  * @requires config.js (STORAGE_KEYS)
  * 
  * Экспортирует (глобально):
- *   - saveWorkflowState(skipUndo)
+ *   - saveWorkflowState()
  *   - loadWorkflowState()
  */
 
 /**
  * Сохранение состояния workflow в localStorage
- * @param {boolean} skipUndo - Пропустить автосохранение в undo
  */
-function saveWorkflowState(skipUndo = false) {
+function saveWorkflowState() {
     const tabId = currentTab || DEFAULT_TAB;
     
     const workflowData = {
@@ -32,9 +30,6 @@ function saveWorkflowState(skipUndo = false) {
     };
     
     localStorage.setItem(STORAGE_KEYS.workflow(tabId), JSON.stringify(workflowData));
-    if (!skipUndo) {
-        autoSaveToUndo();
-    }
 }
 
 /**

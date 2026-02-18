@@ -534,9 +534,9 @@ function createWorkflowNode(block, index) {
             activeTextarea = body;
         });
         
-        // Сохраняем при потере фокуса
+        // Сохраняем при потере фокуса (force snapshot — граница редактирования)
         body.addEventListener('blur', () => {
-            saveBlockContent(block.id, body.value);
+            saveBlockContent(block.id, body.value, true);
         });
         
         // Debounced автосохранение при вводе (через 2 сек после последнего символа)
@@ -936,6 +936,10 @@ function setupNodeEvents(node, index) {
         }
         
         isDraggingNode = true;
+        
+        // Snapshot позиций ДО начала перемещения
+        UndoManager.snapshot(true);
+        
         node.classList.add('dragging');
         
         // Скрываем кнопки у всех collapsed блоков при перемещении
@@ -1047,6 +1051,10 @@ function setupNodeEvents(node, index) {
             const dir = zone.dataset.resizeDir;
             
             isResizingNode = true;
+            
+            // Snapshot размеров ДО начала ресайза
+            UndoManager.snapshot(true);
+            
             resizeNode = node;
             resizeDirection = dir;
             resizeStartX = e.clientX;
@@ -1317,6 +1325,9 @@ function saveWorkflowEdit() {
     const blocks = items.filter(item => item.type === 'block');
     
     if (blocks[index]) {
+        // Snapshot ДО изменения
+        UndoManager.snapshot(true);
+        
         // В edit mode обновляем и title, в view mode - только content
         if (isEditMode) {
             blocks[index].title = title;
@@ -1350,6 +1361,9 @@ function deleteWorkflowBlock(index) {
     
     if (blocks[index]) {
         const blockId = blocks[index].id;
+        
+        // Snapshot ДО удаления
+        UndoManager.snapshot(true);
         
         // Удаляем блок из items
         const blockIndex = items.findIndex(item => item.id === blockId);
@@ -1392,7 +1406,7 @@ function deleteWorkflowBlock(index) {
         allTabs[currentTab].items = items;
         saveAllTabs(allTabs);
         
-        saveWorkflowState(true); // skipUndo - saveAllTabs уже записала
+        saveWorkflowState();
         renderWorkflow();
     }
 }
@@ -1403,12 +1417,24 @@ function deleteWorkflowBlock(index) {
 
 /**
  * Сохранить содержимое блока (при редактировании в textarea)
+ * @param {string} blockId - ID блока
+ * @param {string} content - Новое содержимое
+ * @param {boolean} [isBlur=false] - Вызвано из blur (принудительный snapshot)
  */
-function saveBlockContent(blockId, content) {
+function saveBlockContent(blockId, content, isBlur = false) {
+    if (UndoManager.isRestoring) return;
+    
     const items = getTabItems(currentTab);
     const block = items.find(item => item.id === blockId);
     
     if (block) {
+        // Пропускаем если контент не изменился (autosave)
+        if (block.content === content) return;
+        
+        // Snapshot ДО изменения
+        // blur = force (граница редактирования), иначе debounce (набор текста)
+        UndoManager.snapshot(isBlur);
+        
         block.content = content;
         
         // Сохраняем

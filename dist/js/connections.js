@@ -201,6 +201,8 @@ function addConnection(fromBlockId, fromSide, toBlockId, toSide) {
         return;
     }
     
+    UndoManager.snapshot(true);
+    
     workflowConnections.push({
         from: fromBlockId, 
         fromSide: fromSide,
@@ -219,6 +221,8 @@ function addConnection(fromBlockId, fromSide, toBlockId, toSide) {
  * @param {string} toSide - Сторона конечного порта
  */
 function removeConnection(fromBlockId, fromSide, toBlockId, toSide) {
+    UndoManager.snapshot(true);
+    
     workflowConnections = workflowConnections.filter(
         c => !(c.from === fromBlockId && c.fromSide === fromSide && c.to === toBlockId && c.toSide === toSide)
     );

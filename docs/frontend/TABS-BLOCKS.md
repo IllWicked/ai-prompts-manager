@@ -117,54 +117,67 @@ removeBlockInstruction(1);
 
 ---
 
-## undo.js (7 функций)
+## undo.js — UndoManager v2
 
-Per-tab система истории изменений.
+Command-based per-tab система истории изменений.
+
+**Принцип:** snapshot создаётся только по явной команде из точки действия пользователя (ДО изменения). Save-функции (`saveAllTabs`, `saveWorkflowState`) не триггерят undo.
 
 **Константы:**
 - `MAX_HISTORY_SIZE = 50` — максимум записей в истории
-- `UNDO_DEBOUNCE_MS = 500` — debounce объединения изменений
+- `SNAPSHOT_DEBOUNCE_MS = 1000` — debounce для набора текста
 
-| Функция | Описание |
-|---------|----------|
-| `captureCurrentTabState()` | Захват текущего состояния |
-| `applyCurrentTabState(state)` | Применить состояние |
-| `autoSaveToUndo()` | Автосохранение (debounced) |
-| `executeUndoRedo(action)` | Общий helper |
-| `undo()` | Отмена |
-| `redo()` | Повтор |
-| `updateUndoRedoButtons()` | Обновить кнопки |
+### UndoManager API
+
+| Метод | Описание |
+|-------|----------|
+| `UndoManager.snapshot(force?)` | Сохранить текущее состояние в undo-стек. `force=true` обходит debounce |
+| `UndoManager.undo()` | Отмена |
+| `UndoManager.redo()` | Повтор |
+| `UndoManager.init()` | Инициализация (захват начального состояния) |
+| `UndoManager.switchTab(old, new)` | Сохранить/загрузить стеки при переключении вкладки |
+| `UndoManager.renameTab(oldId, newId)` | Перенести историю при ренейме |
+| `UndoManager.deleteTab(tabId)` | Очистить историю при удалении |
+| `UndoManager.isRestoring` | Геттер: идёт ли восстановление состояния |
+| `UndoManager.updateButtons()` | Обновить состояние кнопок Undo/Redo |
 
 ### Примеры
 
 ```javascript
-// Перед изменением — сохранить в историю
-autoSaveToUndo();
+// Перед деструктивным действием — принудительный snapshot
+UndoManager.snapshot(true);
+deleteBlock(blockId);
 
-// Выполнить изменение
-updateBlockInstruction('my-tab', 1, { type: 'info', text: 'New note' });
+// Перед набором текста — snapshot с debounce
+UndoManager.snapshot();
+saveBlockContent(blockId, newContent);
 
-// Отмена
-undo();
-
-// Повтор
-redo();
+// Отмена / Повтор
+UndoManager.undo();
+UndoManager.redo();
 ```
 
-### Структура состояния
+### Структура состояния (snapshot)
 
 ```javascript
-// captureCurrentTabState() возвращает:
 {
+    tabId: 'tab-id',
     workflow: {
-        positions: {...},
-        sizes: {...},
-        connections: [...]
+        positions: {...},   // из глобальных переменных (не localStorage)
+        connections: [...],
+        sizes: {...}
     },
-    tabData: {...},      // Данные вкладки
-    fieldValues: {...}   // Значения полей
+    tabData: {...},          // deep clone из getAllTabs() кэша
+    fieldValues: {...},      // из localStorage (field-value-*)
+    collapsedBlocks: {...},  // из глобального collapsedBlocks
+    blockScripts: {...},     // из глобального blockScripts
+    blockAutomation: {...}   // из глобального blockAutomation
 }
 ```
+
+### Backward-compatible shims
+
+Удалены — вся кодовая база мигрирована на UndoManager.
 
 ---
 

@@ -1,381 +1,369 @@
 /**
- * AI Prompts Manager - Undo/Redo System
- * Per-tab история изменений
+ * AI Prompts Manager - Undo/Redo System v2
+ * Command-based per-tab history
+ * 
+ * Snapshot создаётся только по явной команде из точки действия пользователя.
+ * Save-функции больше не триггерят undo.
  * 
  * @requires config.js (STORAGE_KEYS)
+ * @requires storage.js (getAllTabs, setTabsCache)
+ * @requires blocks.js (collapsedBlocks, saveCollapsedBlocks, blockScripts, saveBlockScripts, blockAutomation, saveBlockAutomation)
+ * @requires persistence.js (loadPrompts)
+ * @requires workflow-render.js (renderWorkflow)
+ * @requires workflow-state.js (workflowPositions, workflowConnections, workflowSizes)
+ * @requires index.html (getUndoBtn, getRedoBtn, getWorkflowContainer, currentTab, workflowMode)
  */
+
 // ═══════════════════════════════════════════════════════════════════════════
-// СЕКЦИЯ 3: UNDO/REDO (Per-tab история)
+// UNDO/REDO SYSTEM v2
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** @constant {number} Максимальный размер истории undo */
+/** @constant {number} Максимальный размер истории */
 const MAX_HISTORY_SIZE = 50;
 
-/** @type {Array} Текущий стек undo для активной вкладки */
-let undoStack = [];
+/** @constant {number} Debounce для snapshot при наборе текста (мс) */
+const SNAPSHOT_DEBOUNCE_MS = 1000;
 
-/** @type {Array} Текущий стек redo для активной вкладки */
-let redoStack = [];
-
-/** 
- * История для каждой вкладки
- * @type {Object.<string, {undoStack: Array, redoStack: Array}>}
- */
-const tabHistories = {};
-
-/** @type {boolean} Флаг для предотвращения записи при undo/redo */
-let isUndoRedoAction = false;
-
-/** @type {number|null} ID таймера сброса isUndoRedoAction */
-let undoRedoResetTimeout = null;
-
-/** @type {boolean} Флаг для предотвращения прыжка скролла при редактировании */
+/** @type {boolean} Предотвращение прыжка скролла при рендере */
 let skipScrollOnRender = false;
 
-/** @type {boolean} Флаг для предотвращения рекурсии сохранения */
-let isSavingToUndo = false;
+// ─── Shared state (доступно UndoManager и shim-ам, инкапсулируется в шаге 5) ───
 
-/** @type {boolean} Флаг инициализации приложения */
+/** @type {Array} Undo-стек текущей вкладки */
+let undoStack = [];
+
+/** @type {Array} Redo-стек текущей вкладки */
+let redoStack = [];
+
+/** @type {Object.<string, {undo: Array, redo: Array}>} Per-tab история */
+const tabHistories = {};
+
+/** @type {boolean} Флаг инициализации */
 let isAppInitialized = false;
 
-/** @type {number} Время последнего сохранения в undo */
-let lastUndoSaveTime = 0;
+// ─── UndoManager ────────────────────────────────────────────────────────
 
-/** @constant {number} Debounce для объединения быстрых изменений (мс) */
-const UNDO_DEBOUNCE_MS = 500;
-
-/**
- * Захватывает состояние ТОЛЬКО текущей вкладки для undo
- * @returns {Object} snapshot состояния {tabId, workflow, tabData, fieldValues, collapsedBlocks, blockScripts, blockAutomation}
- */
-function captureCurrentTabState() {
-    const tabId = currentTab;
+const UndoManager = (() => {
+    /** @type {boolean} Идёт восстановление состояния */
+    let restoring = false;
     
-    // Workflow только для текущей вкладки
-    let workflow = null;
-    try {
-        const workflowData = localStorage.getItem(STORAGE_KEYS.workflow(tabId));
-        workflow = workflowData ? JSON.parse(workflowData) : null;
-    } catch (e) {
-        
-    }
+    /** @type {number} Время последнего snapshot */
+    let lastSnapshotTime = 0;
     
-    // Данные промптов из STORAGE_KEYS.TABS (основное хранилище)
-    let tabData = null;
-    try {
-        const tabsData = localStorage.getItem(STORAGE_KEYS.TABS);
-        const tabs = tabsData ? JSON.parse(tabsData) : {};
-        tabData = tabs[tabId] ? JSON.stringify(tabs[tabId]) : null;
-    } catch (e) {
-        
-    }
+    // ─── Internal helpers ────────────────────────────────────────
     
-    // Значения полей только для текущей вкладки
-    const fieldValues = {};
-    const prefix = `field-value-${tabId}-`;
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(prefix)) {
-            fieldValues[key] = localStorage.getItem(key);
-        }
-    }
-    
-    // Получаем ID всех блоков текущей вкладки для фильтрации
-    let blockIds = [];
-    try {
-        const tabsData = localStorage.getItem(STORAGE_KEYS.TABS);
-        const tabs = tabsData ? JSON.parse(tabsData) : {};
-        if (tabs[tabId] && Array.isArray(tabs[tabId].items)) {
-            blockIds = tabs[tabId].items.map(item => item.id);
-        }
-    } catch (e) {
-        // Ошибка парсинга tabs — используем пустой blockIds
-    }
-    
-    // Состояние свёрнутых блоков (только для блоков текущей вкладки)
-    const collapsedSnapshot = {};
-    if (typeof collapsedBlocks !== 'undefined') {
-        blockIds.forEach(id => {
-            if (collapsedBlocks[id]) {
-                collapsedSnapshot[id] = true;
-            }
-        });
-    }
-    
-    // Скрипты блоков (только для блоков текущей вкладки)
-    const scriptsSnapshot = {};
-    if (typeof blockScripts !== 'undefined') {
-        blockIds.forEach(id => {
-            if (blockScripts[id]) {
-                scriptsSnapshot[id] = [...blockScripts[id]];
-            }
-        });
-    }
-    
-    // Automation флаги (только для блоков текущей вкладки)
-    const automationSnapshot = {};
-    if (typeof blockAutomation !== 'undefined') {
-        blockIds.forEach(id => {
-            if (blockAutomation[id]) {
-                automationSnapshot[id] = { ...blockAutomation[id] };
-            }
-        });
-    }
-    
-    return {
-        tabId: tabId,
-        workflow: workflow,
-        tabData: tabData, // Данные вкладки из tabs
-        fieldValues: fieldValues,
-        collapsedBlocks: collapsedSnapshot,
-        blockScripts: scriptsSnapshot,
-        blockAutomation: automationSnapshot
-    };
-}
-
-/**
- * Применяет состояние ТОЛЬКО к текущей вкладке
- */
-function applyCurrentTabState(state) {
-    if (!state || state.tabId !== currentTab) return;
-    
-    const tabId = state.tabId;
-    
-    // Восстанавливаем workflow
-    if (state.workflow) {
-        localStorage.setItem(STORAGE_KEYS.workflow(tabId), JSON.stringify(state.workflow));
-        workflowPositions = state.workflow.positions || {};
-        workflowSizes = state.workflow.sizes || {};
-        workflowConnections = state.workflow.connections || [];
-    }
-    
-    // Восстанавливаем данные вкладки в STORAGE_KEYS.TABS
-    if (state.tabData) {
-        try {
-            const tabsData = localStorage.getItem(STORAGE_KEYS.TABS);
-            const tabs = tabsData ? JSON.parse(tabsData) : {};
-            tabs[tabId] = JSON.parse(state.tabData);
-            localStorage.setItem(STORAGE_KEYS.TABS, JSON.stringify(tabs));
-            setTabsCache(tabs); // Обновляем кэш через API
-        } catch (e) {
-            
-        }
-    }
-    
-    // Удаляем старые field-value для этой вкладки
-    const prefix = `field-value-${tabId}-`;
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(prefix)) {
-            keysToRemove.push(key);
-        }
-    }
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-    
-    // Восстанавливаем field-value из состояния
-    if (state.fieldValues) {
-        Object.entries(state.fieldValues).forEach(([key, value]) => {
-            localStorage.setItem(key, value);
-        });
-    }
-    
-    // Восстанавливаем состояние свёрнутых блоков
-    if (state.collapsedBlocks && typeof collapsedBlocks !== 'undefined') {
-        // Удаляем текущие записи для блоков этой вкладки
-        if (state.tabData) {
-            try {
-                const tabDataParsed = JSON.parse(state.tabData);
-                if (tabDataParsed.items) {
-                    tabDataParsed.items.forEach(item => {
-                        delete collapsedBlocks[item.id];
-                    });
-                }
-            } catch (e) {
-                // Ошибка парсинга — пропускаем очистку
-            }
-        }
-        // Восстанавливаем из snapshot
-        Object.assign(collapsedBlocks, state.collapsedBlocks);
-        saveCollapsedBlocks();
-    }
-    
-    // Восстанавливаем скрипты блоков
-    if (state.blockScripts && typeof blockScripts !== 'undefined') {
-        // Удаляем текущие записи для блоков этой вкладки
-        if (state.tabData) {
-            try {
-                const tabDataParsed = JSON.parse(state.tabData);
-                if (tabDataParsed.items) {
-                    tabDataParsed.items.forEach(item => {
-                        delete blockScripts[item.id];
-                    });
-                }
-            } catch (e) {
-                // Ошибка парсинга — пропускаем очистку
-            }
-        }
-        // Восстанавливаем из snapshot
-        Object.entries(state.blockScripts).forEach(([id, scripts]) => {
-            blockScripts[id] = [...scripts];
-        });
-        saveBlockScripts();
-    }
-    
-    // Восстанавливаем automation флаги
-    if (state.blockAutomation && typeof blockAutomation !== 'undefined') {
-        // Удаляем текущие записи для блоков этой вкладки
-        if (state.tabData) {
-            try {
-                const tabDataParsed = JSON.parse(state.tabData);
-                if (tabDataParsed.items) {
-                    tabDataParsed.items.forEach(item => {
-                        delete blockAutomation[item.id];
-                    });
-                }
-            } catch (e) {
-                // Ошибка парсинга — пропускаем очистку
-            }
-        }
-        // Восстанавливаем из snapshot
-        Object.entries(state.blockAutomation).forEach(([id, flags]) => {
-            blockAutomation[id] = { ...flags };
-        });
-        saveBlockAutomation();
-    }
-    
-    // Перезагружаем интерфейс
-    loadPrompts();
-    if (workflowMode) {
-        renderWorkflow();
-    }
-}
-
-/**
- * Автоматически сохраняет состояние в undo стек (per-tab)
- * Вызывается из saveAllTabs и saveWorkflowState
- */
-function autoSaveToUndo() {
-    if (!isAppInitialized || isUndoRedoAction || isSavingToUndo) return;
-    
-    const now = Date.now();
-    // Debounce - если прошло мало времени, не создаём новую запись
-    if (now - lastUndoSaveTime < UNDO_DEBOUNCE_MS && undoStack.length > 0) {
-        return;
-    }
-    
-    isSavingToUndo = true;
-    
-    try {
-        const state = captureCurrentTabState();
-        
-        // Проверяем что состояние отличается от последнего в стеке
-        if (undoStack.length > 0) {
-            const lastState = undoStack[undoStack.length - 1];
-            if (JSON.stringify(lastState.tabData) === JSON.stringify(state.tabData) &&
-                JSON.stringify(lastState.fieldValues) === JSON.stringify(state.fieldValues) &&
-                JSON.stringify(lastState.workflow) === JSON.stringify(state.workflow)) {
-                return; // Состояние не изменилось
-            }
-        }
-        
-        undoStack.push(state);
-        lastUndoSaveTime = now;
-        
-        if (undoStack.length > MAX_HISTORY_SIZE) {
-            undoStack.shift();
-        }
-        
-        redoStack = [];
-        
-        // Сохраняем историю для текущей вкладки
+    /** Синхронизировать текущие стеки в tabHistories */
+    function syncToHistory() {
         tabHistories[currentTab] = {
-            undoStack: [...undoStack],
-            redoStack: [...redoStack]
+            undo: [...undoStack],
+            redo: [...redoStack]
+        };
+    }
+    
+    /** Обновить состояние кнопок Undo/Redo */
+    function updateButtons() {
+        const undoBtn = getUndoBtn();
+        const redoBtn = getRedoBtn();
+        if (undoBtn) undoBtn.disabled = undoStack.length <= 1;
+        if (redoBtn) redoBtn.disabled = redoStack.length === 0;
+    }
+    
+    /**
+     * Захватить текущее состояние из памяти (не из localStorage)
+     * @returns {Object} snapshot
+     */
+    function capture() {
+        const tabId = currentTab;
+        
+        // Workflow — из глобальных переменных
+        const workflow = {
+            positions: structuredClone(workflowPositions || {}),
+            connections: structuredClone(workflowConnections || []),
+            sizes: structuredClone(workflowSizes || {})
         };
         
-        updateUndoRedoButtons();
-    } finally {
-        isSavingToUndo = false;
+        // Данные вкладки — из кэша
+        const tabs = getAllTabs();
+        const tabData = tabs[tabId] ? structuredClone(tabs[tabId]) : null;
+        
+        // Значения полей — из localStorage (единственное хранилище)
+        const fieldValues = {};
+        const prefix = `field-value-${tabId}-`;
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(prefix)) {
+                fieldValues[key] = localStorage.getItem(key);
+            }
+        }
+        
+        // Метаданные блоков — из глобальных объектов
+        const blockIds = tabData?.items?.map(item => item.id) || [];
+        
+        const collapsed = {};
+        const scripts = {};
+        const automation = {};
+        
+        blockIds.forEach(id => {
+            if (typeof collapsedBlocks !== 'undefined' && collapsedBlocks[id]) {
+                collapsed[id] = true;
+            }
+            if (typeof blockScripts !== 'undefined' && blockScripts[id]) {
+                scripts[id] = [...blockScripts[id]];
+            }
+            if (typeof blockAutomation !== 'undefined' && blockAutomation[id]) {
+                automation[id] = { ...blockAutomation[id] };
+            }
+        });
+        
+        return {
+            tabId,
+            workflow,
+            tabData,
+            fieldValues,
+            collapsedBlocks: collapsed,
+            blockScripts: scripts,
+            blockAutomation: automation
+        };
     }
-}
-
-/**
- * Общий helper для undo/redo операций
- */
-function executeUndoRedo(action) {
-    isUndoRedoAction = true;
     
-    // Сохраняем позицию камеры
-    const container = getWorkflowContainer();
-    const savedScrollLeft = container?.scrollLeft || 0;
-    const savedScrollTop = container?.scrollTop || 0;
+    /**
+     * Проверить идентичность двух состояний
+     */
+    function statesEqual(a, b) {
+        if (!a || !b) return false;
+        return JSON.stringify(a.tabData) === JSON.stringify(b.tabData) &&
+               JSON.stringify(a.fieldValues) === JSON.stringify(b.fieldValues) &&
+               JSON.stringify(a.workflow) === JSON.stringify(b.workflow);
+    }
     
-    action();
+    /**
+     * Применить состояние (восстановление)
+     */
+    function apply(state) {
+        if (!state || state.tabId !== currentTab) return;
+        
+        restoring = true;
+        
+        try {
+            const tabId = state.tabId;
+            
+            // Workflow
+            if (state.workflow) {
+                workflowPositions = structuredClone(state.workflow.positions) || {};
+                workflowConnections = structuredClone(state.workflow.connections) || [];
+                workflowSizes = structuredClone(state.workflow.sizes) || {};
+                localStorage.setItem(STORAGE_KEYS.workflow(tabId), JSON.stringify(state.workflow));
+            }
+            
+            // Данные вкладки
+            if (state.tabData) {
+                const tabs = getAllTabs();
+                tabs[tabId] = structuredClone(state.tabData);
+                localStorage.setItem(STORAGE_KEYS.TABS, JSON.stringify(tabs));
+                setTabsCache(tabs);
+            }
+            
+            // Значения полей
+            const prefix = `field-value-${tabId}-`;
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(prefix)) keysToRemove.push(key);
+            }
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            if (state.fieldValues) {
+                Object.entries(state.fieldValues).forEach(([key, value]) => {
+                    localStorage.setItem(key, value);
+                });
+            }
+            
+            // Свёрнутые блоки
+            if (state.collapsedBlocks && typeof collapsedBlocks !== 'undefined') {
+                const blockIds = state.tabData?.items?.map(i => i.id) || [];
+                blockIds.forEach(id => delete collapsedBlocks[id]);
+                Object.assign(collapsedBlocks, state.collapsedBlocks);
+                saveCollapsedBlocks();
+            }
+            
+            // Скрипты блоков
+            if (state.blockScripts && typeof blockScripts !== 'undefined') {
+                const blockIds = state.tabData?.items?.map(i => i.id) || [];
+                blockIds.forEach(id => delete blockScripts[id]);
+                Object.entries(state.blockScripts).forEach(([id, s]) => {
+                    blockScripts[id] = [...s];
+                });
+                saveBlockScripts();
+            }
+            
+            // Automation
+            if (state.blockAutomation && typeof blockAutomation !== 'undefined') {
+                const blockIds = state.tabData?.items?.map(i => i.id) || [];
+                blockIds.forEach(id => delete blockAutomation[id]);
+                Object.entries(state.blockAutomation).forEach(([id, a]) => {
+                    blockAutomation[id] = { ...a };
+                });
+                saveBlockAutomation();
+            }
+            
+            // Перерендер
+            loadPrompts();
+            if (workflowMode) {
+                renderWorkflow();
+            }
+        } finally {
+            restoring = false;
+        }
+    }
     
-    // Сохраняем историю для текущей вкладки
-    tabHistories[currentTab] = {
-        undoStack: [...undoStack],
-        redoStack: [...redoStack]
+    // ─── Public API ──────────────────────────────────────────────
+    
+    return {
+        /** @returns {boolean} Идёт ли восстановление */
+        get isRestoring() { return restoring; },
+        
+        /**
+         * Сохранить текущее состояние в undo-стек.
+         * Вызывается из точек действий пользователя ДО изменения.
+         * @param {boolean} [force=false] — обойти debounce (для деструктивных операций)
+         */
+        snapshot(force = false) {
+            if (!isAppInitialized || restoring) return;
+            
+            // Debounce — для набора текста
+            if (!force) {
+                const now = Date.now();
+                if (now - lastSnapshotTime < SNAPSHOT_DEBOUNCE_MS && undoStack.length > 0) {
+                    return;
+                }
+            }
+            
+            const state = capture();
+            
+            // Пропустить если идентично последнему
+            if (undoStack.length > 0 && statesEqual(undoStack[undoStack.length - 1], state)) {
+                return;
+            }
+            
+            undoStack.push(state);
+            lastSnapshotTime = Date.now();
+            
+            if (undoStack.length > MAX_HISTORY_SIZE) {
+                undoStack.shift();
+            }
+            
+            redoStack = [];
+            syncToHistory();
+            updateButtons();
+        },
+        
+        /** Отмена */
+        undo() {
+            if (undoStack.length <= 1) return;
+            
+            // Сохраняем позицию камеры
+            const container = getWorkflowContainer();
+            const scrollLeft = container?.scrollLeft || 0;
+            const scrollTop = container?.scrollTop || 0;
+            
+            // Текущее состояние в redo
+            redoStack.push(capture());
+            // Убираем верхушку undo
+            undoStack.pop();
+            // Применяем предыдущее
+            apply(undoStack[undoStack.length - 1]);
+            
+            syncToHistory();
+            
+            // Восстанавливаем камеру
+            if (container) {
+                container.scrollLeft = scrollLeft;
+                container.scrollTop = scrollTop;
+            }
+            
+            updateButtons();
+        },
+        
+        /** Повтор */
+        redo() {
+            if (redoStack.length === 0) return;
+            
+            const container = getWorkflowContainer();
+            const scrollLeft = container?.scrollLeft || 0;
+            const scrollTop = container?.scrollTop || 0;
+            
+            const state = redoStack.pop();
+            undoStack.push(state);
+            apply(state);
+            
+            syncToHistory();
+            
+            if (container) {
+                container.scrollLeft = scrollLeft;
+                container.scrollTop = scrollTop;
+            }
+            
+            updateButtons();
+        },
+        
+        /** Инициализация для текущей вкладки */
+        init() {
+            setTimeout(() => {
+                const state = capture();
+                undoStack = [state];
+                redoStack = [];
+                syncToHistory();
+                isAppInitialized = true;
+                updateButtons();
+            }, 500);
+        },
+        
+        /**
+         * Переключение вкладки — сохранить стеки старой, загрузить стеки новой
+         */
+        switchTab(oldTab, newTab) {
+            if (oldTab && oldTab !== newTab) {
+                tabHistories[oldTab] = {
+                    undo: [...undoStack],
+                    redo: [...redoStack]
+                };
+            }
+            
+            if (tabHistories[newTab]) {
+                undoStack = [...tabHistories[newTab].undo];
+                redoStack = [...tabHistories[newTab].redo];
+            } else {
+                undoStack = [];
+                redoStack = [];
+            }
+            
+            updateButtons();
+            
+            if (undoStack.length === 0) {
+                setTimeout(() => {
+                    undoStack.push(capture());
+                    syncToHistory();
+                    updateButtons();
+                }, 100);
+            }
+        },
+        
+        /** Переименование вкладки — перенести историю */
+        renameTab(oldId, newId) {
+            if (tabHistories[oldId]) {
+                tabHistories[newId] = tabHistories[oldId];
+                delete tabHistories[oldId];
+            }
+        },
+        
+        /** Удаление вкладки — очистить историю */
+        deleteTab(tabId) {
+            delete tabHistories[tabId];
+        },
+        
+        /** Обновить кнопки */
+        updateButtons
     };
-    
-    // Восстанавливаем позицию камеры
-    if (container) {
-        container.scrollLeft = savedScrollLeft;
-        container.scrollTop = savedScrollTop;
-    }
-    
-    // Держим флаг активным дольше чем debounce savePrompt (800ms) + запас
-    // Это предотвращает запись debounced сохранений после undo/redo
-    // Очищаем предыдущий timeout если был
-    if (undoRedoResetTimeout) {
-        clearTimeout(undoRedoResetTimeout);
-    }
-    undoRedoResetTimeout = setTimeout(() => {
-        isUndoRedoAction = false;
-        undoRedoResetTimeout = null;
-    }, 1000);
-    
-    updateUndoRedoButtons();
-}
-
-/**
- * Отменяет последнее действие (per-tab)
- */
-function undo() {
-    if (undoStack.length <= 1) return;
-    executeUndoRedo(() => {
-        redoStack.push(captureCurrentTabState());
-        undoStack.pop();
-        applyCurrentTabState(undoStack[undoStack.length - 1]);
-    });
-}
-
-/**
- * Повторяет отменённое действие (per-tab)
- */
-function redo() {
-    if (redoStack.length === 0) return;
-    executeUndoRedo(() => {
-        const nextState = redoStack.pop();
-        undoStack.push(nextState);
-        applyCurrentTabState(nextState);
-    });
-}
+})();
 
 
-/**
- * Обновляет состояние кнопок Undo/Redo
- */
-function updateUndoRedoButtons() {
-    const undoBtn = getUndoBtn();
-    const redoBtn = getRedoBtn();
-    
-    if (undoBtn) {
-        undoBtn.disabled = undoStack.length <= 1;
-    }
-    if (redoBtn) {
-        redoBtn.disabled = redoStack.length === 0;
-    }
-}
-
+// Backward-compatible shims удалены — вся кодовая база мигрирована на UndoManager

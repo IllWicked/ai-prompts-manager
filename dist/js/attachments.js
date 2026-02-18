@@ -5,7 +5,7 @@
  * @requires blocks.js (blockAttachments)
  * @requires storage.js (getAllTabs, saveAllTabs)
  * @requires tabs.js (currentTab)
- * @requires undo.js (autoSaveToUndo)
+ * @requires undo.js (UndoManager)
  * @requires workflow-render.js (renderWorkflow)
  * @requires utils.js (escapeHtml)
  * @requires toast.js (showToast)
@@ -28,7 +28,7 @@ function toggleAttachmentsPanel(blockId, show) {
     const block = items.find(item => item.type === 'block' && item.id === blockId);
     if (!block) return;
     
-    autoSaveToUndo();
+    UndoManager.snapshot(true);
     
     if (show) {
         block.hasAttachments = true;

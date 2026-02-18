@@ -33,6 +33,31 @@ function getActiveLanguageData() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * Проверяет, содержит ли текст слово как отдельное (не часть другого слова)
+ * Использует Unicode-aware проверку границ, т.к. \b не работает с кириллицей
+ * @param {string} textLower - текст в нижнем регистре
+ * @param {string} wordLower - искомое слово в нижнем регистре
+ * @returns {boolean}
+ */
+function includesWholeWord(textLower, wordLower) {
+    let pos = 0;
+    while (pos <= textLower.length - wordLower.length) {
+        const idx = textLower.indexOf(wordLower, pos);
+        if (idx === -1) return false;
+        
+        const before = idx > 0 ? textLower[idx - 1] : '';
+        const after = idx + wordLower.length < textLower.length ? textLower[idx + wordLower.length] : '';
+        
+        const boundaryBefore = !before || /[^\p{L}\p{N}]/u.test(before);
+        const boundaryAfter = !after || /[^\p{L}\p{N}]/u.test(after);
+        
+        if (boundaryBefore && boundaryAfter) return true;
+        pos = idx + 1;
+    }
+    return false;
+}
+
+/**
  * Определяет язык из конкретного текста
  * Ищет любую форму (любой падеж/род) слов lang и native
  * @param {string} text - текст для анализа
@@ -46,7 +71,7 @@ function detectLanguageInText(text) {
         // Проверяем все формы lang (английский, английского, английском...)
         const langForms = getAllWordForms(langData.lang);
         for (const form of langForms) {
-            if (textLower.includes(form.toLowerCase())) {
+            if (includesWholeWord(textLower, form.toLowerCase())) {
                 return langCode;
             }
         }
@@ -54,13 +79,13 @@ function detectLanguageInText(text) {
         // Проверяем все формы native (англоязычный, англоязычного...)
         const nativeForms = getAllWordForms(langData.native);
         for (const form of nativeForms) {
-            if (textLower.includes(form.toLowerCase())) {
+            if (includesWholeWord(textLower, form.toLowerCase())) {
                 return langCode;
             }
         }
         
         // Проверяем название страны
-        if (langData.country && textLower.includes(langData.country.toLowerCase())) {
+        if (langData.country && includesWholeWord(textLower, langData.country.toLowerCase())) {
             return langCode;
         }
         
@@ -85,14 +110,14 @@ function detectAllLanguagesInText(text) {
     for (const [langCode, langData] of Object.entries(LANGUAGES)) {
         // Проверяем все формы lang
         const langForms = getAllWordForms(langData.lang);
-        const hasLangForm = langForms.some(form => textLower.includes(form.toLowerCase()));
+        const hasLangForm = langForms.some(form => includesWholeWord(textLower, form.toLowerCase()));
         
         // Проверяем все формы native  
         const nativeForms = getAllWordForms(langData.native);
-        const hasNativeForm = nativeForms.some(form => textLower.includes(form.toLowerCase()));
+        const hasNativeForm = nativeForms.some(form => includesWholeWord(textLower, form.toLowerCase()));
         
         // Проверяем страну
-        const hasCountry = langData.country && textLower.includes(langData.country.toLowerCase());
+        const hasCountry = langData.country && includesWholeWord(textLower, langData.country.toLowerCase());
         
         if (hasLangForm || hasNativeForm || hasCountry) {
             foundLangs.add(langCode);
@@ -575,6 +600,9 @@ function initLanguageSelector() {
         localStorage.setItem(STORAGE_KEYS.LANGUAGE, langCode);
         localStorage.setItem(STORAGE_KEYS.CURRENT_COUNTRY, countryCode || '');
         
+        // Snapshot ДО замены языка в контенте
+        UndoManager.snapshot(true);
+        
         const items = getTabItems(currentTab);
         let changed = false;
         items.forEach(item => {
@@ -607,6 +635,9 @@ function initLanguageSelector() {
         updateSelectedUI(langCode, currentCountry);
         localStorage.setItem(STORAGE_KEYS.LANGUAGE, langCode);
         localStorage.setItem(STORAGE_KEYS.CURRENT_COUNTRY, currentCountry || '');
+        
+        // Snapshot ДО замены языка в контенте
+        UndoManager.snapshot(true);
         
         const items = getTabItems(currentTab);
         let changed = false;
@@ -740,7 +771,7 @@ function initLanguageSelector() {
             
             const contentLower = block.content.toLowerCase();
             const hasLanguageForms = [...allLanguageForms].some(form => 
-                contentLower.includes(form)
+                includesWholeWord(contentLower, form)
             );
             
             if (!hasLanguageForms) continue;

@@ -9,7 +9,7 @@
  * @requires tabs.js (currentTab, renameTab, deleteTab, DEFAULT_TAB, showAddTabModal)
  * @requires utils.js (escapeHtml)
  * @requires config.js (STORAGE_KEYS, SVG_ICONS)
- * @requires undo.js (undoStack, redoStack, tabHistories, captureCurrentTabState, updateUndoRedoButtons)
+ * @requires undo.js (UndoManager)
  * @requires workflow-state.js (loadWorkflowState)
  * @requires workflow-render.js (renderWorkflow)
  * @requires workflow-zoom.js (scrollToBlocks)
@@ -786,13 +786,6 @@ function initTabSelector() {
         
         const oldTab = currentTab;
         
-        if (oldTab && oldTab !== newTab) {
-            tabHistories[oldTab] = {
-                undoStack: [...undoStack],
-                redoStack: [...redoStack]
-            };
-        }
-        
         currentTab = newTab;
         localStorage.setItem(STORAGE_KEYS.CURRENT_TAB, newTab);
         
@@ -803,17 +796,11 @@ function initTabSelector() {
         
         updateSelectedUI();
         
-        if (tabHistories[newTab]) {
-            undoStack = [...tabHistories[newTab].undoStack];
-            redoStack = [...tabHistories[newTab].redoStack];
-        } else {
-            undoStack = [];
-            redoStack = [];
-        }
-        updateUndoRedoButtons();
-        
         loadWorkflowState();
         loadPrompts();
+        
+        // Переключаем undo-стеки
+        UndoManager.switchTab(oldTab, newTab);
         
         const container = getWorkflowContainer();
         if (container && workflowMode) {
@@ -825,18 +812,6 @@ function initTabSelector() {
                 window.detectAndUpdateLanguageFromTab();
             }
         }, 50);
-        
-        if (undoStack.length === 0) {
-            setTimeout(() => {
-                const initialState = captureCurrentTabState();
-                undoStack.push(initialState);
-                tabHistories[newTab] = {
-                    undoStack: [...undoStack],
-                    redoStack: [...redoStack]
-                };
-                updateUndoRedoButtons();
-            }, 100);
-        }
     }
     
     // Инициализация

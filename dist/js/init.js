@@ -385,7 +385,7 @@ function createBlockAtPosition(e) {
     
     workflowPositions[newId] = { x: newX, y: newY };
     renderWorkflow(true);
-    saveWorkflowState(true);
+    saveWorkflowState();
 }
 
 /**
@@ -408,6 +408,9 @@ function pasteBlocksAtPosition(e) {
  * Вставить блоки по координатам
  */
 function pasteBlocksAtCoords(baseX, baseY) {
+    // Snapshot ДО вставки
+    UndoManager.snapshot(true);
+    
     clearNodeSelection();
     
     const tabs = getAllTabs();
@@ -481,7 +484,7 @@ function pasteBlocksAtCoords(baseX, baseY) {
         });
     }
     
-    saveWorkflowState(true);
+    saveWorkflowState();
     saveAllTabs(tabs);
     renderWorkflow(true);
     
@@ -516,12 +519,12 @@ function initKeyboardShortcuts() {
         if (!isInInput && e.ctrlKey) {
             if (e.code === 'KeyZ') {
                 e.preventDefault();
-                undo();
+                UndoManager.undo();
                 return;
             }
             if (e.code === 'KeyY') {
                 e.preventDefault();
-                redo();
+                UndoManager.redo();
                 return;
             }
         }
@@ -584,6 +587,9 @@ function handleWorkflowShortcuts(e) {
  * Удалить выделенные ноды
  */
 function deleteSelectedNodes() {
+    // Snapshot ДО удаления (force — деструктивная операция)
+    UndoManager.snapshot(true);
+    
     selectedNodes.forEach(blockId => {
         // Удаляем связи
         workflowConnections = workflowConnections.filter(
@@ -598,7 +604,7 @@ function deleteSelectedNodes() {
     
     selectedNodes.clear();
     renderWorkflow(true);
-    saveWorkflowState(true);
+    saveWorkflowState();
 }
 
 /**
@@ -639,6 +645,9 @@ function pasteBlocksWithOffset() {
  * Переместить выделенные ноды стрелками
  */
 function moveSelectedNodes(key) {
+    // Snapshot ДО перемещения
+    UndoManager.snapshot();
+    
     const gridSize = 40;
     
     selectedNodes.forEach(blockId => {
@@ -676,6 +685,9 @@ function initAddBlockButton() {
     addBlockBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         
+        // Snapshot ДО создания блока
+        UndoManager.snapshot(true);
+        
         const newId = generateItemId();
         const blocks = getTabBlocks(currentTab);
         const newNumber = blocks.length > 0 ? Math.max(...blocks.map(b => b.number)) + 1 : 1;
@@ -702,7 +714,7 @@ function initAddBlockButton() {
         
         workflowPositions[newId] = { x: newX, y: newY };
         renderWorkflow(true);
-        saveWorkflowState(true);
+        saveWorkflowState();
     });
 }
 
@@ -1094,8 +1106,8 @@ function initToolbarHandlers() {
     });
     
     // Undo/Redo
-    getUndoBtn()?.addEventListener('click', undo);
-    getRedoBtn()?.addEventListener('click', redo);
+    getUndoBtn()?.addEventListener('click', () => UndoManager.undo());
+    getRedoBtn()?.addEventListener('click', () => UndoManager.redo());
     
     // Кнопки навигации
     document.getElementById('scroll-top-btn')?.addEventListener('click', () => {
@@ -1148,16 +1160,7 @@ function initApp() {
     }
     
     // 5. Инициализация undo системы
-    setTimeout(() => {
-        const initialState = captureCurrentTabState();
-        undoStack.push(initialState);
-        tabHistories[currentTab] = {
-            undoStack: [...undoStack],
-            redoStack: [...redoStack]
-        };
-        isAppInitialized = true;
-        updateUndoRedoButtons();
-    }, 500);
+    UndoManager.init();
     
     // 6. Автосохранение
     setInterval(() => {
@@ -1166,7 +1169,7 @@ function initApp() {
                 const blockId = textarea.dataset.blockId;
                 if (blockId) saveBlockContent(blockId, textarea.value);
             });
-            saveWorkflowState(true);
+            saveWorkflowState();
         }
     }, TIMEOUTS.AUTOSAVE);
     
@@ -1211,8 +1214,8 @@ function initApp() {
         const tabIds = Object.keys(allTabs);
         if (!currentTab || !allTabs[currentTab]) {
             if (tabIds.length > 0) {
-                const sortedIds = tabIds.sort((a, b) => (allTabs[a].name || '').localeCompare(allTabs[b].name || ''));
-                currentTab = sortedIds[0];
+                const firstTab = Object.values(allTabs).sort((a, b) => a.name.localeCompare(b.name))[0];
+                currentTab = firstTab.id;
                 localStorage.setItem(STORAGE_KEYS.CURRENT_TAB, currentTab);
             }
         }

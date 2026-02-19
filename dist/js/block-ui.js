@@ -6,7 +6,7 @@
  *                      blockScripts, saveBlockScripts, getBlockScripts,
  *                      blockAutomation, saveBlockAutomation, getBlockAutomationFlags,
  *                      blockAttachments)
- * @requires storage.js (getAllTabs)
+ * @requires storage.js (getAllTabs, saveAllTabs)
  * @requires attachments.js (clearBlockAttachments, attachFilesToBlock)
  * @requires workflow-state.js (workflowPositions, workflowSizes, saveWorkflowState)
  * @requires connections.js (renderConnections)
@@ -29,6 +29,7 @@ function toggleBlockCollapsed(blockId) {
         collapsedBlocks[blockId] = true;
     }
     saveCollapsedBlocks();
+    syncItemMetadata(blockId);
     
     // Обновляем только эту ноду без полного перерендера
     const node = document.querySelector(`.workflow-node[data-block-id="${blockId}"]`);
@@ -190,6 +191,10 @@ function toggleBlockScript(blockId, scriptKey) {
     if (blockScripts[blockId].length === 0) delete blockScripts[blockId];
     saveBlockScripts();
     updateBlockScriptBadges(blockId);
+    
+    // Синхронизируем item.scripts в данных вкладки
+    // чтобы экспорт и syncBlockStatesFromItems не использовали stale данные
+    syncItemMetadata(blockId);
 }
 
 /**
@@ -269,6 +274,7 @@ function toggleBlockAutomation(blockId, flag) {
     
     saveBlockAutomation();
     updateBlockAutomationBadges(blockId);
+    syncItemMetadata(blockId);
 }
 
 /**
@@ -331,6 +337,37 @@ function updateBlockAutomationBadges(blockId) {
 window.toggleBlockCollapsed = toggleBlockCollapsed;
 window.alignCollapsedToOddGrid = alignCollapsedToOddGrid;
 window.toggleBlockScript = toggleBlockScript;
+
+/**
+ * Синхронизирует метаданные блока (scripts, collapsed, automation) 
+ * из отдельных хранилищ обратно в item данных вкладки.
+ * Предотвращает stale данные при экспорте и syncBlockStatesFromItems.
+ */
+function syncItemMetadata(blockId) {
+    if (typeof getAllTabs !== 'function' || typeof saveAllTabs !== 'function') return;
+    const tabs = getAllTabs();
+    for (const tab of Object.values(tabs)) {
+        if (!tab.items) continue;
+        for (const item of tab.items) {
+            if (item.id === blockId) {
+                // Scripts
+                const scripts = getBlockScripts(blockId);
+                if (scripts.length > 0) item.scripts = [...scripts];
+                else delete item.scripts;
+                // Collapsed
+                if (collapsedBlocks[blockId]) item.collapsed = true;
+                else delete item.collapsed;
+                // Automation
+                const auto = getBlockAutomationFlags(blockId);
+                if (Object.keys(auto).length > 0) item.automation = { ...auto };
+                else delete item.automation;
+                
+                saveAllTabs(tabs);
+                return;
+            }
+        }
+    }
+}
 window.updateBlockScriptBadges = updateBlockScriptBadges;
 window.toggleBlockAutomation = toggleBlockAutomation;
 window.updateBlockAutomationBadges = updateBlockAutomationBadges;

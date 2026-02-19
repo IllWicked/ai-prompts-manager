@@ -223,39 +223,24 @@ async function handleImportFile(event) {
     const mergedTabs = { ...tabs, ...allImportedTabs };
     saveAllTabs(mergedTabs);
     
-    // Очищаем старые метаданные блоков перед импортом новых
-    Object.values(allImportedTabs).forEach(tab => {
-        if (tab.items) {
-            tab.items.forEach(item => {
-                if (item.type === 'block') {
-                    // Очистка старых scripts, collapsed, automation для этого блока
-                    if (blockScripts[item.id]) delete blockScripts[item.id];
-                    if (collapsedBlocks[item.id]) delete collapsedBlocks[item.id];
-                    if (blockAutomation[item.id]) delete blockAutomation[item.id];
-                }
-            });
-        }
-    });
-    saveBlockScripts();
-    saveCollapsedBlocks();
-    saveBlockAutomation();
-    
     // Извлекаем scripts, collapsed и automation из импортированных блоков
+    // SET-семантика: устанавливаем ровно то, что в JSON (не добавляем поверх старого)
     Object.values(allImportedTabs).forEach(tab => {
         if (tab.items) {
             tab.items.forEach(item => {
                 if (item.type === 'block') {
-                    // Импорт scripts
+                    // Scripts: SET из JSON, очистить если нет
+                    delete blockScripts[item.id];
                     if (item.scripts && item.scripts.length > 0) {
-                        item.scripts.forEach(scriptKey => {
-                            toggleBlockScript(item.id, scriptKey);
-                        });
+                        blockScripts[item.id] = [...item.scripts];
                     }
-                    // Импорт collapsed
+                    // Collapsed: SET из JSON
+                    delete collapsedBlocks[item.id];
                     if (item.collapsed) {
                         collapsedBlocks[item.id] = true;
                     }
-                    // Импорт automation
+                    // Automation: SET из JSON
+                    delete blockAutomation[item.id];
                     if (item.automation && Object.keys(item.automation).length > 0) {
                         blockAutomation[item.id] = { ...item.automation };
                     }
@@ -263,6 +248,7 @@ async function handleImportFile(event) {
             });
         }
     });
+    saveBlockScripts();
     saveCollapsedBlocks();
     saveBlockAutomation();
     

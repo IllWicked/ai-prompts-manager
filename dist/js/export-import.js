@@ -4,9 +4,8 @@
  * 
  * @requires storage.js (getAllTabs, saveAllTabs, loadFromLocalStorage)
  * @requires tabs.js (getTabBlocks, switchToTab)
- * @requires blocks.js (getBlockScripts, isBlockCollapsed, getBlockAutomationFlags, 
- *                      hasBlockScript, toggleBlockScript, collapsedBlocks, blockAutomation,
- *                      blockScripts, saveBlockScripts, saveCollapsedBlocks, saveBlockAutomation)
+ * @requires blocks.js (getBlockScripts, isBlockCollapsed, getBlockAutomationFlags,
+ *                      loadBlockScripts, loadCollapsedBlocks, loadBlockAutomation)
  * @requires attachments.js (hasBlockAttachmentsPanel)
  * @requires modals.js (showImportConfirm)
  * @requires toast.js (showToast)
@@ -223,34 +222,10 @@ async function handleImportFile(event) {
     const mergedTabs = { ...tabs, ...allImportedTabs };
     saveAllTabs(mergedTabs);
     
-    // Извлекаем scripts, collapsed и automation из импортированных блоков
-    // SET-семантика: устанавливаем ровно то, что в JSON (не добавляем поверх старого)
-    Object.values(allImportedTabs).forEach(tab => {
-        if (tab.items) {
-            tab.items.forEach(item => {
-                if (item.type === 'block') {
-                    // Scripts: SET из JSON, очистить если нет
-                    delete blockScripts[item.id];
-                    if (item.scripts && item.scripts.length > 0) {
-                        blockScripts[item.id] = [...item.scripts];
-                    }
-                    // Collapsed: SET из JSON
-                    delete collapsedBlocks[item.id];
-                    if (item.collapsed) {
-                        collapsedBlocks[item.id] = true;
-                    }
-                    // Automation: SET из JSON
-                    delete blockAutomation[item.id];
-                    if (item.automation && Object.keys(item.automation).length > 0) {
-                        blockAutomation[item.id] = { ...item.automation };
-                    }
-                }
-            });
-        }
-    });
-    saveBlockScripts();
-    saveCollapsedBlocks();
-    saveBlockAutomation();
+    // Перечитываем состояния блоков из обновлённых item data
+    loadBlockScripts();
+    loadCollapsedBlocks();
+    loadBlockAutomation();
     
     // Применяем workflow state для всех импортированных вкладок
     Object.entries(allImportedWorkflows).forEach(([tabId, workflow]) => {

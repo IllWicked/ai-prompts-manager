@@ -1206,9 +1206,6 @@ function initApp() {
         loadCollapsedBlocks();
         loadBlockAutomation();
         
-        // Fallback: если хранилища пустые, но items содержат данные — синхронизируем
-        syncBlockStatesFromItems();
-        
         // Проверка currentTab
         const allTabs = getAllTabs();
         const tabIds = Object.keys(allTabs);

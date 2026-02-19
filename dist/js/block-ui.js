@@ -193,7 +193,7 @@ function toggleBlockScript(blockId, scriptKey) {
     updateBlockScriptBadges(blockId);
     
     // Синхронизируем item.scripts в данных вкладки
-    // чтобы экспорт и syncBlockStatesFromItems не использовали stale данные
+    // чтобы экспорт использовал актуальные данные
     syncItemMetadata(blockId);
 }
 
@@ -341,7 +341,7 @@ window.toggleBlockScript = toggleBlockScript;
 /**
  * Синхронизирует метаданные блока (scripts, collapsed, automation) 
  * из отдельных хранилищ обратно в item данных вкладки.
- * Предотвращает stale данные при экспорте и syncBlockStatesFromItems.
+ * Предотвращает stale данные при экспорте.
  */
 function syncItemMetadata(blockId) {
     if (typeof getAllTabs !== 'function' || typeof saveAllTabs !== 'function') return;

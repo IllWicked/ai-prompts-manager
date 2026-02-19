@@ -14,10 +14,18 @@
 let collapsedBlocks = {};
 
 /**
- * Загрузить состояние свёрнутых блоков из storage
+ * Загрузить состояние свёрнутых блоков из item data
  */
 function loadCollapsedBlocks() {
-    collapsedBlocks = loadFromStorage(STORAGE_KEYS.COLLAPSED_BLOCKS);
+    collapsedBlocks = {};
+    if (typeof getAllTabs !== 'function') return;
+    for (const tab of Object.values(getAllTabs())) {
+        for (const item of (tab.items || [])) {
+            if (item.type === 'block' && item.collapsed) {
+                collapsedBlocks[item.id] = true;
+            }
+        }
+    }
 }
 
 /**
@@ -47,10 +55,18 @@ function isBlockCollapsed(blockId) {
 let blockScripts = {};
 
 /**
- * Загрузить скрипты блоков из storage
+ * Загрузить скрипты блоков из item data
  */
 function loadBlockScripts() {
-    blockScripts = loadFromStorage(STORAGE_KEYS.BLOCK_SCRIPTS);
+    blockScripts = {};
+    if (typeof getAllTabs !== 'function') return;
+    for (const tab of Object.values(getAllTabs())) {
+        for (const item of (tab.items || [])) {
+            if (item.type === 'block' && item.scripts && item.scripts.length > 0) {
+                blockScripts[item.id] = [...item.scripts];
+            }
+        }
+    }
 }
 
 /**
@@ -90,10 +106,18 @@ function getBlockScripts(blockId) {
 let blockAutomation = {};
 
 /**
- * Загрузить automation флаги из storage
+ * Загрузить automation флаги из item data
  */
 function loadBlockAutomation() {
-    blockAutomation = loadFromStorage(STORAGE_KEYS.BLOCK_AUTOMATION);
+    blockAutomation = {};
+    if (typeof getAllTabs !== 'function') return;
+    for (const tab of Object.values(getAllTabs())) {
+        for (const item of (tab.items || [])) {
+            if (item.type === 'block' && item.automation && Object.keys(item.automation).length > 0) {
+                blockAutomation[item.id] = { ...item.automation };
+            }
+        }
+    }
 }
 
 /**
@@ -157,57 +181,4 @@ function addBlockInstruction(blockNumber, type = 'info') {
     };
     updateBlockInstruction(currentTab, blockNumber, instruction);
     loadPrompts();
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// СИНХРОНИЗАЦИЯ СОСТОЯНИЙ ИЗ ITEMS (fallback)
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Синхронизирует collapsed/scripts/automation из items вкладок в глобальные переменные.
- * Вызывается как страховка перед рендером — если данные в items есть,
- * а глобальные хранилища пустые (race condition при сбросе/загрузке).
- */
-function syncBlockStatesFromItems() {
-    if (typeof getAllTabs !== 'function') return;
-    
-    const allTabs = getAllTabs();
-    let hasCollapsed = Object.keys(collapsedBlocks).length > 0;
-    let hasScripts = Object.keys(blockScripts).length > 0;
-    let hasAutomation = Object.keys(blockAutomation).length > 0;
-    
-    // Если всё уже заполнено — ничего не делаем
-    if (hasCollapsed && hasScripts && hasAutomation) return;
-    
-    let synced = false;
-    
-    for (const tab of Object.values(allTabs)) {
-        const items = tab.items || [];
-        for (const item of items) {
-            if (!item.id) continue;
-            
-            if (!hasCollapsed && item.collapsed) {
-                collapsedBlocks[item.id] = true;
-                synced = true;
-            }
-            if (!hasScripts && item.scripts && item.scripts.length > 0) {
-                blockScripts[item.id] = item.scripts;
-                synced = true;
-            }
-            if (!hasAutomation && item.automation && Object.keys(item.automation).length > 0) {
-                blockAutomation[item.id] = item.automation;
-                synced = true;
-            }
-        }
-    }
-    
-    if (synced) {
-        saveCollapsedBlocks();
-        saveBlockScripts();
-        saveBlockAutomation();
-        // Toast чтобы видеть что fallback сработал (= основной поток данные не донёс)
-        if (typeof showToast === 'function') {
-            showToast('⚠️ Block states restored from items', 3000);
-        }
-    }
 }

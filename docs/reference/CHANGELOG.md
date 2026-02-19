@@ -8,25 +8,24 @@
 
 ---
 
-## [4.2.14] - 2026-02-19 {#v4214}
+## [4.2.15] - 2026-02-19 {#v4215}
 
 ### Исправления
 
-#### Экспорт вкладки сохраняет stale метаданные блоков (#15)
-- **Баг:** При снятии меток скриптов/collapsed/automation с блоков и экспорте вкладки — старые значения оставались в JSON
-- **Причина:** `toggleBlockScript/Collapsed/Automation` обновляли только отдельные хранилища (`blockScripts`, `collapsedBlocks`, `blockAutomation`), но не `item.scripts/collapsed/automation` в данных вкладки. При экспорте `{ ...item }` копировал stale данные. Также `syncBlockStatesFromItems` при загрузке восстанавливал stale значения из item обратно в хранилища
-- **Исправление:** Добавлена `syncItemMetadata(blockId)` — вызывается из всех трёх toggle-функций, синхронизирует метаданные обратно в item данных вкладки
+#### Экспорт/импорт вкладки игнорирует изменения метаданных блоков (#15)
+- **Баг:** Снятые метки скриптов/collapsed/automation не отражались в экспорте. При обновлении промптов старые флаги сохранялись до полного сброса программы
+- **Причина:** Два источника правды — отдельные localStorage ключи (`block-scripts`, `collapsed-blocks`, `block-automation`) и `item.scripts/collapsed/automation` в данных вкладки. Toggle обновлял только localStorage, item data оставалась stale. При загрузке `syncBlockStatesFromItems` восстанавливал stale данные обратно
+- **Исправление:** Item data — единственный источник правды. `loadBlockScripts/Collapsed/Automation` теперь строят in-memory состояние из item data, не из localStorage. `syncItemMetadata` при каждом toggle обновляет item data. `syncBlockStatesFromItems` удалён
 
 #### Импорт вкладки не сбрасывает метаданные блоков (#16)
-- **Баг:** При импорте вкладки с перезаписью — старые метки из localStorage оставались
-- **Исправление:** Перед импортом — полная очистка `blockScripts`, `collapsedBlocks`, `blockAutomation` для всех блоков импортируемой вкладки
+- **Исправление:** Импорт сохраняет tab data через `saveAllTabs`, затем перечитывает состояния из items
 
 #### Toolbar и менеджер загрузок могли перекрываться Claude webview (#17)
 - **Баг:** При пересоздании Claude webview toolbar мог оказаться под ним
 - **Исправление:** Выделена `create_claude_webview` (без пересоздания toolbar) для батчевых операций. Startup и reset используют её + один `ensure/recreate_toolbar` в конце. Одиночные операции используют `ensure_claude_webview` с автоматическим пересозданием. Startup: 0 recreate вместо 2. Reset: 1 recreate вместо 3
 
 ### Затронутые файлы
-`block-ui.js`, `export-import.js`, `webview/manager.rs`, `webview/mod.rs`, `commands/claude.rs`, `main.rs`
+`blocks.js`, `block-ui.js`, `export-import.js`, `init.js`, `webview/manager.rs`, `webview/mod.rs`, `commands/claude.rs`, `main.rs`
 
 ---
 

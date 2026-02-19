@@ -22,10 +22,10 @@
     },
     "bet-pillar-main": {
       "name": "BET-PILLAR-MAIN",
-      "version": "1.0.13",
+      "version": "1.0.14",
       "order": 5
     }
   },
-  "release_notes": "ЧТО НОВОГО:\n- Тестовый фикс спеллчека",
+  "release_notes": "ЧТО НОВОГО:\n- Стабилизирован контроль объёма",
   "updated": "2026-02-19"
 }

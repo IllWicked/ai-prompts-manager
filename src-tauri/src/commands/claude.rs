@@ -12,7 +12,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::state::{CLAUDE_VISIBLE, ACTIVE_TAB, PANEL_RATIO};
 use crate::webview::scripts::get_generation_monitor_script;
-use crate::webview::manager::{ensure_claude_webview, ensure_toolbar, recreate_toolbar, resize_webviews};
+use crate::webview::manager::{ensure_claude_webview, create_claude_webview, recreate_toolbar, resize_webviews};
 use crate::utils::dimensions::animation::{ANIMATION_STEPS, ANIMATION_DELAY_MS};
 
 /// Предзагружает Claude webview в фоне (без показа)
@@ -39,9 +39,8 @@ pub async fn toggle_claude(app: AppHandle) -> Result<bool, String> {
     
     if new_state {
         // Создаём первый таб если не существует
+        // (ensure_claude_webview автоматически обеспечивает toolbar поверх)
         ensure_claude_webview(&app, 1, None)?;
-        // Создаём тулбар ПОСЛЕ claude чтобы он был поверх
-        ensure_toolbar(&app)?;
     }
     
     // Анимация: плавное изменение размера за несколько шагов
@@ -94,9 +93,6 @@ pub async fn switch_claude_tab(app: AppHandle, tab: u8) -> Result<(), String> {
         return Err("Invalid tab".to_string());
     }
     
-    // Создаём тулбар если не существует
-    ensure_toolbar(&app)?;
-    
     let label = format!("claude_{}", tab);
     
     // Если таб существует и на about:blank — навигируем на claude.ai
@@ -124,9 +120,6 @@ pub async fn switch_claude_tab_with_url(app: AppHandle, tab: u8, url: String) ->
     if tab < 1 || tab > 3 {
         return Err("Invalid tab".to_string());
     }
-    
-    // Создаём тулбар если не существует
-    ensure_toolbar(&app)?;
     
     // Всегда создаём таб 1 если не существует
     ensure_claude_webview(&app, 1, None)?;
@@ -221,11 +214,8 @@ pub async fn recreate_claude_tab(app: AppHandle, tab: u8) -> Result<(), String> 
     // Ждём чтобы webview успел закрыться
     std::thread::sleep(std::time::Duration::from_millis(100));
     
-    // Создаём заново
+    // Создаём заново (ensure_claude_webview уже пересоздаёт toolbar для z-order)
     ensure_claude_webview(&app, tab, None)?;
-    
-    // Пересоздаём toolbar чтобы он был поверх нового webview (z-order)
-    recreate_toolbar(&app)?;
     
     // Если это активный таб — обновляем layout
     if ACTIVE_TAB.load(Ordering::SeqCst) == tab {
@@ -267,15 +257,8 @@ pub async fn notify_url_change(app: AppHandle, tab: u8, url: String) -> Result<(
 /// Сбрасывает состояние Claude (пересоздаёт все webview)
 #[tauri::command]
 pub async fn reset_claude_state(app: AppHandle) -> Result<(), String> {
-    // Закрываем toolbar и downloads
-    if let Some(toolbar) = app.get_webview("toolbar") {
-        let _ = toolbar.close();
-    }
-    if let Some(downloads) = app.get_webview("downloads") {
-        let _ = downloads.close();
-    }
-    
     // Пересоздаём все Claude webviews (таб 1 на claude.ai, остальные на about:blank)
+    // Используем create_claude_webview (без toolbar) + один recreate в конце
     for i in 1u8..=3 {
         let label = format!("claude_{}", i);
         if let Some(webview) = app.get_webview(&label) {
@@ -285,8 +268,11 @@ pub async fn reset_claude_state(app: AppHandle) -> Result<(), String> {
         std::thread::sleep(std::time::Duration::from_millis(100));
         
         let url = if i == 1 { None } else { Some("about:blank") };
-        let _ = ensure_claude_webview(&app, i, url);
+        let _ = create_claude_webview(&app, i, url);
     }
+    
+    // Поднимаем toolbar поверх всех (один раз)
+    recreate_toolbar(&app)?;
     
     // Сбрасываем состояние
     CLAUDE_VISIBLE.store(false, Ordering::SeqCst);

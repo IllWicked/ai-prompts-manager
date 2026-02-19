@@ -41,6 +41,25 @@ use crate::webview::scripts::get_claude_init_script;
 /// * `Ok(())` - webview создан или уже существует
 /// * `Err(String)` - ошибка создания
 pub fn ensure_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Result<(), String> {
+    let created = create_claude_webview(app, tab, url)?;
+    
+    // Поднимаем toolbar поверх только если реально создали новый webview
+    if created {
+        if app.get_webview("toolbar").is_some() {
+            recreate_toolbar(app)?;
+        } else {
+            ensure_toolbar(app)?;
+        }
+    }
+    
+    Ok(())
+}
+
+/// Создаёт Claude webview без пересоздания toolbar.
+/// Возвращает true если webview был создан, false если уже существовал.
+/// Используется в батчевых операциях (startup, reset) где toolbar
+/// пересоздаётся один раз в конце.
+pub fn create_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Result<bool, String> {
     // Блокируем создание webview для предотвращения race condition
     let _guard = WEBVIEW_CREATION_LOCK.lock()
         .map_err(|_| "Webview creation lock poisoned")?;
@@ -49,7 +68,7 @@ pub fn ensure_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Res
     
     // Проверяем ещё раз под локом - webview мог быть создан пока ждали
     if app.get_webview(&label).is_some() {
-        return Ok(());
+        return Ok(false);
     }
     
     let window = app.get_window("main").ok_or("Window not found")?;
@@ -91,10 +110,7 @@ pub fn ensure_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Res
         LogicalSize::new(claude_width, height),
     ).map_err(|e| e.to_string())?;
     
-    // Создаём toolbar/downloads если не существуют (чтобы были поверх)
-    ensure_toolbar(app)?;
-    
-    Ok(())
+    Ok(true)
 }
 
 /// Обработчик событий загрузки файлов

@@ -19,6 +19,7 @@ pub use scripts::{
 
 pub use manager::{
     ensure_claude_webview,
+    create_claude_webview,
     ensure_toolbar,
     recreate_toolbar,
     resize_webviews,

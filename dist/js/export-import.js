@@ -6,7 +6,7 @@
  * @requires tabs.js (getTabBlocks, switchToTab)
  * @requires blocks.js (getBlockScripts, isBlockCollapsed, getBlockAutomationFlags, 
  *                      hasBlockScript, toggleBlockScript, collapsedBlocks, blockAutomation,
- *                      saveCollapsedBlocks, saveBlockAutomation)
+ *                      blockScripts, saveBlockScripts, saveCollapsedBlocks, saveBlockAutomation)
  * @requires attachments.js (hasBlockAttachmentsPanel)
  * @requires modals.js (showImportConfirm)
  * @requires toast.js (showToast)
@@ -223,6 +223,23 @@ async function handleImportFile(event) {
     const mergedTabs = { ...tabs, ...allImportedTabs };
     saveAllTabs(mergedTabs);
     
+    // Очищаем старые метаданные блоков перед импортом новых
+    Object.values(allImportedTabs).forEach(tab => {
+        if (tab.items) {
+            tab.items.forEach(item => {
+                if (item.type === 'block') {
+                    // Очистка старых scripts, collapsed, automation для этого блока
+                    if (blockScripts[item.id]) delete blockScripts[item.id];
+                    if (collapsedBlocks[item.id]) delete collapsedBlocks[item.id];
+                    if (blockAutomation[item.id]) delete blockAutomation[item.id];
+                }
+            });
+        }
+    });
+    saveBlockScripts();
+    saveCollapsedBlocks();
+    saveBlockAutomation();
+    
     // Извлекаем scripts, collapsed и automation из импортированных блоков
     Object.values(allImportedTabs).forEach(tab => {
         if (tab.items) {
@@ -231,9 +248,7 @@ async function handleImportFile(event) {
                     // Импорт scripts
                     if (item.scripts && item.scripts.length > 0) {
                         item.scripts.forEach(scriptKey => {
-                            if (!hasBlockScript(item.id, scriptKey)) {
-                                toggleBlockScript(item.id, scriptKey);
-                            }
+                            toggleBlockScript(item.id, scriptKey);
                         });
                     }
                     // Импорт collapsed

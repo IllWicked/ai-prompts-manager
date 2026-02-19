@@ -113,18 +113,18 @@ fn main() {
                 let _ = webview::resize_webviews(&app_handle);
                 
                 // Создаём все три Claude webview при старте
+                // Используем create_claude_webview (без toolbar) + один recreate в конце
                 std::thread::sleep(std::time::Duration::from_millis(450));
-                let _ = webview::ensure_claude_webview(&app_handle, 1, None);
+                let _ = webview::create_claude_webview(&app_handle, 1, None);
                 
                 std::thread::sleep(std::time::Duration::from_millis(200));
-                let _ = webview::ensure_claude_webview(&app_handle, 2, None);
+                let _ = webview::create_claude_webview(&app_handle, 2, None);
                 
                 std::thread::sleep(std::time::Duration::from_millis(200));
-                let _ = webview::ensure_claude_webview(&app_handle, 3, None);
+                let _ = webview::create_claude_webview(&app_handle, 3, None);
                 
-                // Пересоздаём toolbar один раз чтобы он был поверх всех Claude
-                std::thread::sleep(std::time::Duration::from_millis(100));
-                let _ = webview::recreate_toolbar(&app_handle);
+                // Создаём toolbar/downloads поверх всех Claude (один раз)
+                let _ = webview::ensure_toolbar(&app_handle);
                 
                 // Синхронизируем позиции всех webview
                 std::thread::sleep(std::time::Duration::from_millis(50));

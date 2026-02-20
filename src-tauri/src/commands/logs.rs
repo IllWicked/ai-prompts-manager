@@ -16,16 +16,41 @@ use crate::utils::dimensions::limits::{MAX_ARCHIVE_LOG_ENTRIES, MAX_DOWNLOADS_LO
 // Лог архивов (скачанные из Claude файлы)
 // ============================================================================
 
+/// Нормализует имя файла: убирает суффиксы " (1)", " (2)" и т.д.
+/// которые Windows добавляет при повторном скачивании.
+///
+/// Примеры:
+/// - "project-v4 (1).zip" → "project-v4.zip"
+/// - "project-v4 (2).zip" → "project-v4.zip"
+/// - "project-v4.zip"     → "project-v4.zip" (без изменений)
+fn normalize_filename(name: &str) -> String {
+    // Ищем паттерн " (N)" перед расширением или в конце
+    if let Some(paren_start) = name.rfind(" (") {
+        let after_paren = &name[paren_start + 2..];
+        if let Some(paren_end) = after_paren.find(')') {
+            let digits = &after_paren[..paren_end];
+            if !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit()) {
+                // Убираем " (N)", склеиваем остаток
+                let before = &name[..paren_start];
+                let after = &after_paren[paren_end + 1..];
+                return format!("{}{}", before, after);
+            }
+        }
+    }
+    name.to_string()
+}
+
 /// Записывает запись в лог архивов
 ///
 /// Потокобезопасная запись с использованием мьютекса.
+/// При совпадении filename + claude_url обновляет timestamp и увеличивает счётчик.
 /// Ограничивает размер лога до MAX_ARCHIVE_LOG_ENTRIES записей.
 ///
 /// # Arguments
 /// * `entry` - запись для добавления
 ///
 /// # Returns
-/// * `Ok(())` - запись успешно добавлена
+/// * `Ok(())` - запись успешно добавлена или обновлена
 /// * `Err(String)` - ошибка записи
 pub fn write_archive_log(entry: ArchiveLogEntry) -> Result<(), String> {
     // Блокируем доступ к файлу для предотвращения race condition
@@ -47,8 +72,24 @@ pub fn write_archive_log(entry: ArchiveLogEntry) -> Result<(), String> {
         Vec::new()
     };
     
-    // Добавляем новую запись
-    entries.push(entry);
+    // Ищем дубль по нормализованному filename + claude_url
+    let normalized = normalize_filename(&entry.filename);
+    if let Some(existing) = entries.iter_mut().find(|e| {
+        normalize_filename(&e.filename) == normalized && e.claude_url == entry.claude_url
+    }) {
+        // Обновляем существующую запись
+        existing.timestamp = entry.timestamp;
+        existing.filename = normalized; // Сохраняем чистое имя без " (N)"
+        existing.download_count += 1;
+        if !entry.file_path.is_empty() {
+            existing.file_path = entry.file_path;
+        }
+    } else {
+        // Новая запись — сохраняем с нормализованным именем
+        let mut new_entry = entry;
+        new_entry.filename = normalized;
+        entries.push(new_entry);
+    }
     
     // Ограничиваем размер лога
     if entries.len() > MAX_ARCHIVE_LOG_ENTRIES {
@@ -63,6 +104,9 @@ pub fn write_archive_log(entry: ArchiveLogEntry) -> Result<(), String> {
 }
 
 /// Получает все записи из лога архивов
+///
+/// При чтении выполняет миграцию: объединяет дубли (по filename + claude_url),
+/// сохраняя последний timestamp и суммируя download_count.
 #[tauri::command]
 pub fn get_archive_log() -> Result<Vec<ArchiveLogEntry>, String> {
     let log_path = get_archive_log_path().ok_or("Cannot get log path")?;
@@ -73,8 +117,38 @@ pub fn get_archive_log() -> Result<Vec<ArchiveLogEntry>, String> {
     
     let content = fs::read_to_string(&log_path).map_err(|e| e.to_string())?;
     let entries: Vec<ArchiveLogEntry> = serde_json::from_str(&content).unwrap_or_default();
+    let original_len = entries.len();
     
-    Ok(entries)
+    // Дедупликация: объединяем записи с одинаковыми normalized filename + claude_url
+    let mut deduped: Vec<ArchiveLogEntry> = Vec::new();
+    for mut entry in entries {
+        let normalized = normalize_filename(&entry.filename);
+        if let Some(existing) = deduped.iter_mut().find(|e| {
+            normalize_filename(&e.filename) == normalized && e.claude_url == entry.claude_url
+        }) {
+            // Берём более позднюю дату
+            if entry.timestamp > existing.timestamp {
+                existing.timestamp = entry.timestamp;
+            }
+            existing.filename = normalized; // Чистое имя
+            existing.download_count += entry.download_count;
+            if !entry.file_path.is_empty() {
+                existing.file_path = entry.file_path;
+            }
+        } else {
+            entry.filename = normalized;
+            deduped.push(entry);
+        }
+    }
+    
+    // Если были дубли — перезаписываем файл (одноразовая миграция)
+    if deduped.len() != original_len {
+        if let Ok(json) = serde_json::to_string_pretty(&deduped) {
+            let _ = fs::write(&log_path, &json);
+        }
+    }
+    
+    Ok(deduped)
 }
 
 /// Очищает лог архивов
@@ -117,6 +191,7 @@ pub fn add_archive_log_entry(
         claude_url,
         file_path: file_path.unwrap_or_default(),
         project_name,
+        download_count: 1,
     };
     
     write_archive_log(entry)

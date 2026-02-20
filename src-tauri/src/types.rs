@@ -24,7 +24,12 @@ pub struct ArchiveLogEntry {
     /// Имя проекта из URL (если применимо)
     #[serde(default)]
     pub project_name: String,
+    /// Сколько раз файл был скачан (дубли объединяются)
+    #[serde(default = "default_download_count")]
+    pub download_count: u32,
 }
+
+fn default_download_count() -> u32 { 1 }
 
 /// Запись в логе всех загрузок
 #[derive(Serialize, Deserialize, Clone, Debug)]

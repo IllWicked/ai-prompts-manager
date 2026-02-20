@@ -101,8 +101,7 @@ async function showArchiveLogModal() {
                             Открыть в Claude
                         </button>
                     </td>
-                </tr>
-            `).join('');
+                </tr>`).join('');
         }
     } catch (e) {
         tbody.innerHTML = '<tr><td colspan="3" class="archive-log-error">Ошибка загрузки лога</td></tr>';

@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "exportDate": "2026-02-20T06:27:12.144Z",
+  "exportDate": "2026-02-20T08:31:04.932Z",
   "tab": {
     "id": "bet-pillar-main",
     "name": "BET-PILLAR-MAIN",
-    "version": "1.0.20",
+    "version": "1.0.21",
     "items": [
       {
         "type": "block",
@@ -193,7 +193,10 @@
           "spellcheck"
         ],
         "hasAttachments": true,
-        "collapsed": true
+        "collapsed": true,
+        "automation": {
+          "newChat": true
+        }
       },
       {
         "id": "item_1770903003045_8r9xkxd58",
@@ -232,7 +235,10 @@
         "scripts": [
           "spellcheck"
         ],
-        "collapsed": true
+        "collapsed": true,
+        "automation": {
+          "newChat": true
+        }
       },
       {
         "id": "item_1770903372874_gi36aelb0",

@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "exportDate": "2026-02-20T09:26:39.034Z",
+  "exportDate": "2026-02-20T12:24:43.879Z",
   "tab": {
     "id": "bet-pillar-main",
     "name": "BET-PILLAR-MAIN",
-    "version": "1.0.22",
+    "version": "1.0.23",
     "items": [
       {
         "type": "block",
@@ -27,7 +27,7 @@
               "placeholder": "",
               "prefix": "в контексте ",
               "optional": true,
-              "savedPosition": 140
+              "savedPosition": 79
             }
           ]
         },

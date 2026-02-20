@@ -22,10 +22,15 @@
     },
     "bet-pillar-main": {
       "name": "BET-PILLAR-MAIN",
-      "version": "1.0.22",
+      "version": "1.0.23",
       "order": 5
+    },
+    "gamble-pillar-main": {
+      "name": "GAMBLE-PILLAR-MAIN",
+      "version": "1.0.0",
+      "order": 6
     }
   },
-  "release_notes": "ЧТО НОВОГО:",
+  "release_notes": "ЧТО НОВОГО:\n- Мелкие фиксы в bet-pillar-main\n- Добавлен gamble-pillar-main",
   "updated": "2026-02-20"
 }

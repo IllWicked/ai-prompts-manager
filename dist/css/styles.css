@@ -1784,20 +1784,16 @@ body {
     opacity: 0.25;
 }
 
-/* Нижняя плоскость — "пол" */
+/* Плоскость — контейнер с перспективой, НЕ анимируется */
 .grid3d-plane {
     position: absolute;
     width: 200%;
     height: 60%;
     bottom: 0;
     left: -50%;
-    transform: perspective(300px) rotateX(55deg) scale(1) translateZ(0);
+    transform: perspective(300px) rotateX(55deg) translateZ(0);
     transform-origin: bottom center;
-    background-image:
-        repeating-linear-gradient(to right, var(--g3d-color) 0px, var(--g3d-color) 1px, transparent 1px, transparent var(--g3d-size)),
-        repeating-linear-gradient(to top, var(--g3d-color) 0px, var(--g3d-color) 1px, transparent 1px, transparent var(--g3d-size));
-    animation: g3d-move-up 2s linear infinite;
-    will-change: transform;
+    overflow: hidden;
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
 }
@@ -1806,12 +1802,45 @@ body {
 .grid3d-plane-top {
     bottom: auto;
     top: 0;
-    transform: perspective(300px) rotateX(-55deg) scale(1) translateZ(0);
+    transform: perspective(300px) rotateX(-55deg) translateZ(0);
     transform-origin: top center;
-    animation: g3d-move-down 2s linear infinite;
 }
 
-/* Затухание у горизонта — через ::after */
+/* Сетка — ::before, анимируется через transform (GPU-композитное) */
+.grid3d-plane::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: calc(-1 * var(--g3d-size));
+    width: 100%;
+    height: calc(100% + var(--g3d-size));
+    background-image:
+        repeating-linear-gradient(to right, var(--g3d-color) 0px, var(--g3d-color) 1px, transparent 1px, transparent var(--g3d-size)),
+        repeating-linear-gradient(to top, var(--g3d-color) 0px, var(--g3d-color) 1px, transparent 1px, transparent var(--g3d-size));
+    will-change: transform;
+    animation: g3d-slide-up 2s linear infinite;
+}
+
+/* Потолок: буфер снизу (новые линии входят снизу), а не сверху */
+.grid3d-plane-top::before {
+    top: 0;
+    animation: g3d-slide-down 2s linear infinite;
+}
+
+/* Glow в тёмной теме — анимированные дубли с минимальным blur */
+.grid3d-glow {
+    display: none;
+}
+
+.dark .grid3d-glow {
+    display: block;
+    filter: blur(1.5px);
+    opacity: 0.5;
+}
+
+/* Glow ::before наследует анимацию от .grid3d-plane::before — ничего отменять не надо */
+
+/* Затухание у горизонта — ::after */
 .grid3d-plane::after {
     content: '';
     position: absolute;
@@ -1832,25 +1861,14 @@ body {
     background: linear-gradient(to top, var(--bg-primary) 0%, transparent 100%);
 }
 
-/* Свечение (дубль линий с blur) — только тёмная тема */
-.grid3d-glow {
-    display: none;
+@keyframes g3d-slide-up {
+    from { transform: translateY(0); }
+    to   { transform: translateY(var(--g3d-size)); }
 }
 
-.dark .grid3d-glow {
-    display: block;
-    filter: blur(3px);
-    opacity: 0.6;
-}
-
-@keyframes g3d-move-up {
-    from { background-position: 0 0; }
-    to   { background-position: 0 var(--g3d-size); }
-}
-
-@keyframes g3d-move-down {
-    from { background-position: 0 0; }
-    to   { background-position: 0 calc(-1 * var(--g3d-size)); }
+@keyframes g3d-slide-down {
+    from { transform: translateY(0); }
+    to   { transform: translateY(calc(-1 * var(--g3d-size))); }
 }
 
 /* Dropdown меню */

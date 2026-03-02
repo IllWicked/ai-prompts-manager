@@ -537,7 +537,9 @@ function _removeSquares(container) {
 
 /**
  * Создать grid3d — 3D перспективная сетка в стиле Tron/Matrix
- * Структура: .grid3d-wrap > .grid3d-inner > .grid3d-plane(x2) > .grid3d-lines + .grid3d-glow
+ * Структура: .grid3d-wrap > .grid3d-inner > .grid3d-plane(x2) + .grid3d-glow(x2)
+ * Сетка рендерится через ::before (GPU-анимация), затухание через ::after
+ * Glow — статичные элементы с blur (кэшируется GPU, не анимируются)
  */
 function _createGrid3d(container) {
     const wrap = document.createElement('div');
@@ -546,25 +548,25 @@ function _createGrid3d(container) {
     const inner = document.createElement('div');
     inner.className = 'grid3d-inner';
     
-    // Нижняя плоскость (пол)
+    // Нижняя плоскость (пол) — анимированная
     const floor = document.createElement('div');
     floor.className = 'grid3d-plane';
     
-    // Свечение пола (для тёмной темы)
-    const floorGlow = document.createElement('div');
-    floorGlow.className = 'grid3d-plane grid3d-glow';
-    
-    // Верхняя плоскость (потолок)
+    // Верхняя плоскость (потолок) — анимированная
     const ceil = document.createElement('div');
     ceil.className = 'grid3d-plane grid3d-plane-top';
     
-    // Свечение потолка
+    // Glow пола — статичный, с blur (кэшируется)
+    const floorGlow = document.createElement('div');
+    floorGlow.className = 'grid3d-plane grid3d-glow';
+    
+    // Glow потолка — статичный, с blur (кэшируется)
     const ceilGlow = document.createElement('div');
     ceilGlow.className = 'grid3d-plane grid3d-plane-top grid3d-glow';
     
     inner.appendChild(floor);
-    inner.appendChild(floorGlow);
     inner.appendChild(ceil);
+    inner.appendChild(floorGlow);
     inner.appendChild(ceilGlow);
     
     wrap.appendChild(inner);

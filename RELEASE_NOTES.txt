@@ -1,3 +1,12 @@
+Версия 4.3.1 Hotfix
+
+ИСПРАВЛЕНИЯ:
+- Паттерн «Матрица» больше не роняет FPS — анимация переведена на GPU-композитинг (transform вместо background-position), убраны glow-дубли с blur
+- project-manager.py: update_app_version() теперь обновляет README.md и package.json
+- project-manager.py: save_tab() больше не теряет поле version
+- Добавлен package-lock.json для GitHub Actions
+- Обновлена документация (числа строк, подсчёт функций, пропущенная команда)
+
 Версия 4.3.0
 
 ЧТО НОВОГО:

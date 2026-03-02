@@ -3,34 +3,34 @@
     "bet-linkbuilding": {
       "name": "BET-LINKBUILDING",
       "version": "1.0.5",
-      "order": 2
+      "order": 1
     },
     "bet-pillar-clkeys": {
       "name": "BET-PILLAR-CLKEYS",
-      "version": "1.0.8",
-      "order": 3
+      "version": "1.0.9",
+      "order": 2
     },
     "bet-addcl": {
       "name": "BET-ADDCL",
-      "version": "1.0.7",
-      "order": 4
+      "version": "1.0.8",
+      "order": 3
     },
     "gamble-mirror": {
       "name": "GAMBLE-MIRROR",
-      "version": "1.0.10",
-      "order": 1
+      "version": "1.0.11",
+      "order": 4
     },
     "bet-pillar-main": {
       "name": "BET-PILLAR-MAIN",
-      "version": "1.0.24",
+      "version": "1.0.25",
       "order": 5
     },
     "gamble-pillar-main": {
       "name": "GAMBLE-PILLAR-MAIN",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "order": 6
     }
   },
-  "release_notes": "ЧТО НОВОГО:",
-  "updated": "2026-02-20"
+  "release_notes": "ЧТО НОВОГО:\n- Новые блоки исследований\n- Новые блоки аудитов\n- Множество мелких правок и дополнений во всех пайплайнах\n- Переработан GAMBLE-MIRROR",
+  "updated": "2026-03-02"
 }

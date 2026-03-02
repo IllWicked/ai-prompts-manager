@@ -130,15 +130,19 @@ async function performReset(options = {}) {
     blockScripts = {};
     blockAutomation = {};
     
-    // Сохраняем настройки
+    // Сохраняем пользовательские настройки интерфейса
     const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+    const savedCanvasImage = localStorage.getItem(STORAGE_KEYS.CUSTOM_CANVAS_IMAGE);
     
     // Очищаем localStorage (все ключи кроме settings)
     // ... удаление всех ключей приложения ...
     
-    // Восстанавливаем настройки
+    // Восстанавливаем настройки интерфейса
     if (savedSettings) {
         localStorage.setItem(STORAGE_KEYS.SETTINGS, savedSettings);
+    }
+    if (savedCanvasImage) {
+        localStorage.setItem(STORAGE_KEYS.CUSTOM_CANVAS_IMAGE, savedCanvasImage);
     }
     
     // Rust команды (только для ручного сброса)
@@ -234,11 +238,15 @@ if (savedVersion === 4) {
 
 | Данные | Сохраняется |
 |--------|-------------|
-| Тема | ✅ Да |
-| Автообновление | ✅ Да |
+| Тема | ✅ Да (в SETTINGS) |
+| Акцентный цвет | ✅ Да (в SETTINGS) |
+| Паттерн фона | ✅ Да (в SETTINGS) |
+| Пользовательское изображение фона | ✅ Да (CUSTOM_CANVAS_IMAGE) |
+| Автообновление | ✅ Да (в SETTINGS) |
 | Путь загрузок | ✅ Да (Rust backup) |
 | Archive Log | ✅ Да (Rust backup) |
 | Язык | ❌ Нет |
+| Страна (мультигео) | ❌ Нет |
 | Вкладки | ❌ Нет |
 | Workflow | ❌ Нет |
 | Claude настройки | ❌ Нет |

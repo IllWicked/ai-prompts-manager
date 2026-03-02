@@ -137,6 +137,7 @@ const CONTEXT_ICONS = {
     script: SVG_ICONS.script,
     automation: SVG_ICONS.automation,
     attachment: SVG_ICONS.plus, // Используем плюс для файлов
+    instruction: SVG_ICONS.footnote,
     delete: SVG_ICONS.trash
 };
 

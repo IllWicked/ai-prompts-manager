@@ -8,6 +8,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tauri::{
+    Emitter,
     WebviewBuilder, WebviewUrl, WindowBuilder,
     LogicalPosition, LogicalSize,
 };
@@ -16,7 +17,7 @@ use tauri::{
 use ai_prompts_manager::{
     utils, 
     webview, 
-    commands::{app, claude, attachments, downloads, logs, toolbar},
+    commands::{app, claude, attachments, downloads, logs, toolbar, storage},
 };
 
 fn main() {
@@ -59,6 +60,15 @@ fn main() {
             attachments::read_file_for_attachment,
             attachments::write_temp_file,
             attachments::attach_file_to_claude,
+            attachments::get_upload_count,
+            attachments::reset_upload_count,
+            attachments::increment_upload_count,
+            
+            // Storage commands
+            storage::save_tabs_to_file,
+            storage::load_tabs_from_file,
+            storage::delete_tabs_file,
+            storage::get_tabs_file_size,
             
             // Downloads commands
             downloads::get_downloads_path,
@@ -74,6 +84,8 @@ fn main() {
             logs::add_archive_log_entry,
             logs::get_downloads_log,
             logs::add_download_entry,
+            logs::write_diagnostic,
+            logs::export_diagnostics,
             
             // Toolbar commands
             toolbar::toolbar_back,
@@ -107,27 +119,43 @@ fn main() {
             
             // Запускаем фоновые задачи
             let app_handle = app.handle().clone();
-            std::thread::spawn(move || {
-                // Сначала ресайзим UI под реальный размер окна
-                std::thread::sleep(std::time::Duration::from_millis(50));
+            tauri::async_runtime::spawn(async move {
+                // Ресайзим UI под реальный размер окна
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
                 let _ = webview::resize_webviews(&app_handle);
                 
                 // Создаём все три Claude webview при старте
-                // Используем create_claude_webview (без toolbar) + один recreate в конце
-                std::thread::sleep(std::time::Duration::from_millis(450));
-                let _ = webview::create_claude_webview(&app_handle, 1, None);
+                tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                for tab in 1u8..=3 {
+                    if let Err(e) = webview::create_claude_webview(&app_handle, tab, None) {
+                        eprintln!("[Startup] Failed to create claude_{}: {}", tab, e);
+                        let _ = logs::write_diagnostic(
+                            "startup_error".to_string(),
+                            format!("{{\"tab\":{},\"error\":\"{}\"}}", tab, e),
+                        );
+                        let _ = app_handle.emit("startup-error", serde_json::json!({
+                            "tab": tab, "error": e
+                        }));
+                    }
+                }
                 
-                std::thread::sleep(std::time::Duration::from_millis(200));
-                let _ = webview::create_claude_webview(&app_handle, 2, None);
+                // Создаём toolbar/downloads поверх всех Claude
+                if let Err(e) = webview::ensure_toolbar(&app_handle) {
+                    eprintln!("[Startup] Failed to create toolbar: {}", e);
+                    let _ = logs::write_diagnostic(
+                        "startup_error".to_string(),
+                        format!("{{\"component\":\"toolbar\",\"error\":\"{}\"}}", e),
+                    );
+                }
                 
-                std::thread::sleep(std::time::Duration::from_millis(200));
-                let _ = webview::create_claude_webview(&app_handle, 3, None);
+                // Suspend неактивные табы (2 и 3) для экономии CPU/RAM
+                webview::suspend_claude_tab(&app_handle, 2);
+                webview::suspend_claude_tab(&app_handle, 3);
                 
-                // Создаём toolbar/downloads поверх всех Claude (один раз)
-                let _ = webview::ensure_toolbar(&app_handle);
+                // Поднимаем z-order toolbar
+                webview::raise_toolbar_zorder(&app_handle);
                 
                 // Синхронизируем позиции всех webview
-                std::thread::sleep(std::time::Duration::from_millis(50));
                 let _ = webview::resize_webviews(&app_handle);
             });
             

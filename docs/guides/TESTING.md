@@ -6,7 +6,7 @@
 
 > **Статус:** ✅ Реализовано (v4.2.0)
 > 
-> **Детали:** [UNIT-TESTS-PLAN.md](../UNIT-TESTS-PLAN.md) | [tests/README.md](../../tests/README.md)
+> **Детали:** [tests/README.md](../../tests/README.md)
 
 ### Запуск тестов
 
@@ -31,19 +31,19 @@ npm run test:export-import
 | Метрика | Значение |
 |---------|----------|
 | Test Suites | 7 passed |
-| Tests | 260 passed, 5 skipped |
+| Tests | 257 passed, 5 skipped |
 | Время | ~3.6s |
 
 ### Покрытие по модулям
 
 | Модуль | Тестов | Описание |
 |--------|--------|----------|
-| storage.js | 52 | Валидация, repair, localStorage |
-| tabs.js | 51 | CRUD вкладок, переименование |
+| storage.js | 51 (2 skipped) | Валидация, repair, localStorage |
+| tabs.js | 49 | CRUD вкладок, переименование |
 | undo.js | 44 | Undo/redo, debounce, per-tab history |
 | connections.js | 35 | Связи workflow, проверка циклов |
-| utils.js | 39 | escapeHtml, debounce, ID генерация |
-| export-import.js | 28 | Export/import циклы |
+| utils.js | 42 (3 skipped) | escapeHtml, debounce, ID генерация |
+| export-import.js | 30 | Export/import циклы |
 
 ---
 

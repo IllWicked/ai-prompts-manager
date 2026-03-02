@@ -1,11 +1,12 @@
 /* Определение пользовательских цветов на основе var(--claude-primary) */
 :root {
     --claude-primary: #ec7441;
+    --accent-rgb: 236, 116, 65;
     --claude-light: #fff7f0; /* Очень светлый фон для инструкций */
     --claude-code: #fef0e6;  /* Чуть темнее для фона <code> */
-    --claude-shadow: rgba(236, 116, 65, 0.3); /* Для тени при наведении */
-    --claude-selection: rgba(236, 116, 65, 0.35); /* Для выделения текста */
-    --claude-selection-dark: rgba(236, 116, 65, 0.45); /* Для выделения в тёмной теме */
+    --claude-shadow: rgba(var(--accent-rgb), 0.3);
+    --claude-selection: rgba(var(--accent-rgb), 0.35);
+    --claude-selection-dark: rgba(var(--accent-rgb), 0.45);
     --claude-dark: #b15730;  /* Тёмный оттенок Claude orange */
     --claude-darker: #7c2d12; /* Самый тёмный оттенок */
     
@@ -100,21 +101,32 @@
 
 /* Глобальные стили скроллбаров */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
+}
+
+::-webkit-scrollbar-button {
+    display: none;
+    height: 0;
 }
 
 ::-webkit-scrollbar-track {
     background: transparent;
+    margin: 12px 0;
+    padding: 0;
+    border: none;
 }
 
 ::-webkit-scrollbar-thumb {
     background: rgba(0,0,0,0.2);
-    border-radius: var(--radius-sm);
+    border-radius: 5px;
+    border: 2px solid transparent;
+    background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(0,0,0,0.3);
+    background-clip: content-box;
 }
 
 ::-webkit-scrollbar-corner {
@@ -123,10 +135,12 @@
 
 .dark ::-webkit-scrollbar-thumb {
     background: rgba(255,255,255,0.2);
+    background-clip: content-box;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
     background: rgba(255,255,255,0.3);
+    background-clip: content-box;
 }
 
 /* Глобальная блокировка выделения для всех интерактивных элементов */
@@ -328,34 +342,6 @@ textarea,
     flex-shrink: 0;
 }
 
-/* Для textarea и других элементов */
-textarea::-webkit-scrollbar,
-input::-webkit-scrollbar {
-    width: 6px;
-}
-
-textarea::-webkit-scrollbar-track,
-input::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.05);
-    border-radius: 3px;
-}
-
-textarea::-webkit-scrollbar-thumb,
-input::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.15);
-    border-radius: 3px;
-}
-
-.dark textarea::-webkit-scrollbar-track,
-.dark input::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.05);
-}
-
-.dark textarea::-webkit-scrollbar-thumb,
-.dark input::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.15);
-}
-
 /* Пользовательские классы Tailwind для интеграции нового цвета */
 .claude-accent { color: var(--claude-primary); }
 .bg-claude-accent { background-color: var(--claude-primary); }
@@ -441,34 +427,6 @@ input::-webkit-scrollbar-thumb {
     display: none; /* Chrome, Safari */
 }
 
-/* Тонкий скроллбар */
-.scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
-}
-.scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-}
-.scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-}
-.scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: 3px;
-}
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.3);
-}
-.dark .scrollbar-thin {
-    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-}
-.dark .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-}
-.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-color: var(--bg-primary);
@@ -478,38 +436,7 @@ body {
 
 /* Основной контейнер */
 #scroll-container {
-    overflow-y: scroll;
-}
-
-/* Кастомный скроллбар для основного контейнера - под шапкой */
-.main-scrollbar {
-    position: fixed;
-    right: 4px;
-    top: var(--header-height);
-    bottom: 4px;
-    width: 6px;
-    background: transparent;
-    transition: width 0.2s ease;
-    z-index: 100;
-}
-
-.main-scrollbar.active {
-    width: 8px;
-}
-
-.main-scrollbar-thumb {
-    position: absolute;
-    right: 0;
-    width: 100%;
-    background: rgba(0, 0, 0, 0.15);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: background 0.15s ease;
-}
-
-.main-scrollbar-thumb:hover,
-.main-scrollbar-thumb.dragging {
-    background: rgba(0, 0, 0, 0.35);
+    overflow-y: auto;
 }
 
 .toast {
@@ -678,14 +605,14 @@ body {
 
 .dropdown-option.selected,
 .country-option.selected {
-    background: rgba(236, 116, 65, 0.9);
+    background: rgba(var(--accent-rgb), 0.9);
     color: white;
     font-weight: 500;
 }
 
 .dropdown-option.selected:hover,
 .country-option.selected:hover {
-    background: rgba(236, 116, 65, 0.9);
+    background: rgba(var(--accent-rgb), 0.9);
     filter: brightness(1.15);
 }
 
@@ -752,39 +679,8 @@ body {
 #tab-menu > div {
     max-height: 400px;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
 }
 
-#tab-menu > div::-webkit-scrollbar {
-    width: 6px;
-}
-
-#tab-menu > div::-webkit-scrollbar-track {
-    background: transparent;
-    margin: 8px 0;
-}
-
-#tab-menu > div::-webkit-scrollbar-thumb {
-    background: rgba(150, 150, 150, 0.3);
-    border-radius: 3px;
-}
-
-#tab-menu > div::-webkit-scrollbar-thumb:hover {
-    background: rgba(150, 150, 150, 0.5);
-}
-
-.dark #tab-menu > div {
-    scrollbar-color: rgba(200, 200, 200, 0.25) transparent;
-}
-
-.dark #tab-menu > div::-webkit-scrollbar-thumb {
-    background: rgba(200, 200, 200, 0.25);
-}
-
-.dark #tab-menu > div::-webkit-scrollbar-thumb:hover {
-    background: rgba(200, 200, 200, 0.4);
-}
 
 #tab-dropdown.open #tab-arrow {
     transform: rotate(180deg);
@@ -801,39 +697,12 @@ body {
     overflow-y: auto;
     padding-top: 6px;
     padding-bottom: 6px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
-}
-
-.tab-menu-list::-webkit-scrollbar {
-    width: 6px;
 }
 
 .tab-menu-list::-webkit-scrollbar-track {
-    background: transparent;
-    margin: 8px 0;
+    margin-bottom: 0;
 }
 
-.tab-menu-list::-webkit-scrollbar-thumb {
-    background: rgba(150, 150, 150, 0.3);
-    border-radius: 3px;
-}
-
-.tab-menu-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(150, 150, 150, 0.5);
-}
-
-.dark .tab-menu-list {
-    scrollbar-color: rgba(200, 200, 200, 0.25) transparent;
-}
-
-.dark .tab-menu-list::-webkit-scrollbar-thumb {
-    background: rgba(200, 200, 200, 0.25);
-}
-
-.dark .tab-menu-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(200, 200, 200, 0.4);
-}
 
 /* Группа вкладок */
 .tab-group {
@@ -944,7 +813,7 @@ body {
 
 /* Выбранная вкладка — оранжевая подсветка Claude */
 .tab-option.selected {
-    background: rgba(236, 116, 65, 0.9);
+    background: rgba(var(--accent-rgb), 0.9);
     color: white;
     font-weight: 500;
 }
@@ -1168,50 +1037,16 @@ body {
 }
 
 /* Нативный CSS-скроллбар для меню языков */
-#language-menu-inner {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
-}
-
-#language-menu-inner::-webkit-scrollbar {
-    width: 6px;
-}
-
-#language-menu-inner::-webkit-scrollbar-track {
-    background: transparent;
-    margin: 8px 0;
-}
-
-#language-menu-inner::-webkit-scrollbar-thumb {
-    background: rgba(150, 150, 150, 0.3);
-    border-radius: 3px;
-}
-
-#language-menu-inner::-webkit-scrollbar-thumb:hover {
-    background: rgba(150, 150, 150, 0.5);
-}
-
-.dark #language-menu-inner {
-    scrollbar-color: rgba(200, 200, 200, 0.25) transparent;
-}
-
-.dark #language-menu-inner::-webkit-scrollbar-thumb {
-    background: rgba(200, 200, 200, 0.25);
-}
-
-.dark #language-menu-inner::-webkit-scrollbar-thumb:hover {
-    background: rgba(200, 200, 200, 0.4);
-}
 
 .language-option.selected {
-    background: rgba(236, 116, 65, 0.9);
+    background: rgba(var(--accent-rgb), 0.9);
     color: white;
     font-weight: 500;
 }
 
 .language-option.selected:hover,
 .language-option.selected.submenu-open {
-    background: rgba(236, 116, 65, 0.9);
+    background: rgba(var(--accent-rgb), 0.9);
     filter: brightness(1.15);
 }
 
@@ -1246,7 +1081,7 @@ body {
 }
 .icon-option.selected {
     border-color: var(--claude-primary);
-    background: rgba(236, 116, 65, 0.1);
+    background: rgba(var(--accent-rgb), 0.1);
 }
 .icon-option.selected svg {
     color: var(--claude-primary);
@@ -1259,7 +1094,7 @@ body {
 }
 .dark .icon-option.selected {
     border-color: var(--claude-primary);
-    background: rgba(236, 116, 65, 0.2);
+    background: rgba(var(--accent-rgb), 0.2);
 }
 
 /* Стили для модального окна */
@@ -1288,6 +1123,16 @@ body {
 .modal-overlay.open {
     display: flex;
 }
+#settings-modal .modal-content {
+    max-height: 85vh;
+    padding: 1.25rem;
+}
+
+#settings-modal .modal-content.has-scroll {
+    overflow-y: auto;
+}
+
+
 .modal-overlay.open .modal-content {
     transform: scale(1);
 }
@@ -1303,8 +1148,8 @@ body {
 }
 
 .workflow-edit-textarea {
-    flex: 1;
-    min-height: 300px;
+    min-height: 200px;
+    max-height: 50vh;
     resize: none !important;
     font-family: inherit;
     font-size: 14px;
@@ -1312,41 +1157,103 @@ body {
     overflow-y: auto !important;
     background: var(--bg-secondary) !important;
     color: var(--text-primary) !important;
-    scrollbar-width: thin; /* Firefox */
-    scrollbar-color: rgba(0,0,0,0.2) transparent; /* Firefox */
-}
-
-.workflow-edit-textarea::-webkit-scrollbar {
-    width: 8px;
 }
 
 .workflow-edit-textarea::-webkit-scrollbar-track {
-    background: transparent;
+    margin: 6px 0;
 }
 
-.workflow-edit-textarea::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.2);
-    border-radius: var(--radius-sm);
-}
-
-.workflow-edit-textarea::-webkit-scrollbar-thumb:hover {
-    background: rgba(0,0,0,0.35);
-}
 
 .dark .workflow-edit-textarea {
-    scrollbar-color: rgba(255,255,255,0.2) transparent; /* Firefox */
     background: var(--bg-secondary) !important;
     border-color: var(--border-light);
     color: var(--text-primary) !important;
 }
 
-.dark .workflow-edit-textarea::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.2);
+/* Инструкция в модалке редактирования */
+.modal-instruction-field {
+    position: relative;
+    display: flex;
+    align-items: center;
 }
 
-.dark .workflow-edit-textarea::-webkit-scrollbar-thumb:hover {
-    background: rgba(255,255,255,0.35);
+.modal-instruction-field input {
+    padding-right: 72px;
 }
+
+.modal-instruction-actions {
+    position: absolute;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.modal-instruction-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.modal-instruction-action-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+#modal-instruction-remove-btn:hover {
+    color: #ef4444;
+}
+
+/* Компактная кнопка добавления инструкции */
+.modal-instruction-add-compact {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 0 auto;
+    padding: 6px 16px;
+    border: 1px dashed var(--border-light);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.modal-instruction-add-compact:hover {
+    border-color: var(--claude-primary);
+    color: var(--claude-primary);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+/* Конструктор поверх edit-модалки */
+#input-constructor-modal.open {
+    z-index: 1001;
+}
+
+/* Кнопки footer в edit-модалке */
+#modal-footer-btns {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+#modal-footer-btns .btn {
+    min-width: 100px;
+    text-align: center;
+    justify-content: center;
+}
+
 
 #edit-tab-btn.text-claude-accent {
     color: var(--claude-primary);
@@ -1519,6 +1426,433 @@ body {
     color: var(--text-muted);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   CUSTOMIZER UI — акцентный цвет + паттерны фона
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.swatches-row {
+    display: flex;
+    gap: 7px;
+    flex-wrap: nowrap;
+}
+
+/* Кружок акцентного цвета */
+.accent-swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.15s ease;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.accent-swatch:hover {
+    transform: scale(1.15);
+}
+
+.accent-swatch.active {
+    border-color: #fff;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.dark .accent-swatch.active {
+    border-color: #fff;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+.accent-swatch.active::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Кастомный цвет — кружок с плюсом */
+.custom-color-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border: 2px dashed var(--border-light);
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.custom-color-wrap input[type="color"] {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.custom-color-wrap svg {
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted);
+}
+
+.custom-color-wrap:hover {
+    border-color: var(--text-secondary);
+}
+
+/* Плитка паттерна фона */
+.pattern-swatch {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid var(--border-light);
+    background: var(--bg-secondary);
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.pattern-swatch:hover {
+    border-color: var(--text-secondary);
+}
+
+.pattern-swatch.active {
+    border-color: var(--claude-primary);
+    box-shadow: 0 0 0 2px var(--claude-primary);
+}
+
+.pattern-swatch svg {
+    width: 20px;
+    height: 20px;
+    color: var(--text-muted);
+}
+
+/* Мини-превью паттернов */
+.pattern-preview {
+    width: 100%;
+    height: 100%;
+}
+
+.pattern-preview-grid {
+    background-image:
+        linear-gradient(var(--border-light) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border-light) 1px, transparent 1px);
+    background-size: 8px 8px;
+}
+
+.pattern-preview-diagonal {
+    background-image: repeating-linear-gradient(
+        45deg, transparent, transparent 3px, var(--border-light) 3px, var(--border-light) 4px
+    );
+}
+
+.pattern-preview-waves {
+    position: relative;
+    overflow: hidden;
+}
+
+.pattern-preview-waves::before,
+.pattern-preview-waves::after {
+    content: '';
+    position: absolute;
+    left: -20%;
+    width: 140%;
+    aspect-ratio: 1;
+    border-radius: 42%;
+    animation: waves-preview-spin 4s linear infinite;
+}
+
+.pattern-preview-waves::before {
+    bottom: -65%;
+    background: var(--claude-primary);
+    opacity: 0.4;
+}
+
+.pattern-preview-waves::after {
+    bottom: -70%;
+    background: var(--claude-primary);
+    opacity: 0.25;
+    animation-duration: 6s;
+    animation-direction: reverse;
+}
+
+@keyframes waves-preview-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.pattern-preview-squares {
+    position: relative;
+    overflow: hidden;
+}
+
+.pattern-preview-squares::before,
+.pattern-preview-squares::after {
+    content: '';
+    position: absolute;
+    background: rgba(var(--accent-rgb), 0.2);
+    border: 1px solid rgba(var(--accent-rgb), 0.15);
+    border-radius: 2px;
+    animation: sq-preview-float 3s linear infinite;
+}
+
+.pattern-preview-squares::before {
+    width: 22%;
+    height: 22%;
+    left: 25%;
+    bottom: 0;
+    animation-duration: 2.5s;
+}
+
+.pattern-preview-squares::after {
+    width: 18%;
+    height: 30%;
+    right: 25%;
+    bottom: 0;
+    animation-delay: -1s;
+    animation-duration: 3.5s;
+}
+
+@keyframes sq-preview-float {
+    from { transform: translateY(100%) rotate(-30deg); }
+    to   { transform: translateY(-250%) rotate(15deg); }
+}
+
+.pattern-preview-grid3d {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(to bottom, transparent 40%, rgba(var(--accent-rgb), 0.08) 100%);
+}
+
+.pattern-preview-grid3d::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: -20%;
+    width: 140%;
+    height: 70%;
+    border: 1px solid rgba(var(--accent-rgb), 0.3);
+    border-bottom: none;
+    background-image:
+        repeating-linear-gradient(to right, rgba(var(--accent-rgb), 0.2) 0px, rgba(var(--accent-rgb), 0.2) 1px, transparent 1px, transparent 25%),
+        repeating-linear-gradient(to bottom, rgba(var(--accent-rgb), 0.2) 0px, rgba(var(--accent-rgb), 0.2) 1px, transparent 1px, transparent 25%);
+    transform: perspective(40px) rotateX(15deg);
+    transform-origin: bottom center;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CANVAS PATTERNS — применяются к .workflow-container
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.workflow-container.pattern-grid {
+    background-image:
+        linear-gradient(rgba(var(--accent-rgb), 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(var(--accent-rgb), 0.08) 1px, transparent 1px);
+    background-size: 32px 32px;
+}
+
+.workflow-container.pattern-diagonal {
+    background-image: repeating-linear-gradient(
+        45deg, transparent, transparent 10px, rgba(var(--accent-rgb), 0.07) 10px, rgba(var(--accent-rgb), 0.07) 11px
+    );
+}
+
+/* Waves pattern — анимированные волны */
+.waves-wrap {
+    position: sticky;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.waves-inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.waves-base {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.15);
+    opacity: 0.35;
+}
+
+.dark .waves-base {
+    opacity: 0.25;
+}
+
+.waves-circle {
+    position: absolute;
+    width: 325vh;
+    height: 325vh;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -75%);
+    background: var(--bg-primary);
+    animation: waves-rotate linear infinite;
+}
+
+@keyframes waves-rotate {
+    0%   { transform: translate(-50%, -75%) rotate(0deg); }
+    100% { transform: translate(-50%, -75%) rotate(360deg); }
+}
+
+/* Squares pattern — всплывающие квадраты */
+.squares-wrap {
+    position: sticky;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.squares-inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    justify-content: space-around;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.sq-item {
+    align-self: flex-end;
+    background: rgba(var(--accent-rgb), 0.12);
+    border: 1px solid rgba(var(--accent-rgb), 0.08);
+    border-radius: 3px;
+    transform: translateY(100%);
+    animation: sq-float 20s linear infinite;
+}
+
+.dark .sq-item {
+    background: rgba(var(--accent-rgb), 0.08);
+    border-color: rgba(var(--accent-rgb), 0.05);
+}
+
+@keyframes sq-float {
+    from { transform: translateY(100%) rotate(-50deg); }
+    to   { transform: translateY(calc(-100vh - 100%)) rotate(20deg); }
+}
+
+/* Grid3D pattern — 3D перспективная сетка (Matrix/Tron) */
+.grid3d-wrap {
+    position: sticky;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.grid3d-inner {
+    --g3d-size: 8rem;
+    --g3d-color: var(--claude-primary);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0.3;
+}
+
+.dark .grid3d-inner {
+    opacity: 0.25;
+}
+
+/* Нижняя плоскость — "пол" */
+.grid3d-plane {
+    position: absolute;
+    width: 200%;
+    height: 60%;
+    bottom: 0;
+    left: -50%;
+    transform: perspective(300px) rotateX(55deg) scale(1) translateZ(0);
+    transform-origin: bottom center;
+    background-image:
+        repeating-linear-gradient(to right, var(--g3d-color) 0px, var(--g3d-color) 1px, transparent 1px, transparent var(--g3d-size)),
+        repeating-linear-gradient(to top, var(--g3d-color) 0px, var(--g3d-color) 1px, transparent 1px, transparent var(--g3d-size));
+    animation: g3d-move-up 2s linear infinite;
+    will-change: transform;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+/* Верхняя плоскость — "потолок" */
+.grid3d-plane-top {
+    bottom: auto;
+    top: 0;
+    transform: perspective(300px) rotateX(-55deg) scale(1) translateZ(0);
+    transform-origin: top center;
+    animation: g3d-move-down 2s linear infinite;
+}
+
+/* Затухание у горизонта — через ::after */
+.grid3d-plane::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.grid3d-plane:not(.grid3d-plane-top)::after {
+    top: 0;
+    background: linear-gradient(to bottom, var(--bg-primary) 0%, transparent 100%);
+}
+
+.grid3d-plane-top::after {
+    bottom: 0;
+    background: linear-gradient(to top, var(--bg-primary) 0%, transparent 100%);
+}
+
+/* Свечение (дубль линий с blur) — только тёмная тема */
+.grid3d-glow {
+    display: none;
+}
+
+.dark .grid3d-glow {
+    display: block;
+    filter: blur(3px);
+    opacity: 0.6;
+}
+
+@keyframes g3d-move-up {
+    from { background-position: 0 0; }
+    to   { background-position: 0 var(--g3d-size); }
+}
+
+@keyframes g3d-move-down {
+    from { background-position: 0 0; }
+    to   { background-position: 0 calc(-1 * var(--g3d-size)); }
+}
+
 /* Dropdown меню */
 .dark #tab-menu,
 .dark #language-menu {
@@ -1543,7 +1877,7 @@ body {
 }
 /* Выбранная вкладка в тёмной теме */
 .dark .tab-option.selected {
-    background-color: rgba(236, 116, 65, 0.9);
+    background-color: rgba(var(--accent-rgb), 0.9);
     color: white;
 }
 
@@ -1576,13 +1910,13 @@ body {
 }
 /* Выбранный язык */
 .dark .language-option.selected {
-    background: rgba(236, 116, 65, 0.9);
+    background: rgba(var(--accent-rgb), 0.9);
     color: white;
 }
 
 .dark .language-option.selected:hover,
 .dark .language-option.selected.submenu-open {
-    background: rgba(236, 116, 65, 0.9);
+    background: rgba(var(--accent-rgb), 0.9);
     filter: brightness(1.15);
 }
 
@@ -1727,12 +2061,62 @@ header .flex {
     touch-action: none; /* для pointer capture */
 }
 
+/* Grip-индикатор: 4 точки по центру */
+.panel-resizer::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 1.5px;
+    width: 3px;
+    height: 3px;
+    background: transparent;
+    border-radius: 50%;
+    transform: translateY(-50%);
+    box-shadow:
+        0 -10.5px 0 rgba(0,0,0,0.35),
+        0 -3.5px 0 rgba(0,0,0,0.35),
+        0  3.5px 0 rgba(0,0,0,0.35),
+        0  10.5px 0 rgba(0,0,0,0.35);
+}
+
 .panel-resizer:hover {
     background: var(--bg-resizer-hover);
 }
 
+.panel-resizer:hover::after {
+    box-shadow:
+        0 -10.5px 0 rgba(0,0,0,0.55),
+        0 -3.5px 0 rgba(0,0,0,0.55),
+        0  3.5px 0 rgba(0,0,0,0.55),
+        0  10.5px 0 rgba(0,0,0,0.55);
+}
+
 .panel-resizer.active {
     background: var(--claude-primary);
+}
+
+.panel-resizer.active::after {
+    box-shadow:
+        0 -10.5px 0 rgba(255,255,255,0.7),
+        0 -3.5px 0 rgba(255,255,255,0.7),
+        0  3.5px 0 rgba(255,255,255,0.7),
+        0  10.5px 0 rgba(255,255,255,0.7);
+}
+
+.dark .panel-resizer::after {
+    box-shadow:
+        0 -10.5px 0 rgba(255,255,255,0.3),
+        0 -3.5px 0 rgba(255,255,255,0.3),
+        0  3.5px 0 rgba(255,255,255,0.3),
+        0  10.5px 0 rgba(255,255,255,0.3);
+}
+
+.dark .panel-resizer:hover::after {
+    box-shadow:
+        0 -10.5px 0 rgba(255,255,255,0.5),
+        0 -3.5px 0 rgba(255,255,255,0.5),
+        0  3.5px 0 rgba(255,255,255,0.5),
+        0  10.5px 0 rgba(255,255,255,0.5);
 }
 
 .claude-tabs {
@@ -1900,7 +2284,7 @@ header .flex {
 }
 
 .claude-tab-btn.active:hover {
-    background: rgba(236, 116, 65, 0.06);
+    background: rgba(var(--accent-rgb), 0.06);
 }
 
 .dark .claude-tab-btn {
@@ -1919,7 +2303,7 @@ header .flex {
 }
 
 .dark .claude-tab-btn.active:hover {
-    background: rgba(236, 116, 65, 0.1);
+    background: rgba(var(--accent-rgb), 0.1);
 }
 
 /* Индикатор генерации на табе */
@@ -2093,38 +2477,12 @@ header .flex {
 .workflow-container:not(.edit-mode) {
     overflow-x: hidden;
     overflow-y: auto;
-    scrollbar-width: thin; /* Firefox */
-    scrollbar-color: rgba(0,0,0,0.2) transparent; /* Firefox */
-}
-
-.workflow-container:not(.edit-mode)::-webkit-scrollbar {
-    width: 8px;
 }
 
 .workflow-container:not(.edit-mode)::-webkit-scrollbar-track {
-    background: transparent;
+    margin: 4px 0;
 }
 
-.workflow-container:not(.edit-mode)::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.2);
-    border-radius: var(--radius-sm);
-}
-
-.workflow-container:not(.edit-mode)::-webkit-scrollbar-thumb:hover {
-    background: rgba(0,0,0,0.35);
-}
-
-.dark .workflow-container:not(.edit-mode) {
-    scrollbar-color: rgba(255,255,255,0.2) transparent; /* Firefox */
-}
-
-.dark .workflow-container:not(.edit-mode)::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.2);
-}
-
-.dark .workflow-container:not(.edit-mode)::-webkit-scrollbar-thumb:hover {
-    background: rgba(255,255,255,0.35);
-}
 
 .dark .workflow-container {
     background-color: var(--bg-primary);
@@ -2133,6 +2491,11 @@ header .flex {
 /* Wrapper - задаёт размер scrollable области */
 .workflow-wrapper {
     position: relative;
+}
+
+/* Поднимаем wrapper над анимированным фоном */
+.workflow-container.has-animated-bg .workflow-wrapper {
+    z-index: 1;
 }
 
 /* View mode - wrapper обрезает лишнее и центрируется */
@@ -2306,6 +2669,10 @@ header .flex {
     fill: none;
 }
 
+.workflow-connection-path {
+    stroke: var(--claude-primary);
+}
+
 /* Блок workflow (нода) */
 .workflow-node {
     position: absolute;
@@ -2347,7 +2714,7 @@ header .flex {
 #marquee-selection-rect {
     position: absolute;
     border: 1.5px dashed var(--claude-primary);
-    background: rgba(236, 116, 65, 0.08);
+    background: rgba(var(--accent-rgb), 0.08);
     pointer-events: none;
     z-index: 9998;
     display: none;
@@ -2355,11 +2722,11 @@ header .flex {
 }
 
 .dark #marquee-selection-rect {
-    background: rgba(236, 116, 65, 0.12);
+    background: rgba(var(--accent-rgb), 0.12);
 }
 
 .workflow-node.selected {
-    box-shadow: 0 0 20px 5px rgba(236, 116, 65, 0.35);
+    box-shadow: 0 0 20px 5px rgba(var(--accent-rgb), 0.35);
 }
 
 .workflow-node.dragging {
@@ -2459,7 +2826,7 @@ header .flex {
 }
 
 .dark .workflow-node.selected {
-    box-shadow: 0 0 20px 5px rgba(236, 116, 65, 0.4);
+    box-shadow: 0 0 20px 5px rgba(var(--accent-rgb), 0.4);
 }
 
 /* Заголовок блока */
@@ -2550,7 +2917,7 @@ header .flex {
 }
 
 .workflow-node.collapsed.selected .workflow-node-header {
-    box-shadow: 0 0 25px 0 rgba(236, 116, 65, 0.5);
+    box-shadow: 0 0 25px 0 rgba(var(--accent-rgb), 0.5);
 }
 
 /* Скрываем resize зоны для collapsed блоков */
@@ -2717,6 +3084,249 @@ header .flex {
 .workflow-node.collapsed .workflow-node-title {
     flex: none;
     white-space: nowrap;
+}
+
+/* === Collapsed: иконка ⓘ с tooltip для инструкции === */
+.collapsed-instruction-hint {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: default;
+    transition: var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.collapsed-instruction-hint:hover {
+    color: #fff;
+}
+
+.collapsed-instruction-hint > svg {
+    width: 36px;
+    height: 36px;
+}
+
+/* Tooltip — скрыт по умолчанию */
+.collapsed-instruction-tooltip {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-secondary);
+    color: var(--claude-primary);
+    border: 2px solid var(--claude-primary);
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 1.4;
+    padding: 14px 20px;
+    border-radius: 8px;
+    width: max-content;
+    max-width: 400px;
+    word-break: break-word;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    z-index: 100;
+    pointer-events: none;
+}
+
+/* Стрелка вверх */
+.collapsed-instruction-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 7px solid transparent;
+    border-bottom-color: var(--claude-primary);
+}
+
+/* Внутренняя стрелка (фон) */
+.collapsed-instruction-tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-bottom-color: var(--bg-secondary);
+}
+
+/* При hover — показываем tooltip */
+.collapsed-instruction-hint:hover .collapsed-instruction-tooltip {
+    display: block;
+}
+
+/* Поднимаем ноду поверх соседних, чтобы tooltip не перекрывался */
+.workflow-node:has(.collapsed-instruction-hint:hover) {
+    z-index: 100;
+}
+
+/* Кликабельный tooltip */
+.collapsed-instruction-tooltip.clickable {
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.collapsed-instruction-tooltip.clickable .collapsed-instruction-text {
+    border-bottom: 1px dashed var(--claude-primary);
+}
+
+.collapsed-instruction-tooltip.clickable .collapsed-instruction-text:hover {
+    opacity: 0.8;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WORKFLOW NOTES — текстовые заметки на canvas
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.workflow-note {
+    position: absolute;
+    background: var(--bg-secondary);
+    border: 2px solid var(--claude-primary);
+    border-radius: 10px;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Drag handle — полоска сверху */
+.workflow-note-handle {
+    height: 20px;
+    min-height: 20px;
+    background: rgba(var(--accent-rgb), 0.15);
+    cursor: grab;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.workflow-note-handle:active {
+    cursor: grabbing;
+}
+
+/* Точки-индикатор на handle */
+.workflow-note-handle::after {
+    content: '· · ·';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--claude-primary);
+    font-size: 14px;
+    letter-spacing: 2px;
+    opacity: 0.5;
+    line-height: 1;
+}
+
+.workflow-note-text {
+    width: 100%;
+    height: 100%;
+    padding: 14px 16px;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    color: var(--claude-primary);
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 1.4;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.workflow-note-text::placeholder {
+    color: rgba(var(--accent-rgb), 0.4);
+}
+
+.workflow-note-text.view {
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Кнопка удаления — в handle, скрыта, показывается при hover */
+.workflow-note-delete {
+    position: absolute;
+    top: 0;
+    right: 2px;
+    width: 20px;
+    height: 20px;
+    padding: 2px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--claude-primary);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.workflow-note-delete svg {
+    width: 14px;
+    height: 14px;
+}
+
+.workflow-note:hover .workflow-note-delete {
+    opacity: 1;
+}
+
+.workflow-note-delete:hover {
+    color: #fff;
+    background: var(--claude-primary);
+}
+
+/* Resize handle — нижний правый угол */
+.workflow-note-resize {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 16px;
+    height: 16px;
+    cursor: se-resize;
+    z-index: 5;
+}
+
+.workflow-note-resize::before {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--claude-primary);
+    border-bottom: 2px solid var(--claude-primary);
+    opacity: 0.4;
+}
+
+.workflow-note:hover .workflow-note-resize::before {
+    opacity: 0.8;
+}
+
+/* View mode — скрываем resize, delete и handle */
+.workflow-container:not(.edit-mode) .workflow-note-delete,
+.workflow-container:not(.edit-mode) .workflow-note-resize,
+.workflow-container:not(.edit-mode) .workflow-note-handle {
+    display: none;
+}
+
+/* Выделение и перетаскивание заметки */
+.workflow-note.selected {
+    box-shadow: 0 0 20px 5px rgba(var(--accent-rgb), 0.35);
+}
+
+.workflow-note.dragging {
+    opacity: 0.9;
+    z-index: 100;
 }
 
 /* Collapsed блоки заблокированные проектом (в других вкладках) */
@@ -2979,39 +3589,8 @@ header .flex {
     padding: 8px 0;
     max-height: 380px;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(150, 150, 150, 0.3) transparent;
 }
 
-.lang-form-submenu-inner::-webkit-scrollbar {
-    width: 6px;
-}
-
-.lang-form-submenu-inner::-webkit-scrollbar-track {
-    background: transparent;
-    margin: 8px 0;
-}
-
-.lang-form-submenu-inner::-webkit-scrollbar-thumb {
-    background: rgba(150, 150, 150, 0.3);
-    border-radius: 3px;
-}
-
-.lang-form-submenu-inner::-webkit-scrollbar-thumb:hover {
-    background: rgba(150, 150, 150, 0.5);
-}
-
-.dark .lang-form-submenu-inner {
-    scrollbar-color: rgba(200, 200, 200, 0.25) transparent;
-}
-
-.dark .lang-form-submenu-inner::-webkit-scrollbar-thumb {
-    background: rgba(200, 200, 200, 0.25);
-}
-
-.dark .lang-form-submenu-inner::-webkit-scrollbar-thumb:hover {
-    background: rgba(200, 200, 200, 0.4);
-}
 
 .lang-form-submenu-header {
     padding: 8px 16px 4px;
@@ -3062,6 +3641,24 @@ header .flex {
     display: none;
 }
 
+/* Маркеры языка — оранжевое выделение в режиме просмотра */
+.lang-marker {
+    color: var(--claude-primary);
+    cursor: default;
+    border-bottom: 1px dashed var(--claude-primary);
+    border-radius: 2px;
+}
+.lang-marker:hover {
+    background: rgba(var(--accent-rgb), 0.1);
+}
+.dark .lang-marker {
+    color: var(--claude-primary);
+    border-bottom-color: var(--claude-primary);
+}
+.dark .lang-marker:hover {
+    background: rgba(var(--accent-rgb), 0.15);
+}
+
 /* Базовые стили для instruction strips */
 .workflow-instruction-strip,
 .workflow-instruction-add,
@@ -3070,12 +3667,19 @@ header .flex {
     align-items: center;
     gap: 12px;
     padding: 0 22px;
-    height: 52px;
     min-height: 52px;
-    max-height: 52px;
     box-sizing: border-box;
-    font-size: 20px;
+    font-size: 22px;
     flex-shrink: 0;
+}
+
+.workflow-instruction-strip span,
+.workflow-instruction-strip .workflow-instruction-btn {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    line-height: 1.35;
+    padding: 10px 0;
 }
 
 .workflow-instruction-strip svg,
@@ -3088,7 +3692,7 @@ header .flex {
 
 /* Стили для заполненной инструкции */
 .workflow-instruction-strip {
-    background: rgba(236, 116, 65, 0.25);
+    background: rgba(var(--accent-rgb), 0.25);
     color: var(--claude-primary);
     font-weight: 500;
 }
@@ -3102,13 +3706,13 @@ header .flex {
     background: transparent;
     border: none;
     color: var(--claude-primary);
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 500;
     outline: none;
 }
 
 .workflow-instruction-input::placeholder {
-    color: rgba(236, 116, 65, 0.6);
+    color: rgba(var(--accent-rgb), 0.6);
 }
 
 .workflow-instruction-config,
@@ -3135,7 +3739,7 @@ header .flex {
 .workflow-instruction-remove:hover,
 .workflow-attachments-remove:hover {
     opacity: 1;
-    background: rgba(236, 116, 65, 0.2);
+    background: rgba(var(--accent-rgb), 0.2);
     filter: brightness(1.15);
 }
 
@@ -3168,7 +3772,7 @@ header .flex {
     font-weight: 600;
     text-decoration: underline;
     cursor: pointer;
-    font-size: 20px;
+    font-size: 22px;
 }
 
 .workflow-instruction-btn:hover {
@@ -3186,7 +3790,7 @@ header .flex {
 
 .workflow-instruction-add:hover,
 .workflow-attachments-add:hover {
-    background: rgba(236, 116, 65, 0.25);
+    background: rgba(var(--accent-rgb), 0.25);
     color: var(--claude-primary);
 }
 
@@ -3199,7 +3803,7 @@ header .flex {
 
 .dark .workflow-instruction-add:hover,
 .dark .workflow-attachments-add:hover {
-    background: rgba(236, 116, 65, 0.25);
+    background: rgba(var(--accent-rgb), 0.25);
     color: var(--claude-primary);
 }
 
@@ -3368,7 +3972,7 @@ header .flex {
 .workflow-attach-btn:hover {
     border-color: var(--claude-primary);
     color: var(--claude-primary);
-    background: rgba(236, 116, 65, 0.1);
+    background: rgba(var(--accent-rgb), 0.1);
 }
 
 .dark .workflow-attach-btn {

@@ -207,8 +207,8 @@ function renderWorkflow(preserveScroll = null) {
         clearGridOverlay();
     }
     
-    // Очищаем только ноды
-    canvas.querySelectorAll('.workflow-node').forEach(n => n.remove());
+    // Очищаем ноды и заметки
+    canvas.querySelectorAll('.workflow-node, .workflow-note').forEach(n => n.remove());
     
     // Получаем текущие блоки
     const blocks = getTabBlocks(currentTab);
@@ -235,6 +235,12 @@ function renderWorkflow(preserveScroll = null) {
     blocks.forEach((block, index) => {
         const node = createWorkflowNode(block, index);
         canvas.appendChild(node);
+    });
+    
+    // Создаём заметки
+    workflowNotes.forEach((note, index) => {
+        const noteEl = createWorkflowNote(note, index);
+        canvas.appendChild(noteEl);
     });
     
     // Адаптивные кнопки футера: ResizeObserver подстраивает
@@ -447,11 +453,24 @@ function createWorkflowNode(block, index) {
         </button>
     ` : '';
     
+    // Иконка ⓘ с tooltip для collapsed блоков с инструкцией
+    const hasClickableInstruction = block.instruction?.type === 'input' && 
+        block.instruction?.fields?.length > 0;
+    const collapsedInstructionHint = (isCollapsed && block.instruction) ? `
+        <div class="collapsed-instruction-hint" data-block-number="${block.number}">
+            ${SVG_ICONS.footnote}
+            <div class="collapsed-instruction-tooltip${hasClickableInstruction ? ' clickable' : ''}">
+                <span class="collapsed-instruction-text">${escapeHtml(block.instruction.text || '')}</span>
+            </div>
+        </div>
+    ` : '';
+    
     // В edit mode добавляем кнопку удаления и метки скриптов
     if (isEditMode) {
         header.innerHTML = `
             <button class="workflow-collapse-btn" data-block-id="${blockId}" title="${isCollapsed ? 'Развернуть' : 'Свернуть'}">${collapseIcon}</button>
             ${collapsedFilesBtn}
+            ${collapsedInstructionHint}
             <div class="workflow-node-title">${escapeHtml(block.title || 'Без названия')}</div>
             <div class="script-badges">${badgesHtml}</div>
             <button class="workflow-node-delete-btn" data-index="${index}" title="Удалить блок">
@@ -491,9 +510,26 @@ function createWorkflowNode(block, index) {
         // View mode - без кнопки collapse, но с badges и кнопкой файлов
         header.innerHTML = `
             ${collapsedFilesBtn}
+            ${collapsedInstructionHint}
             <div class="workflow-node-title">${escapeHtml(block.title || 'Без названия')}</div>
             <div class="script-badges">${badgesHtml}</div>
         `;
+    }
+    
+    // Обработчик клика по тексту инструкции в tooltip (если кликабельная)
+    const hintEl = header.querySelector('.collapsed-instruction-hint');
+    if (hintEl && hasClickableInstruction) {
+        const tooltipText = hintEl.querySelector('.collapsed-instruction-text');
+        if (tooltipText) {
+            tooltipText.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showDynamicInputModal(block.number);
+            });
+        }
+    }
+    // Предотвращаем drag при взаимодействии с hint
+    if (hintEl) {
+        hintEl.addEventListener('mousedown', (e) => e.stopPropagation());
     }
     
     // Обработчик клика по кнопке файлов (в обоих режимах)
@@ -565,7 +601,13 @@ function createWorkflowNode(block, index) {
     } else {
         const body = document.createElement('div');
         body.className = 'workflow-node-body';
-        body.textContent = block.content || '';
+        // Рендерим маркеры как оранжевые span-ы в режиме просмотра
+        const content = block.content || '';
+        if (hasLanguageMarkers(content)) {
+            body.innerHTML = renderMarkedContent(content, currentLanguage, currentCountry);
+        } else {
+            body.textContent = stripFieldMarkers(content);
+        }
         node.appendChild(body);
     }
     
@@ -755,7 +797,7 @@ function createWorkflowInstruction(block, index) {
                            data-block-number="${blockNumber}"
                            data-block-id="${block.id}"
                            placeholder="Текст инструкции"
-                           maxlength="60">
+                           maxlength="100">
                 </div>
                 <button class="workflow-instruction-config" data-block-number="${blockNumber}" title="Настроить поля">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -874,6 +916,197 @@ function createWorkflowInstruction(block, index) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// WORKFLOW NOTE CREATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Создание элемента заметки для workflow canvas
+ * @param {Object} note - {id, text, x, y, width, height}
+ * @param {number} index - индекс в массиве workflowNotes
+ * @returns {HTMLElement}
+ */
+function createWorkflowNote(note, index) {
+    const el = document.createElement('div');
+    el.className = 'workflow-note';
+    el.dataset.noteId = note.id;
+    el.dataset.noteIndex = index;
+    el.style.left = (note.x || 0) + 'px';
+    el.style.top = (note.y || 0) + 'px';
+    el.style.width = (note.width || 280) + 'px';
+    el.style.height = (note.height || 160) + 'px';
+    
+    if (isEditMode) {
+        // Drag handle — полоска сверху
+        const handle = document.createElement('div');
+        handle.className = 'workflow-note-handle';
+        el.appendChild(handle);
+        
+        // Кнопка удаления
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'workflow-note-delete';
+        deleteBtn.title = 'Удалить заметку';
+        deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>`;
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            workflowNotes.splice(index, 1);
+            saveWorkflowState();
+            renderWorkflow(true);
+        });
+        deleteBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+        el.appendChild(deleteBtn);
+        
+        // Textarea
+        const textarea = document.createElement('textarea');
+        textarea.className = 'workflow-note-text';
+        textarea.value = note.text || '';
+        textarea.placeholder = 'Заметка...';
+        textarea.addEventListener('input', () => {
+            note.text = textarea.value;
+            saveWorkflowState();
+        });
+        textarea.addEventListener('mousedown', (e) => e.stopPropagation());
+        el.appendChild(textarea);
+        
+        // Resize handle
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'workflow-note-resize';
+        el.appendChild(resizeHandle);
+        
+        // Drag по handle
+        setupNoteDrag(handle, el, note);
+        
+        // Resize
+        setupNoteResize(resizeHandle, el, note);
+    } else {
+        // View mode — просто текст
+        const textDiv = document.createElement('div');
+        textDiv.className = 'workflow-note-text view';
+        textDiv.textContent = note.text || '';
+        el.appendChild(textDiv);
+    }
+    
+    return el;
+}
+
+/**
+ * Drag handler для заметки — интегрирован с глобальной системой выделения и multi-drag
+ */
+function setupNoteDrag(handle, el, note) {
+    handle.addEventListener('mousedown', (e) => {
+        if (e.button !== 0 || !isEditMode) return;
+        
+        e.preventDefault();
+        
+        const noteId = note.id;
+        
+        // Сбрасываем предыдущее состояние drag
+        if (isDraggingNode) {
+            document.removeEventListener('mousemove', onNodeDrag);
+            document.removeEventListener('mouseup', onNodeDragEnd);
+            document.querySelectorAll('.workflow-node.dragging, .workflow-note.dragging').forEach(n => n.classList.remove('dragging'));
+            clearGridOverlay();
+        }
+        
+        isDraggingNode = true;
+        UndoManager.snapshot(true);
+        el.classList.add('dragging');
+        
+        // Логика выделения (как для блоков)
+        if (e.ctrlKey) {
+            if (selectedNodes.has(noteId)) {
+                selectedNodes.delete(noteId);
+                el.classList.remove('selected');
+            } else {
+                selectedNodes.add(noteId);
+                el.classList.add('selected');
+            }
+        } else {
+            if (!selectedNodes.has(noteId)) {
+                clearNodeSelection();
+                el.classList.add('selected');
+                selectedNodes.add(noteId);
+            }
+        }
+        
+        // Контейнер dragging
+        const container = getWorkflowContainer();
+        container?.classList.add('dragging');
+        
+        const canvas = getWorkflowCanvas();
+        const scale = getCanvasScale(canvas);
+        const containerRect = container.getBoundingClientRect();
+        const cursorCanvasX = (e.clientX - containerRect.left + container.scrollLeft) / scale;
+        const cursorCanvasY = (e.clientY - containerRect.top + container.scrollTop) / scale;
+        
+        // dragOffsets для всех выделенных
+        dragOffsets = {};
+        selectedNodes.forEach(id => {
+            const pos = getItemPosition(id) || {x: 0, y: 0};
+            dragOffsets[id] = {
+                x: cursorCanvasX - pos.x,
+                y: cursorCanvasY - pos.y
+            };
+        });
+        
+        document.addEventListener('mousemove', onNodeDrag);
+        document.addEventListener('mouseup', onNodeDragEnd);
+    });
+}
+
+/**
+ * Resize handler для заметки (нижний правый угол)
+ */
+function setupNoteResize(handle, el, note) {
+    handle.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const container = getWorkflowContainer();
+        const canvas = getWorkflowCanvas();
+        const scale = getCanvasScale(canvas);
+        const containerRect = container.getBoundingClientRect();
+        const gridSize = WORKFLOW_CONFIG.GRID_SIZE;
+        
+        const startW = note.width || 280;
+        const startH = note.height || 160;
+        const startMouseX = (e.clientX - containerRect.left + container.scrollLeft) / scale;
+        const startMouseY = (e.clientY - containerRect.top + container.scrollTop) / scale;
+        
+        const onMove = (ev) => {
+            const curX = (ev.clientX - containerRect.left + container.scrollLeft) / scale;
+            const curY = (ev.clientY - containerRect.top + container.scrollTop) / scale;
+            let newW = startW + curX - startMouseX;
+            let newH = startH + curY - startMouseY;
+            
+            // Snap to grid
+            newW = Math.round(newW / gridSize) * gridSize;
+            newH = Math.round(newH / gridSize) * gridSize;
+            
+            // Минимальные размеры
+            newW = Math.max(160, newW);
+            newH = Math.max(80, newH);
+            
+            note.width = newW;
+            note.height = newH;
+            el.style.width = newW + 'px';
+            el.style.height = newH + 'px';
+        };
+        
+        const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            saveWorkflowState();
+        };
+        
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // NODE EVENTS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -983,7 +1216,7 @@ function setupNodeEvents(node, index) {
         
         dragOffsets = {};
         selectedNodes.forEach(id => {
-            const pos = workflowPositions[id] || {x: 0, y: 0};
+            const pos = getItemPosition(id) || {x: 0, y: 0};
             dragOffsets[id] = {
                 x: cursorCanvasX - pos.x,
                 y: cursorCanvasY - pos.y
@@ -1121,7 +1354,37 @@ function showBlockEditModal(block, index) {
                     <input type="text" id="workflow-edit-title" maxlength="30"
                            class="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:outline-none">
                 </div>
-                <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+                <div id="modal-instruction-section" class="mb-3" style="display: none;">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Инструкция</label>
+                        <div id="modal-instruction-empty">
+                            <button id="modal-instruction-add-btn" class="modal-instruction-add-compact">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                <span>Добавить</span>
+                            </button>
+                        </div>
+                        <div id="modal-instruction-filled" style="display: none;">
+                            <div class="modal-instruction-field">
+                                <input type="text" id="modal-instruction-text" maxlength="100"
+                                       class="w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:outline-none"
+                                       placeholder="Текст инструкции">
+                                <div class="modal-instruction-actions">
+                                    <button id="modal-instruction-config-btn" class="modal-instruction-action-btn" title="Настроить поля">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    </button>
+                                    <button id="modal-instruction-remove-btn" class="modal-instruction-action-btn" title="Удалить инструкцию">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div id="modal-content-header" class="flex items-center justify-between mb-1">
                         <label id="modal-content-label" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Содержимое</label>
                         <div id="modal-toolbar-btns" class="flex items-center gap-2">
@@ -1134,9 +1397,8 @@ function showBlockEditModal(block, index) {
                         </div>
                     </div>
                     <textarea id="workflow-edit-content"
-                              class="workflow-edit-textarea w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:outline-none"></textarea>
-                </div>
-                <div id="modal-footer-btns" class="flex justify-end gap-3 mt-4">
+                              class="workflow-edit-textarea w-full px-4 py-2 border-2 border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 rounded-lg focus:outline-none mb-4"></textarea>
+                <div id="modal-footer-btns">
                     <button id="workflow-modal-cancel-btn" class="btn btn-secondary">
                         Отмена
                     </button>
@@ -1165,6 +1427,69 @@ function showBlockEditModal(block, index) {
                 titleCounter.style.color = len >= 30 ? '#ef4444' : '';
             });
         }
+        
+        // Обработчики инструкции в модальном окне
+        const instrAddBtn = modal.querySelector('#modal-instruction-add-btn');
+        const instrConfigBtn = modal.querySelector('#modal-instruction-config-btn');
+        const instrRemoveBtn = modal.querySelector('#modal-instruction-remove-btn');
+        
+        instrAddBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = parseInt(modal.dataset.editIndex);
+            const items = getTabItems(currentTab);
+            const blocks = items.filter(item => item.type === 'block');
+            if (blocks[idx]) {
+                // Создаём инструкцию напрямую без loadPrompts()
+                blocks[idx].instruction = { type: 'info', icon: 'info', text: '' };
+                const allTabs = getAllTabs();
+                allTabs[currentTab].items = items;
+                saveAllTabs(allTabs);
+                updateModalInstructionUI(blocks[idx]);
+            }
+        });
+        
+        instrConfigBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = parseInt(modal.dataset.editIndex);
+            const items = getTabItems(currentTab);
+            const blocks = items.filter(item => item.type === 'block');
+            if (blocks[idx]) {
+                // Сохраняем текст инструкции перед открытием конструктора
+                const instrInput = modal.querySelector('#modal-instruction-text');
+                if (instrInput && blocks[idx].instruction) {
+                    blocks[idx].instruction.text = instrInput.value.trim();
+                }
+                showInputConstructorModal(blocks[idx].number, true);
+            }
+        });
+        
+        instrRemoveBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = parseInt(modal.dataset.editIndex);
+            const items = getTabItems(currentTab);
+            const blocks = items.filter(item => item.type === 'block');
+            if (blocks[idx]) {
+                // Удаляем инструкцию напрямую без loadPrompts()
+                delete blocks[idx].instruction;
+                const allTabs = getAllTabs();
+                allTabs[currentTab].items = items;
+                saveAllTabs(allTabs);
+                updateModalInstructionUI(blocks[idx]);
+            }
+        });
+        
+        const instrInput = modal.querySelector('#modal-instruction-text');
+        instrInput?.addEventListener('change', (e) => {
+            const idx = parseInt(modal.dataset.editIndex);
+            const items = getTabItems(currentTab);
+            const blocks = items.filter(item => item.type === 'block');
+            if (blocks[idx]?.instruction) {
+                updateBlockInstruction(currentTab, blocks[idx].number, {
+                    ...blocks[idx].instruction,
+                    text: e.target.value.trim()
+                });
+            }
+        });
         
         // Обработчик кнопки языка в модальном окне
         const modalLangBtn = modal.querySelector('#modal-lang-btn');
@@ -1237,12 +1562,15 @@ function showBlockEditModal(block, index) {
     const titleContainer = titleInput.closest('.mb-3');
     const contentTextarea = modal.querySelector('#workflow-edit-content');
     
+    const instructionSection = modal.querySelector('#modal-instruction-section');
+    
     if (isEditMode) {
         // Режим редактирования - полный функционал
         header.textContent = 'Редактировать блок';
         toolbarBtns.style.display = 'flex';
         contentHeader.style.display = 'flex';
         titleContainer.style.display = 'block';
+        instructionSection.style.display = 'block';
         footerBtns.innerHTML = `
             <button id="workflow-modal-cancel-btn" class="btn btn-secondary">Отмена</button>
             <button id="workflow-modal-save-btn" class="btn btn-primary">Готово</button>
@@ -1257,6 +1585,7 @@ function showBlockEditModal(block, index) {
         toolbarBtns.style.display = 'none';
         contentHeader.style.display = 'none';
         titleContainer.style.display = 'none';
+        instructionSection.style.display = 'none';
         footerBtns.innerHTML = `
             <button id="workflow-modal-cancel-btn" class="btn btn-secondary">Отмена</button>
             <button id="workflow-modal-save-btn" class="btn btn-primary">Сохранить</button>
@@ -1272,6 +1601,11 @@ function showBlockEditModal(block, index) {
     getEditTitle().value = titleValue;
     getEditContent().value = block.content || '';
     modal.dataset.editIndex = index;
+    
+    // Обновляем UI инструкции
+    if (isEditMode) {
+        updateModalInstructionUI(block);
+    }
     
     // Обновляем счётчик символов названия
     const titleCounter = modal.querySelector('#workflow-edit-title-counter');
@@ -1303,6 +1637,28 @@ function showBlockEditModal(block, index) {
 }
 
 /**
+ * Обновить UI секции инструкции в модалке
+ */
+function updateModalInstructionUI(block) {
+    const modal = getEditModal();
+    if (!modal) return;
+    
+    const emptyState = modal.querySelector('#modal-instruction-empty');
+    const filledState = modal.querySelector('#modal-instruction-filled');
+    const instrInput = modal.querySelector('#modal-instruction-text');
+    
+    if (block.instruction) {
+        emptyState.style.display = 'none';
+        filledState.style.display = 'block';
+        instrInput.value = block.instruction.text || '';
+    } else {
+        emptyState.style.display = 'block';
+        filledState.style.display = 'none';
+        instrInput.value = '';
+    }
+}
+
+/**
  * Скрыть модальное окно редактирования
  */
 function hideWorkflowEditModal() {
@@ -1331,6 +1687,15 @@ function saveWorkflowEdit() {
         // В edit mode обновляем и title, в view mode - только content
         if (isEditMode) {
             blocks[index].title = title;
+            
+            // Сохраняем текст инструкции из модалки
+            const instrInput = modal.querySelector('#modal-instruction-text');
+            if (blocks[index].instruction && instrInput) {
+                const instrText = instrInput.value.trim();
+                if (instrText) {
+                    blocks[index].instruction.text = instrText;
+                }
+            }
         }
         blocks[index].content = content;
         
@@ -1450,3 +1815,4 @@ window.renderWorkflow = renderWorkflow;
 window.saveBlockContent = saveBlockContent;
 window.editWorkflowNode = editWorkflowNode;
 window.deleteWorkflowBlock = deleteWorkflowBlock;
+window.createWorkflowNote = createWorkflowNote;

@@ -125,6 +125,16 @@ erDiagram
             to: "block-456",
             toSide: "left"
         }
+    ],
+    notes: [                // Заметки на canvas
+        {
+            id: "note-1",
+            x: 300,
+            y: 400,
+            width: 200,
+            height: 150,
+            text: "Текст заметки"
+        }
     ]
 }
 ```
@@ -134,16 +144,16 @@ erDiagram
 ```javascript
 // localStorage: claudeSettings
 {
-    isVisible: false,          // Панель Claude открыта
+    visible: false,            // Панель Claude открыта
     activeTab: 1,              // Активный таб (1-3)
+    panelRatio: 50,            // Соотношение панелей (35-65)
     tabUrls: {                 // URL каждого таба
         "1": "https://claude.ai/chat/...",
         "2": "https://claude.ai/chat/..."
     },
     tabNames: {                // Названия чатов
         "1": "My Chat"
-    },
-    panelRatio: 50             // Соотношение панелей (35-65)
+    }
 }
 ```
 
@@ -165,7 +175,9 @@ erDiagram
 {
     autoUpdate: true,       // Автообновление приложения
     theme: "auto",          // "light" | "dark" | "auto"
-    adminMode: false        // Режим администратора
+    adminMode: false,       // Режим администратора
+    accentColor: "#6366f1", // Акцентный цвет (hex)
+    canvasPattern: "none"   // Паттерн фона ("none" | "grid" | "diagonal" | "waves" | "squares" | "grid3d" | "custom")
 }
 ```
 

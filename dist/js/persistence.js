@@ -162,8 +162,9 @@ async function performReset(options = {}) {
     // Сбрасываем кэш вкладок (иначе getAllTabs() вернёт старые данные)
     setTabsCache(null);
     
-    // Сохраняем настройки перед сбросом
+    // Сохраняем пользовательские настройки интерфейса перед сбросом
     const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+    const savedCanvasImage = localStorage.getItem(STORAGE_KEYS.CUSTOM_CANVAS_IMAGE);
     
     // Очищаем все ключи localStorage (включая старые версии)
     localStorage.removeItem(STORAGE_KEYS.LANGUAGE);
@@ -206,15 +207,20 @@ async function performReset(options = {}) {
     }
     keysToRemove.forEach(key => localStorage.removeItem(key));
     
-    // Восстанавливаем настройки
+    // Восстанавливаем пользовательские настройки интерфейса
     if (savedSettings) {
         localStorage.setItem(STORAGE_KEYS.SETTINGS, savedSettings);
+    }
+    if (savedCanvasImage) {
+        localStorage.setItem(STORAGE_KEYS.CUSTOM_CANVAS_IMAGE, savedCanvasImage);
     }
     
     // Вызываем Rust-команды если нужно
     if (callRustCommands && window.__TAURI__?.core) {
         await window.__TAURI__.core.invoke('reset_claude_state');
         await window.__TAURI__.core.invoke('reset_app_data');
+        // Удаляем файл данных вкладок
+        try { await window.__TAURI__.core.invoke('delete_tabs_file'); } catch(_) {}
     }
     
     // Перезагружаем страницу если нужно

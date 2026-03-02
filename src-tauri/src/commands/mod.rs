@@ -14,6 +14,7 @@ pub mod downloads;
 pub mod logs;
 pub mod claude;
 pub mod attachments;
+pub mod storage;
 
 // Реэкспорт команд для удобной регистрации в main.rs
 
@@ -55,6 +56,8 @@ pub use logs::{
     get_downloads_log,
     add_download_entry,
     write_archive_log,
+    write_diagnostic,
+    export_diagnostics,
 };
 
 // Claude commands
@@ -86,4 +89,15 @@ pub use attachments::{
     read_file_for_attachment,
     write_temp_file,
     attach_file_to_claude,
+    get_upload_count,
+    reset_upload_count,
+    increment_upload_count,
+};
+
+// Storage commands
+pub use storage::{
+    save_tabs_to_file,
+    load_tabs_from_file,
+    delete_tabs_file,
+    get_tabs_file_size,
 };

@@ -80,28 +80,42 @@
 ### Архитектура
 
 Все три таба Claude создаются при старте приложения на `https://claude.ai/new`.
-WebView2 не загружает страницу пока webview за пределами экрана, поэтому реальная загрузка происходит при первом показе панели.
+Неактивные табы скрываются через `webview.hide()` (WebView2 `put_IsVisible(FALSE)` — throttle анимаций, снижение CPU) и приостанавливаются через `TrySuspend()` (пауза script timers, минимизация CPU рендерер-процесса).
 
 ### Жизненный цикл
 
 ```
-Старт приложения
+Старт приложения (async)
     │
-    ├── ensure_claude_webview(1, None)  → claude.ai/new (за экраном)
-    ├── ensure_claude_webview(2, None)  → claude.ai/new (за экраном)
-    └── ensure_claude_webview(3, None)  → claude.ai/new (за экраном)
+    ├── create_claude_webview(1)  → claude.ai/new + hide()
+    ├── create_claude_webview(2)  → claude.ai/new + hide()
+    ├── create_claude_webview(3)  → claude.ai/new + hide()
+    ├── ensure_toolbar()          → toolbar + downloads + hide()
+    ├── raise_toolbar_zorder()    → SetWindowPos(HWND_TOP)
+    ├── suspend_claude_tab(2)     → TrySuspend()
+    └── suspend_claude_tab(3)     → TrySuspend()
     
 Первое открытие панели Claude
     │
     └── toggle_claude()
             │
-            └── resize_webviews() → webview перемещается в видимую область
-                    │
-                    └── WebView2 начинает загрузку страницы
+            ├── resize_webviews() → активный таб: show(), toolbar: show()
+            └── resume_claude_tab(active) → Resume()
 
-Автоматизация (флаги P или N)
+Переключение табов
     │
-    └── waitForClaudeInput() → ожидание загрузки перед действием
+    └── switch_claude_tab(new)
+            │
+            ├── suspend_claude_tab(prev)  → TrySuspend()
+            ├── resume_claude_tab(new)    → Resume()
+            └── resize_webviews()         → show(new), hide(prev)
+
+Скрытие панели Claude
+    │
+    └── toggle_claude()
+            │
+            ├── resize_webviews() → hide() все табы, toolbar, downloads
+            └── suspend_claude_tab(active) → TrySuspend()
 ```
 
 ### Toolbar
@@ -132,6 +146,9 @@ window.__SEL__ = {
         sendButton: [...],           // Кнопки отправки
         fileInput: "..."             // Input для файлов
     },
+    attachments: {
+        attachButtonAriaPattern: "..." // Паттерн aria-label для кнопки прикрепления
+    },
     navigation: {
         leftNav: "...",              // Левый сайдбар
         pinSidebarButton: "...",     // Кнопка pin
@@ -149,12 +166,21 @@ window.__SEL__ = {
 | `__getSel__(path)` | Получить селектор по пути (например `'input.proseMirror'`) |
 | `__findEl__(path)` | Поиск элемента по пути с fallback для массивов |
 | `__findAll__(path)` | Поиск всех элементов |
+| `__findElSmart__(path)` | Умный поиск с эвристическим fallback и диагностикой |
+| `__logSelectorFallback__(path)` | Логирование использования fallback-селектора в диагностику |
+
+### Диагностика
+
+| Функция | Описание |
+|---------|----------|
+| `runSelectorHealthCheck()` | Проверка работоспособности всех селекторов при загрузке |
 
 ### UI функции
 
 | Функция | Описание |
 |---------|----------|
 | `hideGhostButton()` | Скрытие "призрачной" кнопки (оптимизировано через `:has()`) |
+| `setupGhostObserver()` | MutationObserver для отслеживания ghost-кнопки |
 | `setupCombinedObserver()` | Объединённый MutationObserver с debounce |
 | `hideSidebar()` | Отключение pointer-events сайдбара |
 | `setupSidebarObserver()` | MutationObserver для сайдбара (точечный) |
@@ -263,6 +289,9 @@ function setupUrlChangeDetection()
     "proseMirror": ".ProseMirror",
     "sendButton": ["button[aria-label='Send message']", "..."],
     "fileInput": "input[type='file']"
+  },
+  "attachments": {
+    "attachButtonAriaPattern": "attach"
   },
   "navigation": { ... },
   "project": { ... },

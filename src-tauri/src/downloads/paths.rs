@@ -56,6 +56,17 @@ pub fn get_downloads_settings_path() -> Option<PathBuf> {
     get_app_data_dir().map(|d| d.join("downloads_settings.json"))
 }
 
+/// Получает путь к файлу лога диагностики
+///
+/// Лог хранит технические события для отладки:
+/// сломанные селекторы, CDP-таймауты, ошибки отправки и т.д.
+///
+/// # Returns
+/// Путь к `diagnostics.json` или `None` если не удалось определить директорию
+pub fn get_diagnostics_log_path() -> Option<PathBuf> {
+    get_app_data_dir().map(|d| d.join("diagnostics.json"))
+}
+
 /// Получает кастомный путь загрузок из настроек
 ///
 /// Читает файл настроек и возвращает кастомный путь,
@@ -192,6 +203,10 @@ mod tests {
         
         if let Some(path) = get_downloads_settings_path() {
             assert_eq!(path.file_name().unwrap(), "downloads_settings.json");
+        }
+        
+        if let Some(path) = get_diagnostics_log_path() {
+            assert_eq!(path.file_name().unwrap(), "diagnostics.json");
         }
     }
 

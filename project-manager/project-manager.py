@@ -169,7 +169,7 @@ class PromptsManager:
                 "order": tab_info.get("order", 1),
                 "version": tab_info.get("version", "1.0.0"),
                 "items": tab_info.get("items", []),
-                "workflow": data.get("workflow", {"positions": {}, "sizes": {}, "connections": []})
+                "workflow": data.get("workflow", {"positions": {}, "sizes": {}, "connections": [], "notes": []})
             }
         return data
     
@@ -186,9 +186,10 @@ class PromptsManager:
                     "id": data.get("id", tab_id),
                     "name": data.get("name", tab_id.upper()),
                     "order": data.get("order", 1),
+                    "version": data.get("version", "1.0.0"),
                     "items": data.get("items", [])
                 },
-                "workflow": data.get("workflow", {"positions": {}, "sizes": {}, "connections": []})
+                "workflow": data.get("workflow", {"positions": {}, "sizes": {}, "connections": [], "notes": []})
             }
         else:
             # Уже в правильном формате
@@ -242,7 +243,7 @@ class PromptsManager:
                 "title": "Первый блок",
                 "content": "Содержимое первого блока.\n\nОтредактируй этот текст."
             }],
-            "workflow": {"positions": {}, "sizes": {}, "connections": []}
+            "workflow": {"positions": {}, "sizes": {}, "connections": [], "notes": []}
         }
         
         self.save_tab(tab_id, tab_data)
@@ -345,11 +346,11 @@ class PromptsManager:
             if 'tab' in data:
                 # Формат экспорта: {tab: {...}, workflow: {...}}
                 tab_info = data['tab']
-                workflow = data.get('workflow', {"positions": {}, "sizes": {}, "connections": []})
+                workflow = data.get('workflow', {"positions": {}, "sizes": {}, "connections": [], "notes": []})
             elif 'name' in data and 'items' in data:
                 # Плоский формат: {id, name, items, workflow, ...}
                 tab_info = data
-                workflow = data.get('workflow', {"positions": {}, "sizes": {}, "connections": []})
+                workflow = data.get('workflow', {"positions": {}, "sizes": {}, "connections": [], "notes": []})
             else:
                 return False, "Неизвестный формат JSON", False
             
@@ -886,6 +887,33 @@ def update_app_version(script_dir: Path, new_version: str) -> List[str]:
         if new_content != content:
             index_md.write_text(new_content, encoding='utf-8')
             changes.append("docs/INDEX.md")
+    
+    # README.md — версия в шапке
+    readme_md = script_dir / 'README.md'
+    if readme_md.exists():
+        content = readme_md.read_text(encoding='utf-8')
+        new_content = re.sub(
+            r'(\*\*Версия:\*\*\s*)[0-9]+\.[0-9]+\.[0-9]+',
+            f'\\g<1>{new_version}',
+            content
+        )
+        if new_content != content:
+            readme_md.write_text(new_content, encoding='utf-8')
+            changes.append("README.md")
+    
+    # package.json — версия пакета
+    package_json = script_dir / 'package.json'
+    if package_json.exists():
+        content = package_json.read_text(encoding='utf-8')
+        new_content = re.sub(
+            r'("version":\s*")[^"]+"',
+            f'\\g<1>{new_version}"',
+            content,
+            count=1
+        )
+        if new_content != content:
+            package_json.write_text(new_content, encoding='utf-8')
+            changes.append("package.json")
     
     return changes
 
@@ -1662,8 +1690,7 @@ def submenu_create_release(project_dir: Path):
     print("    1. git add -A")
     print("    2. git commit")
     print(f"    3. git tag v{app_version}")
-    print("    4. git push")
-    print("    5. git push --tags")
+    print("    4. git push + push --tags")
     print("\n  После push с тегом GitHub Actions автоматически")
     print("  соберёт и опубликует релиз.")
     print("  ─────────────────────────────────────")
@@ -1678,7 +1705,7 @@ def submenu_create_release(project_dir: Path):
     
     # 1. Commit
     message = f"Release v{app_version}"
-    print(f"\n  [1/5] Коммит: {message}")
+    print(f"\n  [1/4] Коммит: {message}")
     success, msg = git_commit_all(project_dir, message)
     print(f"        {'✓' if success else '✗'} {msg}")
     if not success and "Нет изменений" not in msg:
@@ -1687,7 +1714,7 @@ def submenu_create_release(project_dir: Path):
     
     # 2. Tag
     tag = f"v{app_version}"
-    print(f"\n  [2/5] Создание тега: {tag}")
+    print(f"\n  [2/4] Создание тега: {tag}")
     success, msg = git_tag(project_dir, tag, notes if notes else f"Release {tag}")
     print(f"        {'✓' if success else '✗'} {msg}")
     if not success:
@@ -1695,7 +1722,7 @@ def submenu_create_release(project_dir: Path):
         return
     
     # 3. Push
-    print("\n  [3/5] Push коммитов...")
+    print("\n  [3/4] Push коммитов...")
     success, msg = git_push(project_dir)
     print(f"        {'✓' if success else '✗'} {msg}")
     if not success:
@@ -1703,7 +1730,7 @@ def submenu_create_release(project_dir: Path):
         return
     
     # 4. Push tags
-    print("\n  [4/5] Push тегов...")
+    print("\n  [4/4] Push тегов...")
     success, msg = git_push_tags(project_dir)
     print(f"        {'✓' if success else '✗'} {msg}")
     

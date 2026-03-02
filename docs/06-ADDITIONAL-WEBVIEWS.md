@@ -29,7 +29,7 @@
 
 ---
 
-## toolbar.html (~123 строки)
+## toolbar.html (~128 строк)
 
 Плавающий тулбар над Claude WebView.
 
@@ -69,7 +69,7 @@ listen('downloads-closed', () => {
 
 ---
 
-## downloads.html (~590 строк)
+## downloads.html (~600 строк)
 
 Менеджер загруженных файлов (popup).
 
@@ -164,43 +164,53 @@ listen('download-finished', (event) => {
 
 ---
 
-## Z-Order и пересоздание
+## Z-Order и видимость
 
 ### Проблема
 
-При создании нового Claude WebView (табы 2 и 3) он создаётся ПОВЕРХ toolbar и downloads.
+При создании нового Claude WebView (табы 2 и 3) он создаётся ПОВЕРХ toolbar и downloads — Tauri/WebView2 child windows не имеют встроенного механизма управления z-order.
 
-### Решение
+### Решение: SetWindowPos (v4.3.0+)
 
-После создания Claude WebView вызывается `recreate_toolbar()`:
+Вместо пересоздания toolbar при каждом добавлении Claude webview, используется нативный Win32 API `SetWindowPos(HWND_TOP)` для поднятия z-order без потери состояния:
 
 ```rust
-fn recreate_toolbar(app: &AppHandle) -> Result<(), String> {
-    // 1. Закрываем существующие
-    if let Some(toolbar) = app.get_webview("toolbar") {
-        let _ = toolbar.close();
-    }
-    if let Some(downloads) = app.get_webview("downloads") {
-        let _ = downloads.close();
-    }
-    
-    // 2. Небольшая задержка
-    std::thread::sleep(std::time::Duration::from_millis(10));
-    
-    // 3. Создаём заново — теперь они поверх
-    window.add_child(
-        WebviewBuilder::new("toolbar", ...),
-        ...
-    )?;
-    
-    window.add_child(
-        WebviewBuilder::new("downloads", ...),
-        ...
-    )?;
-    
-    Ok(())
+fn raise_toolbar_zorder(app: &AppHandle) {
+    // Получаем HWND через with_webview + controller().ParentWindow()
+    // Вызываем SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0,
+    //     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE)
+    // Для обоих: "toolbar" и "downloads"
 }
 ```
+
+**Преимущества перед recreate:**
+- Нет потери состояния toolbar/downloads
+- Нет visual flash при пересоздании
+- Нет задержек (`thread::sleep`) на ожидание закрытия/создания
+- Мгновенная операция (~0ms vs ~150ms)
+
+### Скрытие webview: hide()/show()
+
+Неактивные webview скрываются через нативный `webview.hide()` вместо позиционирования за экран:
+
+| Метод | CPU | GPU | RAM | Visual |
+|-------|-----|-----|-----|--------|
+| `hide()` (WebView2 `put_IsVisible(FALSE)`) | Throttle | Off | Кэши очищены | Нет |
+| Off-screen `set_position(width*2, 0)` | 100% | Render продолжается | Кэши активны | Нет |
+
+### Suspend/Resume неактивных табов
+
+Дополнительно к `hide()`, неактивные Claude табы приостанавливаются через WebView2 `ICoreWebView2_3`:
+
+```rust
+// Suspend: паузит script timers, анимации, минимизирует CPU
+core3.TrySuspend(None);
+
+// Resume: мгновенное возобновление
+core3.Resume();
+```
+
+Вызывается при переключении табов и при toggle панели Claude.
 
 ---
 
@@ -211,6 +221,7 @@ fn recreate_toolbar(app: &AppHandle) -> Result<(), String> {
 | `toolbar_back` | Навигация назад в Claude WebView |
 | `toolbar_forward` | Навигация вперёд |
 | `toolbar_reload` | Перезагрузка страницы |
+| `toolbar_recreate` | Пересоздать webview (двойной клик reload в toolbar) |
 | `show_downloads` | Показать popup загрузок |
 | `hide_downloads` | Скрыть popup |
 | `forward_scroll` | Проброс скролла на Claude |
@@ -229,7 +240,7 @@ fn recreate_toolbar(app: &AppHandle) -> Result<(), String> {
 | `open_file` | `file_path` | — | Открыть в системе |
 | `read_file_for_attachment` | `path` | `FileData` | Читать для Claude |
 
-→ Структура `DownloadEntry`: [03-BACKEND.md](03-BACKEND.md#downloads-manager)
+→ Структура `DownloadEntry`: [03-BACKEND.md](03-BACKEND.md#downloads--files-commandsdownloadsrs)
 
 ---
 

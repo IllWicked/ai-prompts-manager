@@ -118,16 +118,22 @@ scrollToBlocks();
 
 ---
 
-## workflow-interactions.js (6 функций)
+## workflow-interactions.js (12 функций)
 
 | Функция | Описание |
 |---------|----------|
 | `clearNodeSelection()` | Очистить выделение |
+| `getItemPosition(itemId)` | Получить позицию элемента (блок/заметка) |
+| `setItemPosition(itemId, x, y)` | Установить позицию элемента |
+| `getItemElement(itemId)` | Получить DOM элемент по ID |
 | `onNodeDrag(e)` | Обработчик перетаскивания |
 | `onNodeDragEnd()` | Завершение перетаскивания |
 | `onNodeResize(e)` | Обработчик изменения размера |
 | `onNodeResizeEnd(e)` | Завершение изменения размера |
 | `resetDragResizeState()` | Сброс состояний (при потере фокуса) |
+| `startMarqueeSelection(e)` | Начало выделения рамкой |
+| `updateMarqueeSelection(e)` | Обновление рамки выделения |
+| `endMarqueeSelection()` | Завершение выделения рамкой |
 
 ### Горячие клавиши
 
@@ -140,20 +146,26 @@ scrollToBlocks();
 
 ---
 
-## workflow-render.js (14 функций)
+## workflow-render.js (20 функций)
 
 | Функция | Описание |
 |---------|----------|
 | `initWorkflow()` | Инициализация workflow режима |
 | `scrollToCanvasCenter(container)` | Скролл к центру холста |
+| `adaptFooterButtons()` | Адаптация кнопок footer под размер ноды |
+| `observeFooterButtons()` | Observer для автоадаптации footer |
 | `renderWorkflow(preserveScroll)` | Рендеринг всех блоков |
 | `autoPositionNodes(promptsData)` | Автоматическое размещение |
 | `generateExpandedFooterHtml(index, chatTabs, opts)` | HTML footer блока |
 | `createWorkflowNode(block, index)` | Создание DOM ноды |
 | `createWorkflowInstruction(block, index)` | Создание инструкции |
+| `createWorkflowNote(note)` | Создание заметки на canvas |
+| `setupNoteDrag(noteEl, note)` | Настройка перетаскивания заметки |
+| `setupNoteResize(noteEl, note)` | Настройка resize заметки |
 | `setupNodeEvents(node, index)` | Настройка событий ноды |
 | `editWorkflowNode(index)` | Открытие редактирования |
 | `showBlockEditModal(block, index)` | Показать модалку |
+| `updateModalInstructionUI()` | Обновление UI инструкции в модалке |
 | `hideWorkflowEditModal()` | Скрыть модалку |
 | `saveWorkflowEdit()` | Сохранить изменения |
 | `deleteWorkflowBlock(index)` | Удалить блок |

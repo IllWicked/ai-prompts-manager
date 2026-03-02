@@ -13,6 +13,7 @@ window.AppState = {
         connections: [],         // Связи [{from, fromSide, to, toSide}]
         positions: {},           // {blockId: {x, y}}
         sizes: {},               // {blockId: {width, height}}
+        notes: [],               // Заметки [{id, x, y, width, height, text}]
         zoom: 0.6                // Текущий zoom (0.4-1.25)
     },
     interaction: {
@@ -65,7 +66,7 @@ window.AppState = {
 
 ## Алиасы для обратной совместимости
 
-34 алиаса для упрощения доступа к состоянию:
+35 алиасов для упрощения доступа к состоянию:
 
 ### App State
 
@@ -83,6 +84,7 @@ workflowMode ↔ AppState.workflow.mode
 workflowConnections ↔ AppState.workflow.connections
 workflowPositions ↔ AppState.workflow.positions
 workflowSizes ↔ AppState.workflow.sizes
+workflowNotes ↔ AppState.workflow.notes
 workflowZoom ↔ AppState.workflow.zoom
 ```
 

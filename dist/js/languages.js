@@ -146,48 +146,6 @@ function generateAdjectiveForms(nominative) {
     return forms;
 }
 
-/**
- * Получить все уникальные формы слова (для поиска)
- * @param {string} nominative - именительный падеж
- * @returns {string[]} - массив уникальных форм
- */
-function getAllWordForms(nominative) {
-    const forms = generateAdjectiveForms(nominative);
-    return [...new Set(Object.values(forms))];
-}
-
-/**
- * Определить форму слова (падеж и род) по окончанию
- * @param {string} word - слово в любой форме
- * @param {string} nominative - базовая форма (им.п. м.р.)
- * @returns {string|null} - ключ формы (nom.m, gen.f, etc.) или null
- */
-function detectWordForm(word, nominative) {
-    const forms = generateAdjectiveForms(nominative);
-    
-    for (const [key, form] of Object.entries(forms)) {
-        if (form.toLowerCase() === word.toLowerCase()) {
-            return key;
-        }
-    }
-    return null;
-}
-
-/**
- * Преобразовать слово из одной базовой формы в другую, сохраняя падеж/род
- * @param {string} word - исходное слово (например "английского")
- * @param {string} fromBase - базовая форма исходного (английский)
- * @param {string} toBase - базовая форма целевого (немецкий)
- * @returns {string} - преобразованное слово (немецкого)
- */
-function transformWord(word, fromBase, toBase) {
-    const formKey = detectWordForm(word, fromBase);
-    if (!formKey) return null;
-    
-    const toForms = generateAdjectiveForms(toBase);
-    return toForms[formKey] || null;
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // КОНФИГУРАЦИЯ СТРАН (для мультигео)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -468,31 +426,6 @@ function getCountriesForLanguage(langCode) {
     return LANGUAGE_COUNTRIES[langCode] || null;
 }
 
-/**
- * Найти язык по любой форме слова
- * @param {string} word - слово в любом падеже
- * @returns {{langCode: string, type: 'lang'|'native'}|null}
- */
-function findLanguageByWord(word) {
-    const wordLower = word.toLowerCase();
-    
-    for (const [langCode, langData] of Object.entries(LANGUAGES)) {
-        // Проверяем формы lang
-        const langForms = getAllWordForms(langData.lang);
-        if (langForms.some(f => f.toLowerCase() === wordLower)) {
-            return { langCode, type: 'lang' };
-        }
-        
-        // Проверяем формы native
-        const nativeForms = getAllWordForms(langData.native);
-        if (nativeForms.some(f => f.toLowerCase() === wordLower)) {
-            return { langCode, type: 'native' };
-        }
-    }
-    
-    return null;
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // МЕТКИ ДЛЯ UI (формы для меню вставки)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -526,6 +459,148 @@ const LANG_FORM_LABELS_GLOBAL = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
+// СИСТЕМА МАРКЕРОВ
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Регулярное выражение для поиска маркеров в тексте
+ * Формат: {{lang:nom.m}}, {{native:gen.f}}, {{country}}, {{locale}}
+ */
+const MARKER_REGEX = /\{\{(lang|native|country|locale)(?::([a-z]+(?:\.[a-z]+)?))?\}\}/g;
+
+/**
+ * Раскрыть один маркер в текстовое значение
+ * @param {string} type - тип маркера (lang, native, country, locale)
+ * @param {string} [form] - форма (nom.m, gen.f, и т.д.) — для lang/native
+ * @param {string} langCode - код языка
+ * @param {string} [countryCode] - код страны (для мультигео)
+ * @returns {string} - раскрытое значение или исходный маркер если не удалось
+ */
+function resolveMarker(type, form, langCode, countryCode) {
+    let langData = LANGUAGES[langCode];
+    if (!langData) return `{{${type}${form ? ':' + form : ''}}}`;
+    
+    // Учитываем выбранную страну
+    if (countryCode && hasCountrySelection(langCode)) {
+        langData = getLanguageWithCountry(langCode, countryCode) || langData;
+    }
+    
+    switch (type) {
+        case 'lang': {
+            if (!form) return langData.lang; // без формы — именительный м.р.
+            const forms = generateAdjectiveForms(langData.lang);
+            return forms[form] || langData.lang;
+        }
+        case 'native': {
+            if (!form) return langData.native;
+            const forms = generateAdjectiveForms(langData.native);
+            return forms[form] || langData.native;
+        }
+        case 'country':
+            return langData.country || '';
+        case 'locale':
+            return langData.locale || '';
+        default:
+            return `{{${type}${form ? ':' + form : ''}}}`;
+    }
+}
+
+/**
+ * Регулярное выражение для маркеров скрытых полей Dynamic Input
+ * Формат: \u200B{{FIELD:blockId-fieldIdx}}\u200B
+ */
+const FIELD_MARKER_REGEX = /\u200B\{\{FIELD:[^}]+\}\}\u200B/g;
+
+/**
+ * Удалить маркеры скрытых полей из текста (для отправки в Claude и отображения)
+ * @param {string} text
+ * @returns {string}
+ */
+function stripFieldMarkers(text) {
+    if (!text) return text;
+    return text.replace(FIELD_MARKER_REGEX, '');
+}
+
+/**
+ * Раскрыть все маркеры в тексте → чистый текст (для отправки в Claude)
+ * @param {string} text - текст с маркерами
+ * @param {string} langCode - код языка
+ * @param {string} [countryCode] - код страны
+ * @returns {string} - текст без маркеров
+ */
+function resolveMarkersToText(text, langCode, countryCode) {
+    if (!text) return text;
+    // Сначала убираем маркеры скрытых полей
+    let result = stripFieldMarkers(text);
+    // Затем раскрываем языковые маркеры
+    result = result.replace(MARKER_REGEX, (match, type, form) => {
+        return resolveMarker(type, form, langCode, countryCode);
+    });
+    return result;
+}
+
+/**
+ * Раскрыть маркеры в HTML с оранжевыми span-ами (для отображения в view mode)
+ * @param {string} text - текст с маркерами
+ * @param {string} langCode - код языка
+ * @param {string} [countryCode] - код страны
+ * @returns {string} - HTML с подсвеченными маркерами
+ */
+function renderMarkedContent(text, langCode, countryCode) {
+    if (!text) return '';
+    // Убираем маркеры скрытых полей перед рендерингом
+    const cleanText = stripFieldMarkers(text);
+    // Разбиваем на куски: обычный текст и маркеры
+    const parts = [];
+    let lastIndex = 0;
+    const regex = new RegExp(MARKER_REGEX.source, 'g');
+    let match;
+    
+    while ((match = regex.exec(cleanText)) !== null) {
+        // Текст до маркера
+        if (match.index > lastIndex) {
+            parts.push(escapeHtmlForMarkers(cleanText.slice(lastIndex, match.index)));
+        }
+        // Маркер → оранжевый span
+        const type = match[1];
+        const form = match[2] || '';
+        const resolved = resolveMarker(type, form, langCode, countryCode);
+        const tooltip = form ? `${type}:${form}` : type;
+        parts.push(`<span class="lang-marker" data-marker="${escapeHtmlForMarkers(match[0])}" title="${tooltip}">${escapeHtmlForMarkers(resolved)}</span>`);
+        lastIndex = regex.lastIndex;
+    }
+    
+    // Остаток текста
+    if (lastIndex < cleanText.length) {
+        parts.push(escapeHtmlForMarkers(cleanText.slice(lastIndex)));
+    }
+    
+    return parts.join('');
+}
+
+/**
+ * Проверить, содержит ли текст маркеры языка
+ * @param {string} text
+ * @returns {boolean}
+ */
+function hasLanguageMarkers(text) {
+    if (!text) return false;
+    // Используем новый regex без флага g для .test() (избегаем проблем с lastIndex)
+    return /\{\{(lang|native|country|locale)(?::([a-z]+(?:\.[a-z]+)?))?\}\}/.test(text);
+}
+
+/**
+ * Escape HTML для безопасной вставки (локальная версия для markers модуля)
+ */
+function escapeHtmlForMarkers(str) {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ЭКСПОРТ
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -537,13 +612,18 @@ window.GENDER_LABELS = GENDER_LABELS;
 
 // Функции склонения
 window.generateAdjectiveForms = generateAdjectiveForms;
-window.getAllWordForms = getAllWordForms;
-window.detectWordForm = detectWordForm;
-window.transformWord = transformWord;
 window.getAdjectiveStem = getAdjectiveStem;
 
 // Функции работы с языками
 window.getLanguageWithCountry = getLanguageWithCountry;
 window.hasCountrySelection = hasCountrySelection;
 window.getCountriesForLanguage = getCountriesForLanguage;
-window.findLanguageByWord = findLanguageByWord;
+
+// Система маркеров
+window.MARKER_REGEX = MARKER_REGEX;
+window.FIELD_MARKER_REGEX = FIELD_MARKER_REGEX;
+window.resolveMarker = resolveMarker;
+window.resolveMarkersToText = resolveMarkersToText;
+window.renderMarkedContent = renderMarkedContent;
+window.hasLanguageMarkers = hasLanguageMarkers;
+window.stripFieldMarkers = stripFieldMarkers;

@@ -16,25 +16,25 @@
 ```
 ai-prompts-manager/
 ├── dist/                       # Frontend
-│   ├── index.html              # HTML + минимальный JS (~1050 строк)
-│   ├── toolbar.html            # Тулбар над Claude (~123 строки)
-│   ├── downloads.html          # Менеджер загрузок (~590 строк)
+│   ├── index.html              # HTML + минимальный JS (~1080 строк)
+│   ├── toolbar.html            # Тулбар над Claude (~128 строк)
+│   ├── downloads.html          # Менеджер загрузок (~600 строк)
 │   ├── css/
-│   │   └── styles.css          # Стили (~3700 строк)
+│   │   └── styles.css          # Стили (~4300 строк)
 │   └── js/                     # JavaScript модули (35 файлов)
 │
 ├── src-tauri/                  # Backend (Rust)
-│   ├── src/                    # Модульная структура (20 файлов)
-│   │   ├── main.rs             # Точка входа (~142 строки)
+│   ├── src/                    # Модульная структура (21 файл)
+│   │   ├── main.rs             # Точка входа (~174 строки)
 │   │   ├── lib.rs              # Реэкспорт модулей
 │   │   ├── types.rs            # Структуры данных
 │   │   ├── state.rs            # Глобальные состояния
-│   │   ├── commands/           # Tauri команды (6 файлов, 46 команд)
+│   │   ├── commands/           # Tauri команды (7 файлов, 55 команд)
 │   │   ├── downloads/          # Логика загрузок
 │   │   ├── utils/              # Утилиты (MIME, платформа, размеры)
 │   │   └── webview/            # Управление WebView
 │   ├── scripts/
-│   │   └── claude_helpers.js   # Инжектируемый скрипт для Claude WebView (~310 строк)
+│   │   └── claude_helpers.js   # Инжектируемый скрипт для Claude WebView (~490 строк)
 │   ├── tauri.conf.json         # Конфигурация Tauri
 │   ├── Cargo.toml              # Зависимости Rust
 │   └── capabilities/           # Permissions
@@ -83,20 +83,22 @@ ai-prompts-manager/
 
 ### Z-Order WebView
 
-При создании нового Claude WebView вызывается `recreate_toolbar()`:
-1. Закрывает toolbar и downloads webview
-2. Пересоздаёт их — теперь они поверх Claude
+При создании нового Claude WebView вызывается `raise_toolbar_zorder()`:
+- Поднимает z-order toolbar и downloads через Win32 `SetWindowPos(HWND_TOP)`
+- Без пересоздания — сохраняет состояние, мгновенная операция
+
+Неактивные табы скрываются через `webview.hide()` и приостанавливаются через `TrySuspend()` для экономии CPU/GPU.
 
 ## Дополнительные WebView
 
-### toolbar.html (~123 строки)
+### toolbar.html (~128 строк)
 
 Плавающий тулбар над Claude WebView:
 - Кнопки переключения вкладок Claude (1/2/3)
 - Кнопка менеджера загрузок
 - Позиционируется внизу Claude WebView
 
-### downloads.html (~590 строк)
+### downloads.html (~600 строк)
 
 Менеджер загрузок — popup для управления скачанными файлами:
 

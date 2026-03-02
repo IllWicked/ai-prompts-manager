@@ -72,4 +72,7 @@ pub mod limits {
     
     /// Максимальное количество записей в логе загрузок
     pub const MAX_DOWNLOADS_LOG_ENTRIES: usize = 500;
+    
+    /// Максимальное количество записей в логе диагностики
+    pub const MAX_DIAGNOSTICS_ENTRIES: usize = 500;
 }

@@ -84,8 +84,11 @@
 |--------|----------|
 | **localStorage** | Браузерное хранилище для данных приложения |
 | **App Data Dir** | `%LOCALAPPDATA%/com.ai.prompts.manager/` |
+| **Hybrid Storage** | Гибридное хранение: localStorage (кэш) + файл `tabs_data.json` (backup). С v4.2.5 |
+| **StorageMonitor** | Мониторинг использования localStorage: usage, breakdown, предупреждения при >80% |
 | **Downloads Log** | Лог скачанных файлов (`downloads_log.json`) |
 | **Archive Log** | Лог скачанных архивов (`archive_log.json`) |
+| **Diagnostics Log** | Лог диагностики селекторов (`diagnostics.json`) |
 | **Manifest** | Файл с версиями и метаданными вкладок |
 | **CLAUDE_AUTO_SEND** | Настройка автоматической отправки сообщения (localStorage: `claude_auto_send`) |
 
@@ -146,6 +149,9 @@
 | **Throttle** | Ограничение частоты вызовов функции |
 | **Auto-cleanup** | Автоматическое удаление записей для несуществующих файлов |
 | **Fallback** | Резервный вариант (например, альтернативный селектор) |
+| **InputGroup** | Группировка быстрых правок (пауза < 2 сек) в одну undo-операцию (v3) |
+| **Suspend/Resume** | Приостановка/возобновление неактивных Claude табов через WebView2 `TrySuspend()`/`Resume()` |
+| **Hash Comparison** | djb2-хеширование для быстрой проверки изменений при undo snapshot |
 
 ## Тестирование
 

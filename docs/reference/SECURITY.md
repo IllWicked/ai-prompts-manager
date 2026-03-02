@@ -50,6 +50,9 @@
 | `downloads_log.json` | `%LOCALAPPDATA%/com.ai.prompts.manager/` | Лог загрузок |
 | `archive_log.json` | То же | Лог архивов |
 | `downloads_settings.json` | То же | Путь загрузок |
+| `diagnostics.json` | То же | Лог диагностики селекторов |
+| `tabs_data.json` | То же | Резервная копия вкладок (гибридное хранение) |
+| `tabs_data.backup.json` | То же | Бэкап вкладок (при повреждении основного) |
 
 **Защита:**
 - Файлы в AppData защищены правами пользователя Windows

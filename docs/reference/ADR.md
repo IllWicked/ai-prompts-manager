@@ -79,6 +79,10 @@
 
 Если данные превысят 3MB или появится необходимость в offline-first режиме.
 
+### Обновление (v4.2.5)
+
+Решение дополнено **гибридным хранением**: localStorage остаётся основным кэшем (синхронный доступ), а `tabs_data.json` в App Data Dir служит резервной копией. При повреждении localStorage данные автоматически восстанавливаются из файла. См. `storage.js → initHybridStorage()` и `commands/storage.rs`.
+
 ---
 
 ## ADR-003: CDP вместо WebMessageReceived
@@ -394,7 +398,7 @@ function wouldCreateCycle(fromBlockId, toBlockId) {
 
 | За unit-тесты | Реализация |
 |---------------|------------|
-| Быстрая обратная связь | ~3.6 сек на 260 тестов |
+| Быстрая обратная связь | ~3.6 сек на 262 тестов |
 | Отлов регрессий | Покрыты критичные модули |
 | Документация поведения | Тесты описывают контракты функций |
 | Рефакторинг без страха | Можно менять реализацию |
@@ -402,7 +406,7 @@ function wouldCreateCycle(fromBlockId, toBlockId) {
 ### Реализация
 
 - **Инфраструктура:** Jest + jsdom
-- **Покрытие:** 7 модулей, 265 тестов (260 passed, 5 skipped)
+- **Покрытие:** 7 модулей, 262 тестов (257 passed, 5 skipped)
 - **Модули:** storage.js, tabs.js, undo.js, connections.js, utils.js, export-import.js
 - **Документация:** [tests/README.md](../../tests/README.md)
 
@@ -416,7 +420,6 @@ function wouldCreateCycle(fromBlockId, toBlockId) {
 ### Связанные документы
 
 - [TESTING.md](../guides/TESTING.md) — Общее руководство
-- [UNIT-TESTS-PLAN.md](../UNIT-TESTS-PLAN.md) — План тестирования
 - [tests/README.md](../../tests/README.md) — Документация тестов
 
 ---
@@ -436,7 +439,7 @@ function wouldCreateCycle(fromBlockId, toBlockId) {
 
 ### Решение
 
-Разбить монолитный `main.rs` на **20 файлов** по функциональности:
+Разбить монолитный `main.rs` на **21 файл** по функциональности:
 
 ```
 src-tauri/src/
@@ -444,7 +447,7 @@ src-tauri/src/
 ├── lib.rs         — реэкспорт
 ├── types.rs       — структуры данных
 ├── state.rs       — глобальные состояния
-├── commands/      — 6 модулей с 45 командами
+├── commands/      — 7 модулей с 55 командами
 ├── downloads/     — пути и настройки
 ├── utils/         — MIME, платформа, размеры
 └── webview/       — скрипты и управление
@@ -505,6 +508,54 @@ src-tauri/src/
 ## Шаблон для новых ADR
 
 ```markdown
+## ADR-011: WebView Coordination — SetWindowPos + hide/show + suspend
+
+**Дата:** Февраль 2026  
+**Статус:** Принято (заменяет подход recreate_toolbar из v4.3.0)
+
+### Контекст
+
+В v4.3.0 z-order toolbar решался через `recreate_toolbar()` — закрытие и пересоздание webview. Скрытие неактивных табов — через `set_position(width*2, 0)` (за экран). Startup использовал `std::thread::spawn` с `thread::sleep` (950ms суммарно).
+
+### Проблемы предыдущего подхода
+
+| Проблема | Последствие |
+|----------|------------|
+| recreate_toolbar теряет состояние | Visual flash, потеря scroll position в downloads |
+| Off-screen: GPU продолжает рендерить | Лишний расход CPU/GPU на 2 невидимых таба |
+| thread::sleep блокирует thread | Thread pool занят ~1 сек при старте |
+| Нет suspend: JS timers работают | claude.ai запускает timers/animations во всех 3 табах |
+
+### Решение
+
+6 фаз рефакторинга:
+
+1. **SetWindowPos(HWND_TOP)** — z-order через Win32 API без пересоздания. Получаем HWND через `with_webview` + `controller().ParentWindow()`. Мгновенно, без потери состояния.
+
+2. **hide()/show()** — WebView2 `put_IsVisible(FALSE)` throttle-ит animations, снижает CPU, очищает GPU кэши. Вместо позиционирования за экран.
+
+3. **TrySuspend()/Resume()** — WebView2 `ICoreWebView2_3` паузит script timers, минимизирует CPU рендерер-процесса. Неактивные табы почти не потребляют ресурсов.
+
+4. **async startup** — `tauri::async_runtime::spawn` + `tokio::time::sleep`. Не блокирует thread pool, задержки уменьшены с 950ms до 250ms.
+
+5. **Error logging** — ошибки создания webview пишутся в `diagnostics.json` и emit-ятся в UI.
+
+6. **Декомпозиция** — god-функция `resize_webviews` разбита на `layout_ui`, `layout_claude`, `layout_overlay`.
+
+### Альтернативы
+
+1. **Tauri reparent API** — не решает z-order (discussion #9685)
+2. **Единый WebView** — вся UI в одном webview, toolbar как HTML overlay. Экономит RAM, но высокая сложность миграции (16-24 часов), оставлено как Phase 6 optional.
+
+### Последствия
+
+- Удалены: `recreate_toolbar()`, `TOOLBAR_NEEDS_RECREATE`, deferred recreate логика
+- Добавлены: `raise_toolbar_zorder()`, `suspend_claude_tab()`, `resume_claude_tab()`, `layout_ui()`, `layout_claude()`, `layout_overlay()`
+- Зависимости: `tokio = { features = ["time"] }`, `windows = { features = ["Win32_UI_WindowsAndMessaging", "Win32_Foundation"] }`
+- Платформо-зависимые функции (SetWindowPos, TrySuspend, Resume) — no-op на не-Windows
+
+---
+
 ## ADR-XXX: [Название]
 
 **Дата:** YYYY-MM  

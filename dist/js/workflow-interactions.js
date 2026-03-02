@@ -34,8 +34,41 @@
  * Очистить выделение нод
  */
 function clearNodeSelection() {
-    document.querySelectorAll('.workflow-node.selected').forEach(n => n.classList.remove('selected'));
+    document.querySelectorAll('.workflow-node.selected, .workflow-note.selected').forEach(n => n.classList.remove('selected'));
     selectedNodes.clear();
+}
+
+/**
+ * Получить позицию элемента (блока или заметки) по ID
+ */
+function getItemPosition(id) {
+    if (id.startsWith('note_')) {
+        const note = workflowNotes.find(n => n.id === id);
+        return note ? { x: note.x || 0, y: note.y || 0 } : null;
+    }
+    return workflowPositions[id] || null;
+}
+
+/**
+ * Установить позицию элемента (блока или заметки) по ID
+ */
+function setItemPosition(id, x, y) {
+    if (id.startsWith('note_')) {
+        const note = workflowNotes.find(n => n.id === id);
+        if (note) { note.x = x; note.y = y; }
+    } else {
+        workflowPositions[id] = { x, y };
+    }
+}
+
+/**
+ * Найти DOM-элемент по ID (блок или заметка)
+ */
+function getItemElement(id) {
+    if (id.startsWith('note_')) {
+        return document.querySelector(`.workflow-note[data-note-id="${id}"]`);
+    }
+    return document.querySelector(`.workflow-node[data-block-id="${id}"]`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -60,10 +93,10 @@ function onNodeDrag(e) {
     const cursorX = (e.clientX - containerRect.left + container.scrollLeft) / scale;
     const cursorY = (e.clientY - containerRect.top + container.scrollTop) / scale;
     
-    // Двигаем все выделенные ноды
+    // Двигаем все выделенные элементы (блоки и заметки)
     let firstNode = null;
-    selectedNodes.forEach(blockId => {
-        const offset = dragOffsets[blockId];
+    selectedNodes.forEach(id => {
+        const offset = dragOffsets[id];
         if (!offset) return;
         
         let x = cursorX - offset.x;
@@ -75,16 +108,16 @@ function onNodeDrag(e) {
         // Лимит только сверху - минимум один шаг сетки
         y = Math.max(gridSize, y);
         
-        const node = document.querySelector(`.workflow-node[data-block-id="${blockId}"]`);
-        if (node) {
-            node.style.left = x + 'px';
-            node.style.top = y + 'px';
-            workflowPositions[blockId] = {x, y};
+        setItemPosition(id, x, y);
+        const el = getItemElement(id);
+        if (el) {
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
             
-            // Для первой ноды обновляем grid overlay
+            // Для первого элемента обновляем grid overlay
             if (!firstNode) {
-                firstNode = node;
-                updateGridOverlay(x, y, node.offsetWidth, node.offsetHeight);
+                firstNode = el;
+                updateGridOverlay(x, y, el.offsetWidth, el.offsetHeight);
             }
         }
     });
@@ -97,9 +130,9 @@ function onNodeDrag(e) {
  */
 function onNodeDragEnd() {
     if (isDraggingNode && selectedNodes.size > 0) {
-        // Убираем класс dragging со всех выделенных нод
-        document.querySelectorAll('.workflow-node.dragging').forEach(node => {
-            node.classList.remove('dragging');
+        // Убираем класс dragging со всех выделенных элементов
+        document.querySelectorAll('.workflow-node.dragging, .workflow-note.dragging').forEach(el => {
+            el.classList.remove('dragging');
         });
         
         // Убираем класс dragging с контейнера
@@ -367,6 +400,35 @@ function updateMarqueeSelection(container, e) {
             node.classList.remove('selected');
         }
     });
+    
+    // Проверяем пересечение с каждой заметкой
+    document.querySelectorAll('.workflow-note').forEach(noteEl => {
+        const noteId = noteEl.dataset.noteId;
+        if (!noteId) return;
+        
+        const nx = parseFloat(noteEl.style.left) || 0;
+        const ny = parseFloat(noteEl.style.top) || 0;
+        const nw = noteEl.offsetWidth || 0;
+        const nh = noteEl.offsetHeight || 0;
+        
+        const intersects = !(nx + nw < mLeft || nx > mRight || ny + nh < mTop || ny > mBottom);
+        
+        if (intersects) {
+            selectedNodes.add(noteId);
+            noteEl.classList.add('selected');
+        } else if (_marqueeCtrl) {
+            if (_marqueePreSelection.has(noteId)) {
+                selectedNodes.add(noteId);
+                noteEl.classList.add('selected');
+            } else {
+                selectedNodes.delete(noteId);
+                noteEl.classList.remove('selected');
+            }
+        } else {
+            selectedNodes.delete(noteId);
+            noteEl.classList.remove('selected');
+        }
+    });
 }
 
 /**
@@ -387,3 +449,6 @@ function endMarqueeSelection(container) {
 window.startMarqueeSelection = startMarqueeSelection;
 window.updateMarqueeSelection = updateMarqueeSelection;
 window.endMarqueeSelection = endMarqueeSelection;
+window.getItemPosition = getItemPosition;
+window.setItemPosition = setItemPosition;
+window.getItemElement = getItemElement;

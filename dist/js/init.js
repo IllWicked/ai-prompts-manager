@@ -195,9 +195,27 @@ function initContextMenuHandlers() {
         // 1. ПКМ на холсте (пустое место) в edit mode
         const workflowCanvas = target.closest('#workflow-canvas');
         const isOnNode = target.closest('.workflow-node');
+        const isOnNote = target.closest('.workflow-note');
         
-        if (workflowMode && isEditMode && workflowCanvas && !isOnNode) {
+        if (workflowMode && isEditMode && workflowCanvas && !isOnNode && !isOnNote) {
             showCanvasContextMenu(e);
+            return;
+        }
+        
+        // 1.5. ПКМ на заметке в edit mode
+        if (workflowMode && isEditMode && isOnNote) {
+            const noteIndex = parseInt(isOnNote.dataset.noteIndex);
+            showContextMenu(e.clientX, e.clientY, [
+                {
+                    label: 'Удалить заметку',
+                    icon: CONTEXT_ICONS.delete,
+                    action: () => {
+                        workflowNotes.splice(noteIndex, 1);
+                        saveWorkflowState();
+                        renderWorkflow(true);
+                    }
+                }
+            ]);
             return;
         }
         
@@ -238,6 +256,11 @@ function showCanvasContextMenu(e) {
             label: 'Создать блок',
             icon: CONTEXT_ICONS.create,
             action: () => createBlockAtPosition(e)
+        },
+        {
+            label: 'Создать заметку',
+            icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>',
+            action: () => createNoteAtPosition(e)
         },
         {
             label: 'Вставить',
@@ -315,6 +338,27 @@ function showNodeContextMenu(e, node) {
                 action: () => toggleAttachmentsPanel(blockId, !hasBlockAttachmentsPanel(blockId))
             },
             {
+                label: 'Инструкция',
+                icon: CONTEXT_ICONS.instruction,
+                checked: (() => {
+                    const blocks = getTabBlocks(currentTab);
+                    const block = blocks.find(b => b.id === blockId);
+                    return !!block?.instruction;
+                })(),
+                action: () => {
+                    const blocks = getTabBlocks(currentTab);
+                    const block = blocks.find(b => b.id === blockId);
+                    if (!block) return;
+                    UndoManager.snapshot(true);
+                    if (block.instruction) {
+                        removeBlockInstruction(block.number);
+                    } else {
+                        addBlockInstruction(block.number, 'info');
+                    }
+                    renderWorkflow(true);
+                }
+            },
+            {
                 label: 'Редактировать',
                 icon: CONTEXT_ICONS.edit,
                 action: () => editWorkflowNode(index)
@@ -386,6 +430,61 @@ function createBlockAtPosition(e) {
     workflowPositions[newId] = { x: newX, y: newY };
     renderWorkflow(true);
     saveWorkflowState();
+}
+
+/**
+ * Создать заметку в позиции клика
+ */
+function createNoteAtPosition(e) {
+    const container = getWorkflowContainer();
+    const scale = workflowZoom || 1;
+    
+    const containerRect = container.getBoundingClientRect();
+    const clickX = (e.clientX - containerRect.left + container.scrollLeft) / scale;
+    const clickY = (e.clientY - containerRect.top + container.scrollTop) / scale;
+    
+    const gridSize = 40;
+    const newX = Math.round(clickX / gridSize) * gridSize;
+    const newY = Math.round(clickY / gridSize) * gridSize;
+    
+    workflowNotes.push({
+        id: 'note_' + Date.now(),
+        text: '',
+        x: newX,
+        y: newY,
+        width: 280,
+        height: 160
+    });
+    
+    saveWorkflowState();
+    renderWorkflow(true);
+}
+
+/**
+ * Создать заметку рядом с существующими блоками (для кнопки тулбара)
+ */
+function addWorkflowNote() {
+    const blocks = getTabBlocks(currentTab);
+    let newX = 40, newY = 40;
+    
+    // Ищем свободное место справа от блоков
+    if (blocks.length > 0) {
+        const pos = findNewBlockPosition(blocks);
+        newX = pos.x;
+        newY = pos.y;
+    }
+    
+    workflowNotes.push({
+        id: 'note_' + Date.now(),
+        text: '',
+        x: newX,
+        y: newY,
+        width: 280,
+        height: 160
+    });
+    
+    saveWorkflowState();
+    renderWorkflow(true);
 }
 
 /**
@@ -590,16 +689,20 @@ function deleteSelectedNodes() {
     // Snapshot ДО удаления (force — деструктивная операция)
     UndoManager.snapshot(true);
     
-    selectedNodes.forEach(blockId => {
-        // Удаляем связи
-        workflowConnections = workflowConnections.filter(
-            c => c.from !== blockId && c.to !== blockId
-        );
-        // Удаляем позицию и размер
-        delete workflowPositions[blockId];
-        delete workflowSizes[blockId];
-        // removeItemFromTab очищает: collapsedBlocks, blockScripts, blockAutomation, blockAttachments, field-values
-        removeItemFromTab(currentTab, blockId);
+    selectedNodes.forEach(id => {
+        if (id.startsWith('note_')) {
+            // Удаляем заметку
+            const idx = workflowNotes.findIndex(n => n.id === id);
+            if (idx !== -1) workflowNotes.splice(idx, 1);
+        } else {
+            // Удаляем блок
+            workflowConnections = workflowConnections.filter(
+                c => c.from !== id && c.to !== id
+            );
+            delete workflowPositions[id];
+            delete workflowSizes[id];
+            removeItemFromTab(currentTab, id);
+        }
     });
     
     selectedNodes.clear();
@@ -616,6 +719,11 @@ function selectAllNodes() {
         node.classList.add('selected');
         const blockId = node.dataset.blockId;
         if (blockId) selectedNodes.add(blockId);
+    });
+    document.querySelectorAll('.workflow-note').forEach(noteEl => {
+        noteEl.classList.add('selected');
+        const noteId = noteEl.dataset.noteId;
+        if (noteId) selectedNodes.add(noteId);
     });
 }
 
@@ -650,8 +758,8 @@ function moveSelectedNodes(key) {
     
     const gridSize = 40;
     
-    selectedNodes.forEach(blockId => {
-        const pos = workflowPositions[blockId];
+    selectedNodes.forEach(id => {
+        const pos = getItemPosition(id);
         if (pos) {
             switch (key) {
                 case 'ArrowUp': pos.y = Math.max(gridSize, pos.y - gridSize); break;
@@ -659,10 +767,11 @@ function moveSelectedNodes(key) {
                 case 'ArrowLeft': pos.x = Math.max(0, pos.x - gridSize); break;
                 case 'ArrowRight': pos.x += gridSize; break;
             }
-            const node = document.querySelector(`.workflow-node[data-block-id="${blockId}"]`);
-            if (node) {
-                node.style.left = pos.x + 'px';
-                node.style.top = pos.y + 'px';
+            setItemPosition(id, pos.x, pos.y);
+            const el = getItemElement(id);
+            if (el) {
+                el.style.left = pos.x + 'px';
+                el.style.top = pos.y + 'px';
             }
         }
     });
@@ -715,6 +824,19 @@ function initAddBlockButton() {
         workflowPositions[newId] = { x: newX, y: newY };
         renderWorkflow(true);
         saveWorkflowState();
+    });
+}
+
+/**
+ * Обработчик кнопки добавления заметки
+ */
+function initAddNoteButton() {
+    const addNoteBtn = document.getElementById('add-note-btn');
+    if (!addNoteBtn) return;
+    
+    addNoteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        addWorkflowNote();
     });
 }
 
@@ -870,7 +992,9 @@ function initAdvancedSettings() {
         const arrow = document.getElementById('advanced-settings-arrow');
         if (content && arrow) {
             content.classList.toggle('hidden');
-            arrow.style.transform = content.classList.contains('hidden') ? '' : 'rotate(180deg)';
+            const expanded = !content.classList.contains('hidden');
+            arrow.style.transform = expanded ? 'rotate(180deg)' : '';
+            content.closest('.modal-content')?.classList.toggle('has-scroll', expanded);
         }
     });
     
@@ -892,6 +1016,23 @@ function initAdvancedSettings() {
     
     // Лог скачиваний
     initArchiveLogHandlers();
+    
+    // Экспорт диагностики
+    document.getElementById('export-diagnostics-btn')?.addEventListener('click', async () => {
+        try {
+            if (window.__TAURI__) {
+                const path = await window.__TAURI__.core.invoke('export_diagnostics');
+                showToast('Экспортировано: ' + path.split(/[/\\]/).pop());
+            }
+        } catch (e) {
+            const msg = e?.toString() || '';
+            if (msg.includes('пуст')) {
+                showToast('Лог диагностики пуст');
+            } else {
+                showToast('Ошибка экспорта');
+            }
+        }
+    });
 }
 
 /**
@@ -945,6 +1086,22 @@ function initDownloadsPathHandlers() {
 function initArchiveLogHandlers() {
     document.getElementById('open-archive-log-btn')?.addEventListener('click', async () => {
         await showArchiveLogModal();
+    });
+    
+    document.getElementById('export-diagnostics-btn')?.addEventListener('click', async () => {
+        try {
+            if (window.__TAURI__) {
+                const path = await window.__TAURI__.core.invoke('export_diagnostics');
+                showToast(`Экспортировано: ${path.split(/[/\\]/).pop()}`);
+            }
+        } catch (e) {
+            const msg = e?.toString() || '';
+            if (msg.includes('пуст')) {
+                showToast('Лог диагностики пуст');
+            } else {
+                showToast('Не удалось экспортировать');
+            }
+        }
     });
     
     document.getElementById('clear-archive-log-btn')?.addEventListener('click', async () => {
@@ -1143,6 +1300,11 @@ function initApp() {
     // 2. Настраиваем download listeners
     setupDownloadListeners();
     
+    // 2.5. Инициализируем гибридное хранение (file + localStorage)
+    if (typeof initHybridStorage === 'function') {
+        initHybridStorage().catch(e => console.warn('[Storage] Hybrid init failed:', e));
+    }
+    
     // 3. Восстанавливаем режим редактирования из настроек
     if (typeof initAdminMode === 'function') {
         initAdminMode();
@@ -1177,12 +1339,12 @@ function initApp() {
     initContextMenuHandlers();
     initKeyboardShortcuts();
     initAddBlockButton();
+    initAddNoteButton();
     initToolbarHandlers();
     initSettingsHandlers();
     initModalHandlers();
     
     // 8. Глобальные слушатели
-    initScrollbarGlobalHandlers();
     
     window.addEventListener('beforeunload', async () => {
         if (isResetting) return;
@@ -1197,6 +1359,7 @@ function initApp() {
     // 9. Асинхронная инициализация
     const initPromise = (async () => {
         initThemeListener();
+        initCustomization();
         
         await initializePersistence();
         await initializeDefaultTabs();
@@ -1258,13 +1421,7 @@ function initApp() {
     // 10. Claude интеграция
     initClaudeHandlers();
     
-    // 11. Скроллбар
-    const scrollContainer = document.getElementById('scroll-container');
-    const mainScrollbar = document.createElement('div');
-    mainScrollbar.className = 'main-scrollbar';
-    mainScrollbar.innerHTML = '<div class="main-scrollbar-thumb"></div>';
-    document.body.appendChild(mainScrollbar);
-    initCustomScrollbar(scrollContainer, mainScrollbar);
+    // 11. (Скроллбар — нативный webkit, стили в CSS)
     
     // 12. Промпты обработчики
     if (typeof initPromptsUpdateHandlers === 'function') {

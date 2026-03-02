@@ -114,7 +114,7 @@ function adjustWorkflowScale() {
  * @returns {{minX: number, maxX: number, minY: number, maxY: number}}
  */
 function calculateContentBounds() {
-    const nodes = document.querySelectorAll('.workflow-node');
+    const nodes = document.querySelectorAll('.workflow-node, .workflow-note');
     if (nodes.length === 0) {
         return { minX: 0, maxX: 800, minY: 0, maxY: 600 };
     }
@@ -143,7 +143,7 @@ function calculateContentBounds() {
  */
 function calculateViewModeZoom() {
     const container = getWorkflowContainer();
-    const nodes = document.querySelectorAll('.workflow-node');
+    const nodes = document.querySelectorAll('.workflow-node, .workflow-note');
     if (!container || nodes.length === 0) return 0.6;
     
     let minX = Infinity;

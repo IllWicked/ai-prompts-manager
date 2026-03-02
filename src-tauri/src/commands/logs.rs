@@ -7,10 +7,10 @@
 use std::fs;
 use chrono::Local;
 
-use crate::types::{ArchiveLogEntry, DownloadEntry};
-use crate::state::{ARCHIVE_LOG_LOCK, DOWNLOADS_LOG_LOCK};
-use crate::downloads::paths::{get_archive_log_path, get_downloads_log_path};
-use crate::utils::dimensions::limits::{MAX_ARCHIVE_LOG_ENTRIES, MAX_DOWNLOADS_LOG_ENTRIES};
+use crate::types::{ArchiveLogEntry, DownloadEntry, DiagnosticEntry};
+use crate::state::{ARCHIVE_LOG_LOCK, DOWNLOADS_LOG_LOCK, DIAGNOSTICS_LOG_LOCK};
+use crate::downloads::paths::{get_archive_log_path, get_downloads_log_path, get_diagnostics_log_path};
+use crate::utils::dimensions::limits::{MAX_ARCHIVE_LOG_ENTRIES, MAX_DOWNLOADS_LOG_ENTRIES, MAX_DIAGNOSTICS_ENTRIES};
 
 // ============================================================================
 // Лог архивов (скачанные из Claude файлы)
@@ -284,4 +284,81 @@ pub fn add_download_entry(filename: String, file_path: String) -> Result<(), Str
     fs::write(&log_path, json).map_err(|e| e.to_string())?;
     
     Ok(())
+}
+
+// ============================================================================
+// Лог диагностики (технические события для отладки)
+// ============================================================================
+
+/// Записывает событие в лог диагностики
+///
+/// Потокобезопасная запись с ротацией при превышении лимита.
+///
+/// # Arguments
+/// * `event_type` - тип события (selector_broken, cdp_timeout, storage_error, send_error)
+/// * `details` - JSON-строка с деталями
+#[tauri::command]
+pub fn write_diagnostic(event_type: String, details: String) -> Result<(), String> {
+    let _guard = DIAGNOSTICS_LOG_LOCK.lock()
+        .map_err(|_| "Diagnostics log lock poisoned")?;
+    
+    let log_path = get_diagnostics_log_path().ok_or("Cannot get diagnostics log path")?;
+    
+    // Создаём директорию если нет
+    if let Some(parent) = log_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    
+    // Читаем существующий лог
+    let mut entries: Vec<DiagnosticEntry> = if log_path.exists() {
+        let content = fs::read_to_string(&log_path).unwrap_or_default();
+        serde_json::from_str(&content).unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    
+    // Добавляем запись
+    entries.push(DiagnosticEntry {
+        timestamp: Local::now().format("%Y-%m-%dT%H:%M:%S").to_string(),
+        event_type,
+        details,
+    });
+    
+    // Ротация: убираем старые записи
+    if entries.len() > MAX_DIAGNOSTICS_ENTRIES {
+        entries = entries.split_off(entries.len() - MAX_DIAGNOSTICS_ENTRIES);
+    }
+    
+    // Сохраняем
+    let json = serde_json::to_string_pretty(&entries).map_err(|e| e.to_string())?;
+    fs::write(&log_path, json).map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+/// Экспортирует лог диагностики в папку загрузок пользователя
+///
+/// Копирует diagnostics.json в Downloads с timestamp в имени.
+///
+/// # Returns
+/// * `Ok(path)` - путь к экспортированному файлу
+/// * `Err(String)` - ошибка экспорта
+#[tauri::command]
+pub fn export_diagnostics() -> Result<String, String> {
+    let log_path = get_diagnostics_log_path().ok_or("Cannot get diagnostics log path")?;
+    
+    if !log_path.exists() {
+        return Err("Лог диагностики пуст".to_string());
+    }
+    
+    // Целевая папка — Downloads пользователя
+    let downloads_dir = dirs::download_dir()
+        .ok_or("Cannot find Downloads directory")?;
+    
+    let filename = format!("apm-diagnostics-{}.json", Local::now().format("%Y%m%d-%H%M%S"));
+    let target_path = downloads_dir.join(&filename);
+    
+    fs::copy(&log_path, &target_path).map_err(|e| e.to_string())?;
+    
+    Ok(target_path.to_string_lossy().to_string())
 }

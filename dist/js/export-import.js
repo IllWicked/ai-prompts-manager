@@ -80,7 +80,8 @@ async function exportConfig() {
         workflow: {
             positions: workflowPositions,
             sizes: workflowSizes,
-            connections: workflowConnections
+            connections: workflowConnections,
+            notes: workflowNotes
         }
     };
     
@@ -232,7 +233,8 @@ async function handleImportFile(event) {
         const workflowData = {
             positions: workflow.positions || {},
             sizes: workflow.sizes || {},
-            connections: workflow.connections || []
+            connections: workflow.connections || [],
+            notes: workflow.notes || []
         };
         localStorage.setItem(STORAGE_KEYS.workflow(tabId), JSON.stringify(workflowData));
     });

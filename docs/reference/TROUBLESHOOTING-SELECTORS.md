@@ -63,12 +63,20 @@ selectors.json
 | `generation.streamingIndicator` | Индикатор стрима | ✅ | 2026-01-29 |
 | `generation.thinkingIndicator` | Индикатор "думает" | ✅ | 2026-01-29 |
 | `input.proseMirror` | Редактор | ✅ | 2026-01-29 |
+| `input.contentEditable` | Fallback для contenteditable | ✅ | 2026-02-22 |
+| `input.textarea` | Fallback для textarea | ✅ | 2026-02-22 |
 | `input.sendButton` | Кнопка отправки | ✅ | 2026-01-29 |
 | `input.fileInput` | Input файлов | ✅ | 2026-01-29 |
+| `attachments.attachButtonAriaPattern` | Паттерн aria-label кнопки прикрепления | ✅ | 2026-02-22 |
 | `navigation.leftNav` | Сайдбар | ✅ | 2026-01-29 |
+| `navigation.pinSidebarButton` | Кнопка pin сайдбара | ✅ | 2026-02-22 |
 | `navigation.scrollContainer` | Скролл контейнер | ✅ | 2026-01-29 |
+| `project.projectLinkInHeader` | Ссылка на проект в хедере | ✅ | 2026-02-22 |
+| `project.projectLinkGeneric` | Общая ссылка на проект | ✅ | 2026-02-22 |
+| `project.pageTitle` | Заголовок страницы | ✅ | 2026-02-22 |
 | `ui.ghostButtonIndicator` | Ghost кнопка | ✅ | 2026-01-29 |
 | `ui.titleContainer` | Заголовок чата | ✅ | 2026-01-29 |
+| `ui.artifactControls` | Контролы артифактов | ✅ | 2026-02-22 |
 
 ---
 
@@ -277,6 +285,13 @@ document.querySelectorAll('[contenteditable]');
 ---
 
 ## История изменений
+
+### 2026-02-22 (v4.3.0)
+
+- **Эвристический поиск `__findElSmart__`** — при сломанном selectors.json автоматически пробует поиск через aria-*, role, contenteditable
+- **Health-check при запуске** — `runSelectorHealthCheck()` проверяет 5 критических селекторов, сломанные логирует в `diagnostics.json`
+- **Дедупликация логов** — fallback не логируется чаще раза в 5 минут на селектор
+- `hideSidebar`, `setupSidebarObserver`, `truncateChatTitle` переведены на `__findElSmart__`
 
 ### 2026-01-29 (v4.2.0)
 

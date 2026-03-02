@@ -85,6 +85,147 @@ let isSendingToClaudeInProgress = false;
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
+// CDP RESILIENCE LAYER
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Адаптивный таймаут: отслеживает историю успехов/неудач
+ * и корректирует таймаут автоматически
+ */
+const CdpTimeout = {
+    // Базовые таймауты по типу операции
+    BASE: { fast: 5, standard: 10, slow: 30 },
+    
+    // Множитель адаптации (1.0 = нормально, растёт при ошибках)
+    _multiplier: 1.0,
+    
+    // Счётчик последовательных ошибок
+    _consecutiveErrors: 0,
+    
+    /** Получить адаптированный таймаут */
+    get(type = 'standard') {
+        const base = this.BASE[type] || this.BASE.standard;
+        return Math.ceil(base * this._multiplier);
+    },
+    
+    /** Сообщить об успехе — возвращаем множитель к норме */
+    success() {
+        this._consecutiveErrors = 0;
+        // Плавное снижение к 1.0
+        if (this._multiplier > 1.0) {
+            this._multiplier = Math.max(1.0, this._multiplier * 0.8);
+        }
+    },
+    
+    /** Сообщить об ошибке — увеличиваем множитель */
+    failure() {
+        this._consecutiveErrors++;
+        // Рост множителя: 1.0 → 1.5 → 2.0 → 2.5, max 3.0
+        this._multiplier = Math.min(3.0, 1.0 + this._consecutiveErrors * 0.5);
+    },
+    
+    /** Сброс (при переключении таба или пересоздании webview) */
+    reset() {
+        this._multiplier = 1.0;
+        this._consecutiveErrors = 0;
+    }
+};
+
+/**
+ * Центральная функция CDP eval с retry и exponential backoff
+ * Заменяет прямые вызовы eval_in_claude_with_result
+ * 
+ * @param {number} tab - номер таба
+ * @param {string} script - JavaScript для выполнения
+ * @param {Object} [options]
+ * @param {string} [options.timeoutType='standard'] - тип таймаута: fast|standard|slow
+ * @param {number} [options.timeoutSecs] - явный таймаут (перебивает timeoutType)
+ * @param {number} [options.maxRetries=2] - максимум повторов (0 = без повторов)
+ * @param {number} [options.baseDelay=300] - базовая задержка между повторами (мс)
+ * @param {boolean} [options.silent=false] - не логировать ошибки
+ * @returns {Promise<string>} - результат eval
+ */
+async function cdpEval(tab, script, options = {}) {
+    const {
+        timeoutType = 'standard',
+        timeoutSecs,
+        maxRetries = 2,
+        baseDelay = 300,
+        silent = false
+    } = options;
+    
+    const timeout = timeoutSecs || CdpTimeout.get(timeoutType);
+    
+    let lastError = null;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            const result = await window.__TAURI__.core.invoke('eval_in_claude_with_result', {
+                tab,
+                script,
+                timeoutSecs: timeout
+            });
+            
+            CdpTimeout.success();
+            return result;
+        } catch (e) {
+            lastError = e;
+            CdpTimeout.failure();
+            
+            if (attempt < maxRetries) {
+                // Exponential backoff: 300ms, 600ms, 1200ms...
+                const delayMs = baseDelay * Math.pow(2, attempt);
+                if (!silent) {
+                    log(`CDP retry ${attempt + 1}/${maxRetries} after ${delayMs}ms:`, e);
+                }
+                await delay(delayMs);
+            }
+        }
+    }
+    
+    // Все попытки исчерпаны
+    throw lastError;
+}
+
+/**
+ * Обёртка для многошаговых CDP-операций с атомарными шагами
+ * Каждый шаг — отдельная функция. При ошибке на шаге N:
+ * - Возвращает результат последнего успешного шага
+ * - Вызывает rollback если предоставлен
+ * 
+ * @param {Array<{name: string, fn: Function, rollback?: Function}>} steps
+ * @returns {Promise<{success: boolean, step: string, result: any, error?: string}>}
+ */
+async function cdpPipeline(steps) {
+    let lastResult = null;
+    let completedSteps = [];
+    
+    for (const step of steps) {
+        try {
+            lastResult = await step.fn(lastResult);
+            completedSteps.push(step.name);
+        } catch (e) {
+            // Rollback выполненных шагов в обратном порядке
+            for (let i = completedSteps.length - 1; i >= 0; i--) {
+                const completed = steps.find(s => s.name === completedSteps[i]);
+                if (completed?.rollback) {
+                    try { await completed.rollback(); } catch (_) { /* silent */ }
+                }
+            }
+            
+            return {
+                success: false,
+                step: step.name,
+                result: lastResult,
+                error: String(e)
+            };
+        }
+    }
+    
+    return { success: true, step: steps[steps.length - 1]?.name, result: lastResult };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // CLAUDE INTERNAL API (fetch-based)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -124,11 +265,9 @@ async function getOrganizationId(tab) {
     `;
     
     try {
-        // Таймаут 5 сек — это простое чтение cookie
-        const result = await window.__TAURI__.core.invoke('eval_in_claude_with_result', { 
-            tab, 
-            script,
-            timeoutSecs: 5
+        // Таймаут fast — это простое чтение cookie
+        const result = await cdpEval(tab, script, { 
+            timeoutType: 'fast', maxRetries: 1, silent: true 
         });
         // Результат приходит как JSON string, парсим
         const orgId = JSON.parse(result);
@@ -245,11 +384,9 @@ async function createProjectViaAPI(tab) {
     `;
     
     try {
-        // Таймаут 30 сек — это HTTP запрос к API Claude (может быть медленным)
-        const resultStr = await window.__TAURI__.core.invoke('eval_in_claude_with_result', { 
-            tab, 
-            script,
-            timeoutSecs: 30
+        // Таймаут slow — это HTTP запрос к API Claude (может быть медленным)
+        const resultStr = await cdpEval(tab, script, {
+            timeoutType: 'slow', maxRetries: 1
         });
         const result = JSON.parse(resultStr);
         
@@ -529,10 +666,8 @@ async function waitForClaudeInput(tab, timeout = 15000) {
     
     while (Date.now() - startTime < timeout) {
         try {
-            const result = await window.__TAURI__.core.invoke('eval_in_claude_with_result', { 
-                tab, 
-                script,
-                timeoutSecs: 5
+            const result = await cdpEval(tab, script, {
+                timeoutType: 'fast', maxRetries: 0, silent: true
             });
             if (result === 'true' || result === true) {
                 // Даём ещё немного времени для полной инициализации
@@ -567,10 +702,8 @@ async function waitForFileInput(tab, timeout = 15000) {
     
     while (Date.now() - startTime < timeout) {
         try {
-            const result = await window.__TAURI__.core.invoke('eval_in_claude_with_result', { 
-                tab, 
-                script,
-                timeoutSecs: 3
+            const result = await cdpEval(tab, script, {
+                timeoutSecs: 3, maxRetries: 0, silent: true
             });
             if (result === 'true' || result === true) {
                 return true;
@@ -594,23 +727,27 @@ async function waitForFileInput(tab, timeout = 15000) {
 async function waitForFilesUploaded(tab, expectedCount, timeout = 10000) {
     if (expectedCount <= 0) return true;
     
-    const script = `window.__uploadedFilesCount || 0`;
     const startTime = Date.now();
     
     while (Date.now() - startTime < timeout) {
         try {
-            const result = await window.__TAURI__.core.invoke('eval_in_claude_with_result', { 
-                tab, 
-                script,
-                timeoutSecs: 5
-            });
+            // Приоритет: Tauri команда (Rust счётчик от WebResourceRequested)
+            let count = 0;
+            try {
+                count = await window.__TAURI__.core.invoke('get_upload_count', { tab });
+            } catch (_) {
+                // Fallback: JS счётчик через CDP
+                const result = await cdpEval(tab, `window.__uploadedFilesCount || 0`, {
+                    timeoutType: 'fast', maxRetries: 0, silent: true
+                });
+                count = parseInt(result) || 0;
+            }
             
-            const count = parseInt(result) || 0;
             if (count >= expectedCount) {
                 return true;
             }
         } catch (e) {
-            // Игнорируем ошибки eval — продолжаем polling
+            // Игнорируем ошибки — продолжаем polling
         }
         await delay(200);
     }
@@ -620,11 +757,112 @@ async function waitForFilesUploaded(tab, expectedCount, timeout = 10000) {
 
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SEND ABORT CONTROLLER
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** @type {AbortController|null} Контроллер отмены текущей отправки */
+let sendAbortController = null;
+
+/**
+ * Отменить текущую отправку в Claude
+ * @returns {boolean} true если была активная отправка
+ */
+function abortSendToClaude() {
+    if (sendAbortController) {
+        sendAbortController.abort('User cancelled');
+        sendAbortController = null;
+        isSendingToClaudeInProgress = false;
+        showToast('Отправка отменена');
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Проверить что отправка не была отменена
+ * @param {AbortSignal} signal
+ * @throws {DOMException} если отменена
+ */
+function checkAborted(signal) {
+    if (signal?.aborted) {
+        throw new DOMException(signal.reason || 'Aborted', 'AbortError');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SEND CHECKPOINT SYSTEM
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Чекпоинты отправки для восстановления при ошибке
+ * 
+ * Этапы:
+ *   'init'        → подготовка данных
+ *   'open_claude' → открытие панели Claude
+ *   'automation'  → создание проекта / нового чата
+ *   'attach'      → прикрепление файлов
+ *   'send'        → отправка текста
+ *   'done'        → завершение
+ */
+const SendCheckpoint = {
+    /** @type {string|null} */
+    _stage: null,
+    
+    /** @type {Object|null} Контекст последней отправки (для retry) */
+    _context: null,
+    
+    /** @type {string|null} Описание ошибки */
+    _error: null,
+    
+    /** Установить текущий этап */
+    set(stage, context = null) {
+        this._stage = stage;
+        if (context) this._context = { ...this._context, ...context };
+        this._error = null;
+        // Эмитим событие прогресса
+        document.dispatchEvent(new CustomEvent('send-progress', {
+            detail: { stage, context: this._context }
+        }));
+    },
+    
+    /** Записать ошибку на текущем этапе */
+    fail(error) {
+        this._error = String(error);
+        document.dispatchEvent(new CustomEvent('send-error', {
+            detail: { stage: this._stage, error: this._error, context: this._context }
+        }));
+    },
+    
+    /** Сбросить */
+    reset() {
+        this._stage = null;
+        this._context = null;
+        this._error = null;
+    },
+    
+    /** Получить данные для retry */
+    get retryContext() { return this._context; },
+    get failedStage() { return this._stage; },
+    get lastError() { return this._error; }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN FUNCTION: SEND NODE TO CLAUDE
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * Отправить ноду в Claude
+ * 
+ * Этапы с checkpoint recovery:
+ * 1. init        — подготовка данных, проверка блокировок
+ * 2. open_claude — открытие панели Claude + переключение таба
+ * 3. automation  — создание проекта / нового чата
+ * 4. attach      — прикрепление скриптов и файлов
+ * 5. send        — вставка текста + отправка
+ * 6. done        — очистка, обновление UI
+ * 
+ * @param {number} index - индекс блока
+ * @param {number} [chatTab] - номер Claude таба (1-3)
  */
 async function sendNodeToClaude(index, chatTab) {
     // Защита от двойного клика
@@ -644,126 +882,135 @@ async function sendNodeToClaude(index, chatTab) {
         return;
     }
     
+    // Создаём AbortController для этой отправки
+    sendAbortController = new AbortController();
+    const signal = sendAbortController.signal;
+    
     isSendingToClaudeInProgress = true;
+    SendCheckpoint.reset();
     
     const block = blocks[index];
     const blockId = block.id;
-    const text = block.content || '';
-    const files = blockAttachments[blockId] || [];
-    const scripts = getBlockScripts(blockId);
-    const automation = getBlockAutomationFlags(blockId);
     
     try {
-        // Открываем Claude если закрыт
+        // ─── CHECKPOINT: init ────────────────────────────────────────
+        SendCheckpoint.set('init', { index, blockId, targetTab });
+        checkAborted(signal);
+        
+        // Раскрываем маркеры языка перед отправкой — Claude получает чистый текст
+        const text = resolveMarkersToText(block.content || '', currentLanguage, currentCountry);
+        const files = blockAttachments[blockId] || [];
+        const scripts = getBlockScripts(blockId);
+        const automation = getBlockAutomationFlags(blockId);
+        const totalFiles = scripts.length + files.length;
+        
+        SendCheckpoint.set('init', { text: text.slice(0, 100), totalFiles });
+        
+        // ─── CHECKPOINT: open_claude ─────────────────────────────────
+        SendCheckpoint.set('open_claude');
+        checkAborted(signal);
+        
         if (!isClaudeVisible) {
             await toggleClaude();
             await delay(300);
         }
         
-        // Переключаемся на нужный таб
         if (chatTab) {
             await switchClaudeTab(chatTab);
             await delay(100);
         }
         
-        // Обработка автоматизации
+        // ─── CHECKPOINT: automation ──────────────────────────────────
         if (automation.newProject || automation.newChat) {
+            SendCheckpoint.set('automation', { newProject: automation.newProject, newChat: automation.newChat });
+            checkAborted(signal);
+            
             // Ждём загрузки страницы Claude перед автоматизацией
             const pageReady = await waitForClaudeInput(targetTab, 15000);
             if (!pageReady) {
                 showToast('Ожидание загрузки Claude...');
-                // Пробуем ещё раз с большим таймаутом
                 const retryReady = await waitForClaudeInput(targetTab, 30000);
                 if (!retryReady) {
-                    showToast('Ошибка: страница Claude не загрузилась');
-                    return;
+                    throw new Error('Claude page did not load');
                 }
             }
+            
+            checkAborted(signal);
+            
+            if (automation.newProject) {
+                if (isProjectActive()) {
+                    await finishProject();
+                }
+                ProjectFSM.startCreating();
+                const result = await createNewProject(targetTab);
+                if (result.success && result.uuid) {
+                    startProject(result.uuid, result.name, currentTab);
+                } else {
+                    ProjectFSM.fail();
+                    throw new Error('Failed to create project');
+                }
+            } else if (automation.newChat) {
+                await newChatInTab(targetTab, false);
+            }
         }
         
-        if (automation.newProject) {
-            // Завершаем предыдущий проект если есть
-            if (isProjectActive()) {
-                await finishProject();
-            }
-            // Создаём новый проект
-            const result = await createNewProject(targetTab);
-            if (result.success && result.uuid) {
-                startProject(result.uuid, result.name, currentTab);
-            } else {
-                // Не удалось создать проект — прерываем отправку
-                showToast('Ошибка: не удалось создать проект');
-                return;
-            }
-        } else if (automation.newChat) {
-            await newChatInTab(targetTab, false); // false — название присвоится от блока
-        }
+        // ─── CHECKPOINT: attach ──────────────────────────────────────
+        SendCheckpoint.set('attach', { totalFiles });
+        checkAborted(signal);
         
-        // Прикрепляем скрипты и файлы
-        const totalFiles = scripts.length + files.length;
-        
-        // Ждём готовности file input перед прикреплением
         if (totalFiles > 0) {
             await waitForFileInput(targetTab);
+            checkAborted(signal);
             
-            // Генерируем уникальный session ID для этой операции
-            // Это защищает от race condition если пользователь вручную прикрепит файл
             const uploadSessionId = Date.now().toString() + Math.random().toString(36).slice(2);
-        
-            // Сбрасываем счётчик ПЕРЕД прикреплением файлов с session ID
+            
+            // Сбрасываем счётчики: Rust (Tauri) + JS (CDP fallback)
             try {
-                await window.__TAURI__.core.invoke('eval_in_claude_with_result', { 
-                    tab: targetTab, 
-                    script: `window.__uploadedFilesCount = 0; window.__uploadSessionId = "${uploadSessionId}";`,
-                    timeoutSecs: 2
-                });
+                await window.__TAURI__.core.invoke('reset_upload_count', { tab: targetTab });
+            } catch (_) {}
+            try {
+                await cdpEval(targetTab, 
+                    `window.__uploadedFilesCount = 0; window.__uploadSessionId = "${uploadSessionId}";`,
+                    { timeoutSecs: 2, maxRetries: 1, silent: true }
+                );
             } catch (e) {
-                // Сброс счётчика не критичен — продолжаем
+                // Сброс счётчика не критичен
             }
-        }
-    
-        // Прикрепляем файлы и отправляем с защитой от partial failure
-        let attachmentStarted = false;
-        attachmentStarted = true;
-        await attachScriptsToMessage(targetTab, scripts);
-        await attachFilesToMessage(targetTab, files);
-        
-        // Ждём загрузки всех файлов через интерсептор
-        if (totalFiles > 0) {
+            
+            checkAborted(signal);
+            
+            await attachScriptsToMessage(targetTab, scripts);
+            await attachFilesToMessage(targetTab, files);
+            
+            checkAborted(signal);
+            
             const filesUploaded = await waitForFilesUploaded(targetTab, totalFiles);
             
             if (!filesUploaded) {
-                // Таймаут — файлы не загрузились, отменяем отправку
-                showToast('Ошибка: файлы не загрузились. Отправка отменена.');
-                
-                // Очищаем поле ввода чтобы не отправить бракованный промпт
+                // Файлы не загрузились — очищаем редактор
                 try {
-                    await window.__TAURI__.core.invoke('eval_in_claude', { 
-                        tab: targetTab, 
-                        script: `
-                            const SEL = window.__SEL__;
-                            const pmSelector = SEL?.input?.proseMirror || '.ProseMirror';
-                            const pm = document.querySelector(pmSelector);
-                            if (pm?.editor?.commands) {
-                                pm.editor.commands.clearContent();
-                            } else if (pm) {
-                                pm.innerHTML = '';
-                            }
-                        `
-                    });
-                } catch (e) {
-                    // Очистка поля не критична при отмене
-                }
-                
-                return; // Прерываем отправку
+                    await evalInClaude(targetTab, `
+                        const SEL = window.__SEL__;
+                        const pmSelector = SEL?.input?.proseMirror || '.ProseMirror';
+                        const pm = document.querySelector(pmSelector);
+                        if (pm?.editor?.commands) { pm.editor.commands.clearContent(); }
+                        else if (pm) { pm.innerHTML = ''; }
+                    `);
+                } catch (_) {}
+                throw new Error('Files upload timeout');
             }
         }
         
-        // Отправляем текст
-        await sendTextToClaude(text, targetTab);
-        attachmentStarted = false; // Успешно отправлено
+        // ─── CHECKPOINT: send ────────────────────────────────────────
+        SendCheckpoint.set('send');
+        checkAborted(signal);
         
-        // Запоминаем название блока для этого таба (макс. 30 символов)
+        await sendTextToClaude(text, targetTab);
+        
+        // ─── CHECKPOINT: done ────────────────────────────────────────
+        SendCheckpoint.set('done');
+        
+        // Запоминаем название блока для этого таба
         const blockName = block.title || `Блок ${index + 1}`;
         tabNames[targetTab] = blockName.length > 30 ? blockName.slice(0, 30) : blockName;
         updateClaudeUI();
@@ -773,31 +1020,55 @@ async function sendNodeToClaude(index, chatTab) {
         if (files.length > 0) {
             clearBlockAttachments(blockId);
         }
+        
+        SendCheckpoint.reset();
+        
     } catch (e) {
-        // Если произошла ошибка после начала прикрепления — очищаем редактор
-        if (attachmentStarted) {
-            showToast('Ошибка при отправке. Редактор очищен.');
-            try {
-                await window.__TAURI__.core.invoke('eval_in_claude', { 
-                    tab: targetTab, 
-                    script: `
+        if (e.name === 'AbortError') {
+            // Отмена пользователем — очищаем если были вложения
+            if (SendCheckpoint._stage === 'attach' || SendCheckpoint._stage === 'send') {
+                try {
+                    await evalInClaude(targetTab, `
                         const SEL = window.__SEL__;
                         const pmSelector = SEL?.input?.proseMirror || '.ProseMirror';
                         const pm = document.querySelector(pmSelector);
-                        if (pm?.editor?.commands) {
-                            pm.editor.commands.clearContent();
-                        } else if (pm) {
-                            pm.innerHTML = '';
-                        }
-                    `
-                });
-            } catch (clearError) {
-                // Очистка при ошибке не критична
+                        if (pm?.editor?.commands) { pm.editor.commands.clearContent(); }
+                        else if (pm) { pm.innerHTML = ''; }
+                    `);
+                } catch (_) {}
+            }
+            // Не re-throw AbortError
+        } else {
+            // Реальная ошибка — записываем checkpoint
+            SendCheckpoint.fail(e);
+            
+            const stage = SendCheckpoint.failedStage;
+            const stageNames = {
+                init: 'подготовки',
+                open_claude: 'открытия Claude',
+                automation: 'автоматизации',
+                attach: 'прикрепления файлов',
+                send: 'отправки текста'
+            };
+            const stageName = stageNames[stage] || stage;
+            showToast(`Ошибка на этапе ${stageName}`);
+            
+            // Очищаем редактор если начали прикреплять
+            if (stage === 'attach' || stage === 'send') {
+                try {
+                    await evalInClaude(targetTab, `
+                        const SEL = window.__SEL__;
+                        const pmSelector = SEL?.input?.proseMirror || '.ProseMirror';
+                        const pm = document.querySelector(pmSelector);
+                        if (pm?.editor?.commands) { pm.editor.commands.clearContent(); }
+                        else if (pm) { pm.innerHTML = ''; }
+                    `);
+                } catch (_) {}
             }
         }
-        throw e; // Re-throw для отладки
     } finally {
         isSendingToClaudeInProgress = false;
+        sendAbortController = null;
     }
 }
 
@@ -990,8 +1261,8 @@ async function newChatInTab(tab, clearName = true) {
         let projectUuid = null;
         
         // 1. Если есть активный проект — идём в него
-        if (activeProject?.uuid) {
-            projectUuid = activeProject.uuid;
+        if (ProjectFSM.uuid) {
+            projectUuid = ProjectFSM.uuid;
         }
         
         // 2. Пробуем получить из текущего URL
@@ -1020,10 +1291,8 @@ async function newChatInTab(tab, clearName = true) {
                         return null;
                     })();
                 `;
-                const result = await window.__TAURI__.core.invoke('eval_in_claude_with_result', { 
-                    tab, 
-                    script,
-                    timeoutSecs: 2
+                const result = await cdpEval(tab, script, {
+                    timeoutSecs: 2, maxRetries: 1, silent: true
                 });
                 if (result && result !== 'null') {
                     projectUuid = result.replace(/"/g, '');
@@ -1064,6 +1333,9 @@ async function restoreClaudeState() {
     
     // Сбрасываем кэш org_id при восстановлении состояния
     invalidateOrgCache();
+    
+    // Сбрасываем адаптивный таймаут CDP
+    CdpTimeout.reset();
     
     try {
         // Если есть сохранённые настройки
@@ -1180,14 +1452,13 @@ function getProjectUUIDFromUrl(url) {
 // isProjectActive() и isCurrentTabProjectOwner() перенесены в claude-state.js
 
 /**
- * Начинает привязку к проекту
+ * Начинает привязку к проекту (через FSM)
  * @param {string} uuid - UUID проекта Claude
  * @param {string} name - Название проекта
- * @param {string} ownerTab - ID вкладки-владельца
+ * @param {string} ownerTab - ID вкладки-владельца (APM tab)
  */
 function startProject(uuid, name, ownerTab) {
-    activeProject = { uuid, name, ownerTab };
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT, JSON.stringify(activeProject));
+    ProjectFSM.bind(uuid, name, ownerTab, activeClaudeTab);
     
     // Скрываем кнопку "Продолжить" (если была видна)
     hideContinueButton();
@@ -1198,62 +1469,17 @@ function startProject(uuid, name, ownerTab) {
         btn.classList.add('visible');
     }
     
-    // Обновляем лимит скролла во view mode
-    if (typeof adjustWorkflowScale === 'function') {
-        adjustWorkflowScale();
-    }
-    
-    // Обновляем кнопки чата
-    if (typeof updateWorkflowChatButtons === 'function') {
-        updateWorkflowChatButtons();
-    }
-    
-    // Обновляем селектор вкладок (индикатор проекта)
-    if (typeof updateTabSelectorUI === 'function') {
-        updateTabSelectorUI();
-    }
+    // Обновляем UI
+    ProjectFSM._updateUI();
     
     showToast(`Проект "${name}" привязан`);
 }
 
 /**
- * Завершает привязку к проекту
+ * Завершает привязку к проекту (через FSM)
  */
 async function finishProject() {
-    if (!activeProject) return;
-    
-    const projectName = activeProject.name;
-    
-    // Скрываем кнопку с анимацией
-    const btn = document.getElementById('finish-project-btn');
-    if (btn) {
-        btn.classList.add('hiding');
-        await delay(300);
-        btn.classList.remove('visible', 'hiding');
-    }
-    
-    activeProject = null;
-    localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROJECT);
-    
-    // Обновляем лимит скролла во view mode
-    if (typeof adjustWorkflowScale === 'function') {
-        adjustWorkflowScale();
-    }
-    
-    // Обновляем кнопки чата
-    if (typeof updateWorkflowChatButtons === 'function') {
-        updateWorkflowChatButtons();
-    }
-    
-    // Обновляем селектор вкладок (убираем индикатор проекта)
-    if (typeof updateTabSelectorUI === 'function') {
-        updateTabSelectorUI();
-    }
-    
-    // Проверяем, не нужно ли показать кнопку "Продолжить"
-    checkForContinueProject();
-    
-    showToast(`Проект "${projectName}" завершён`);
+    await ProjectFSM.finish();
 }
 
 /**
@@ -1268,9 +1494,7 @@ async function continueProject() {
     // Получаем название проекта из DOM или генерируем
     let projectName = 'Проект';
     try {
-        const result = await window.__TAURI__.core.invoke('eval_in_claude_with_result', {
-            tab: activeClaudeTab,
-            script: `
+        const result = await cdpEval(activeClaudeTab, `
                 (function() {
                     const SEL = window.__SEL__;
                     // Пробуем получить из breadcrumb (динамический селектор с uuid)
@@ -1282,9 +1506,7 @@ async function continueProject() {
                     if (h1) return h1.textContent.trim();
                     return null;
                 })();
-            `,
-            timeoutSecs: 3
-        });
+            `, { timeoutSecs: 3, maxRetries: 0, silent: true });
         if (result && result !== 'null') {
             projectName = result.replace(/^"|"$/g, '');
         }
@@ -1309,7 +1531,7 @@ async function continueProject() {
  */
 async function checkForContinueProject() {
     // Если уже есть активный проект — не показываем
-    if (activeProject) {
+    if (isProjectActive()) {
         hideContinueButton();
         return;
     }
@@ -1334,7 +1556,7 @@ async function checkForContinueProject() {
  */
 function showContinueButton(uuid) {
     const btn = document.getElementById('continue-project-btn');
-    if (btn && !activeProject) {
+    if (btn && !isProjectActive()) {
         btn.dataset.projectUuid = uuid;
         btn.classList.add('visible');
         // Обновляем лимит скролла во view mode
@@ -1360,26 +1582,10 @@ function hideContinueButton() {
 }
 
 /**
- * Восстанавливает состояние привязки к проекту при загрузке
+ * Восстанавливает состояние привязки к проекту при загрузке (через FSM)
  */
 function restoreProjectState() {
-    try {
-        const saved = localStorage.getItem(STORAGE_KEYS.ACTIVE_PROJECT);
-        if (saved) {
-            const project = JSON.parse(saved);
-            if (project && project.uuid) {
-                activeProject = project;
-                
-                // Показываем кнопку
-                const btn = document.getElementById('finish-project-btn');
-                if (btn) {
-                    btn.classList.add('visible');
-                }
-            }
-        }
-    } catch (e) {
-        // Restore failed
-    }
+    ProjectFSM.restore();
 }
 
 /**
@@ -1413,6 +1619,11 @@ function initProjectUrlTracking() {
             injectGenerationMonitor(tab).catch(() => {});
         }
         
+        // FSM: валидируем URL для привязки к проекту
+        if (tab && url) {
+            ProjectFSM.validateUrl(tab, url);
+        }
+        
         // Сбрасываем название таба при ручной навигации на новый чат
         if (!programmaticNavigation && url && tab) {
             const isNewChat = url.includes('/new') || url.endsWith('/project/') || url.match(/\/project\/[a-f0-9-]+$/i);
@@ -1431,6 +1642,11 @@ function initProjectUrlTracking() {
     // Слушаем событие SPA-навигации внутри Claude (pushState/replaceState)
     window.__TAURI__.event.listen('claude-url-changed', (event) => {
         const { tab, url } = event.payload || {};
+        
+        // FSM: валидируем URL для привязки к проекту
+        if (tab && url) {
+            ProjectFSM.validateUrl(tab, url);
+        }
         
         // Инвалидируем кэш org_id при переходе на страницу логина/логаута
         // чтобы не использовать старый org_id при смене аккаунта
@@ -1468,7 +1684,14 @@ function initProjectUrlTracking() {
 // Экспорт
 window.initClaudeHandlers = initClaudeHandlers;
 window.sendNodeToClaude = sendNodeToClaude;
+window.abortSendToClaude = abortSendToClaude;
+window.SendCheckpoint = SendCheckpoint;
 window.finishProject = finishProject;
 window.isCurrentTabProjectOwner = isCurrentTabProjectOwner;
 window.restoreProjectState = restoreProjectState;
 window.initProjectUrlTracking = initProjectUrlTracking;
+
+// CDP Resilience Layer
+window.cdpEval = cdpEval;
+window.cdpPipeline = cdpPipeline;
+window.CdpTimeout = CdpTimeout;

@@ -84,6 +84,7 @@ pub fn show_downloads(app: AppHandle) -> Result<(), String> {
         
         downloads.set_position(LogicalPosition::new(downloads_x, downloads_y))
             .map_err(|e| e.to_string())?;
+        let _ = downloads.show();
         
         // Обновляем список при каждом показе
         let _ = app.emit("refresh-downloads", ());
@@ -95,8 +96,7 @@ pub fn show_downloads(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub fn hide_downloads(app: AppHandle) -> Result<(), String> {
     if let Some(downloads) = app.get_webview("downloads") {
-        downloads.set_position(LogicalPosition::new(-500.0, 0.0))
-            .map_err(|e| e.to_string())?;
+        let _ = downloads.hide();
     }
     // Уведомляем toolbar что popup закрылся
     let _ = app.emit("downloads-closed", ());

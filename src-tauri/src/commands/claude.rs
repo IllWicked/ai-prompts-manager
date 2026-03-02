@@ -12,7 +12,10 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::state::{CLAUDE_VISIBLE, ACTIVE_TAB, PANEL_RATIO};
 use crate::webview::scripts::get_generation_monitor_script;
-use crate::webview::manager::{ensure_claude_webview, create_claude_webview, recreate_toolbar, resize_webviews};
+use crate::webview::manager::{
+    ensure_claude_webview, create_claude_webview, raise_toolbar_zorder,
+    suspend_claude_tab, resume_claude_tab, resize_webviews,
+};
 use crate::utils::dimensions::animation::{ANIMATION_STEPS, ANIMATION_DELAY_MS};
 
 /// Предзагружает Claude webview в фоне (без показа)
@@ -75,6 +78,14 @@ pub async fn toggle_claude(app: AppHandle) -> Result<bool, String> {
     CLAUDE_VISIBLE.store(new_state, Ordering::SeqCst);
     resize_webviews(&app)?;
     
+    // Suspend/resume активный таб
+    let active_tab = ACTIVE_TAB.load(Ordering::SeqCst);
+    if new_state {
+        resume_claude_tab(&app, active_tab);
+    } else {
+        suspend_claude_tab(&app, active_tab);
+    }
+    
     Ok(new_state)
 }
 
@@ -108,7 +119,14 @@ pub async fn switch_claude_tab(app: AppHandle, tab: u8) -> Result<(), String> {
     
     // Убеждаемся что Claude видим
     CLAUDE_VISIBLE.store(true, Ordering::SeqCst);
-    ACTIVE_TAB.store(tab, Ordering::SeqCst);
+    
+    // Suspend предыдущий таб, resume новый
+    let prev_tab = ACTIVE_TAB.swap(tab, Ordering::SeqCst);
+    if prev_tab != tab {
+        suspend_claude_tab(&app, prev_tab);
+        resume_claude_tab(&app, tab);
+    }
+    
     resize_webviews(&app)?;
     
     Ok(())
@@ -126,6 +144,9 @@ pub async fn switch_claude_tab_with_url(app: AppHandle, tab: u8, url: String) ->
     
     let label = format!("claude_{}", tab);
     
+    // Resume таб перед навигацией (suspended webview может не обработать navigate)
+    resume_claude_tab(&app, tab);
+    
     // Если webview уже существует - навигируем на URL
     if let Some(webview) = app.get_webview(&label) {
         let url_parsed = url.parse()
@@ -138,7 +159,13 @@ pub async fn switch_claude_tab_with_url(app: AppHandle, tab: u8, url: String) ->
     
     // Убеждаемся что Claude видим
     CLAUDE_VISIBLE.store(true, Ordering::SeqCst);
-    ACTIVE_TAB.store(tab, Ordering::SeqCst);
+    
+    // Suspend предыдущий таб
+    let prev_tab = ACTIVE_TAB.swap(tab, Ordering::SeqCst);
+    if prev_tab != tab {
+        suspend_claude_tab(&app, prev_tab);
+    }
+    
     resize_webviews(&app)?;
     
     Ok(())
@@ -214,7 +241,7 @@ pub async fn recreate_claude_tab(app: AppHandle, tab: u8) -> Result<(), String> 
     // Ждём чтобы webview успел закрыться
     std::thread::sleep(std::time::Duration::from_millis(100));
     
-    // Создаём заново (ensure_claude_webview уже пересоздаёт toolbar для z-order)
+    // Создаём заново (ensure_claude_webview поднимает z-order toolbar)
     ensure_claude_webview(&app, tab, None)?;
     
     // Если это активный таб — обновляем layout
@@ -258,7 +285,6 @@ pub async fn notify_url_change(app: AppHandle, tab: u8, url: String) -> Result<(
 #[tauri::command]
 pub async fn reset_claude_state(app: AppHandle) -> Result<(), String> {
     // Пересоздаём все Claude webviews (таб 1 на claude.ai, остальные на about:blank)
-    // Используем create_claude_webview (без toolbar) + один recreate в конце
     for i in 1u8..=3 {
         let label = format!("claude_{}", i);
         if let Some(webview) = app.get_webview(&label) {
@@ -268,11 +294,20 @@ pub async fn reset_claude_state(app: AppHandle) -> Result<(), String> {
         std::thread::sleep(std::time::Duration::from_millis(100));
         
         let url = if i == 1 { None } else { Some("about:blank") };
-        let _ = create_claude_webview(&app, i, url);
+        if let Err(e) = create_claude_webview(&app, i, url) {
+            eprintln!("[Reset] Failed to create claude_{}: {}", i, e);
+            let _ = super::logs::write_diagnostic(
+                "reset_error".to_string(),
+                format!("{{\"tab\":{},\"error\":\"{}\"}}", i, e),
+            );
+            let _ = app.emit("startup-error", serde_json::json!({
+                "tab": i, "error": e
+            }));
+        }
     }
     
-    // Поднимаем toolbar поверх всех (один раз)
-    recreate_toolbar(&app)?;
+    // Поднимаем z-order toolbar поверх всех Claude
+    raise_toolbar_zorder(&app);
     
     // Сбрасываем состояние
     CLAUDE_VISIBLE.store(false, Ordering::SeqCst);
@@ -453,10 +488,17 @@ pub async fn inject_generation_monitor(app: AppHandle, tab: u8) -> Result<(), St
 }
 
 /// Проверяет статус генерации по хешу URL
+///
+/// Принудительно вызывает __checkGenerating() через eval перед чтением,
+/// т.к. setInterval throttle-ится в скрытых webview (WebView2 put_IsVisible(false)).
 #[tauri::command]
 pub async fn check_generation_status(app: AppHandle, tab: u8) -> Result<bool, String> {
     let label = format!("claude_{}", tab);
     if let Some(webview) = app.get_webview(&label) {
+        // Принудительная проверка — eval выполнится даже в скрытом webview
+        let _ = webview.eval("if(window.__checkGenerating)window.__checkGenerating()");
+        // Даём renderer обработать скрипт и обновить hash через history.replaceState
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         if let Ok(url) = webview.url() {
             return Ok(url.to_string().contains("#generating"));
         }

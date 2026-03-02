@@ -21,6 +21,8 @@ pub use manager::{
     ensure_claude_webview,
     create_claude_webview,
     ensure_toolbar,
-    recreate_toolbar,
+    raise_toolbar_zorder,
+    suspend_claude_tab,
+    resume_claude_tab,
     resize_webviews,
 };

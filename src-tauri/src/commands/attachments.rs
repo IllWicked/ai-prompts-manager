@@ -12,6 +12,7 @@ use base64::Engine;
 use crate::types::FileData;
 use crate::utils::mime::get_mime_type;
 use crate::utils::dimensions::limits::MAX_ATTACHMENT_SIZE;
+use crate::state::UPLOAD_COUNTERS;
 
 /// Читает файл и подготавливает для отправки в Claude
 ///
@@ -216,4 +217,47 @@ pub async fn attach_file_to_claude(
     webview.eval(&script).map_err(|e| e.to_string())?;
     
     Ok(())
+}
+
+/// Получить текущее значение счётчика загрузок для таба
+///
+/// # Arguments
+/// * `tab` - номер таба (1-3)
+///
+/// # Returns
+/// Количество загруженных файлов с момента последнего сброса
+#[tauri::command]
+pub fn get_upload_count(tab: u8) -> u32 {
+    if tab >= 1 && tab <= 3 {
+        UPLOAD_COUNTERS[(tab - 1) as usize].load(std::sync::atomic::Ordering::SeqCst)
+    } else {
+        0
+    }
+}
+
+/// Сбросить счётчик загрузок для таба
+///
+/// Вызывается перед каждой операцией прикрепления файлов.
+///
+/// # Arguments
+/// * `tab` - номер таба (1-3)
+#[tauri::command]
+pub fn reset_upload_count(tab: u8) {
+    if tab >= 1 && tab <= 3 {
+        UPLOAD_COUNTERS[(tab - 1) as usize].store(0, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
+/// Инкрементировать счётчик загрузок для таба
+///
+/// Вызывается из JS интерсептора (fallback для не-Windows платформ)
+/// или из WebResourceRequested (Windows).
+///
+/// # Arguments
+/// * `tab` - номер таба (1-3)
+#[tauri::command]
+pub fn increment_upload_count(tab: u8) {
+    if tab >= 1 && tab <= 3 {
+        UPLOAD_COUNTERS[(tab - 1) as usize].fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    }
 }

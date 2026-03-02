@@ -2,7 +2,7 @@
 //!
 //! Этот модуль содержит функции для:
 //! - Создания Claude webview с обработчиками событий
-//! - Создания и пересоздания toolbar
+//! - Создания toolbar и управления z-order
 //! - Изменения размеров и позиций webview
 
 use std::fs;
@@ -16,6 +16,7 @@ use tauri::{
 use crate::state::{
     CLAUDE_VISIBLE, ACTIVE_TAB, PANEL_RATIO,
     WEBVIEW_CREATION_LOCK, TOOLBAR_CREATION_LOCK, DOWNLOADS_LOG_LOCK,
+    UPLOAD_COUNTERS,
 };
 use crate::types::DownloadEntry;
 use crate::utils::get_dimensions;
@@ -43,10 +44,13 @@ use crate::webview::scripts::get_claude_init_script;
 pub fn ensure_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Result<(), String> {
     let created = create_claude_webview(app, tab, url)?;
     
-    // Поднимаем toolbar поверх только если реально создали новый webview
     if created {
+        // Регистрируем нативный перехватчик загрузок (Windows: WebResourceRequested)
+        setup_native_upload_interceptor(app, tab);
+        
+        // Поднимаем z-order toolbar поверх нового Claude webview
         if app.get_webview("toolbar").is_some() {
-            recreate_toolbar(app)?;
+            raise_toolbar_zorder(app);
         } else {
             ensure_toolbar(app)?;
         }
@@ -97,23 +101,97 @@ pub fn create_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Res
             .on_page_load(move |_webview, payload| {
                 use tauri::webview::PageLoadEvent;
                 if payload.event() == PageLoadEvent::Finished {
-                    let _ = app_handle_page.emit("claude-page-loaded", serde_json::json!({
-                        "tab": tab_for_page,
-                        "url": payload.url().to_string()
-                    }));
+                    let url = payload.url().to_string();
+                    // Не эмитим событие для about:blank и других не-Claude страниц
+                    if url.starts_with("https://claude.ai") {
+                        let _ = app_handle_page.emit("claude-page-loaded", serde_json::json!({
+                            "tab": tab_for_page,
+                            "url": url
+                        }));
+                    }
                 }
             })
             .on_download(move |webview, event| {
                 handle_download_event(&app_handle, &webview, event, tab)
             }),
-        LogicalPosition::new(width * 2.0, 0.0), // Создаём за экраном
+        LogicalPosition::new(0.0, 0.0),
         LogicalSize::new(claude_width, height),
     ).map_err(|e| e.to_string())?;
+    
+    // Скрываем сразу после создания — resize_webviews покажет активный таб
+    if let Some(webview) = app.get_webview(&label) {
+        let _ = webview.hide();
+    }
     
     Ok(true)
 }
 
-/// Обработчик событий загрузки файлов
+/// Регистрирует нативный перехватчик загрузок файлов
+///
+/// На Windows: использует WebView2 WebResourceRequested для перехвата
+/// запросов к `/upload-file` на уровне сетевого стека.
+/// На других платформах: no-op (используется JS интерсептор как fallback).
+///
+/// Преимущества нативного перехвата:
+/// - Не конфликтует с другими fetch-interceptors
+/// - Работает даже если Claude.ai использует Service Workers
+/// - Не зависит от JS-контекста
+fn setup_native_upload_interceptor(app: &AppHandle, tab: u8) {
+    #[cfg(windows)]
+    {
+        let label = format!("claude_{}", tab);
+        let tab_index = (tab.saturating_sub(1)) as usize;
+        
+        if let Some(webview) = app.get_webview(&label) {
+            let _ = webview.with_webview(move |wv| {
+                unsafe {
+                    use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2;
+                    use webview2_com::WebResourceRequestedEventHandler;
+                    
+                    let core: ICoreWebView2 = wv.controller().CoreWebView2().unwrap();
+                    
+                    // Добавляем фильтр: перехватываем все запросы к upload-file
+                    let filter: Vec<u16> = "*upload-file*"
+                        .encode_utf16()
+                        .chain(std::iter::once(0))
+                        .collect();
+                    let filter_pcwstr = windows_core::PCWSTR::from_raw(filter.as_ptr());
+                    
+                    let _ = core.AddWebResourceRequestedFilter(filter_pcwstr, 
+                        webview2_com::Microsoft::Web::WebView2::Win32::COREWEBVIEW2_WEB_RESOURCE_CONTEXT(0) // ALL
+                    );
+                    
+                    // Обработчик: считаем загрузки
+                    // Фильтр уже гарантирует что URL содержит "upload-file"
+                    // поэтому не нужно читать URI — просто инкрементируем
+                    let handler = WebResourceRequestedEventHandler::create(Box::new(
+                        move |_sender, _args| {
+                            if tab_index < 3 {
+                                UPLOAD_COUNTERS[tab_index].fetch_add(
+                                    1, 
+                                    std::sync::atomic::Ordering::SeqCst
+                                );
+                            }
+                            Ok(())
+                        }
+                    ));
+                    
+                    // EventRegistrationToken — просто i64, не нужен отдельный import
+                    let mut token: i64 = 0;
+                    let _ = core.add_WebResourceRequested(
+                        &handler, 
+                        &mut token as *mut i64 as *mut _
+                    );
+                }
+            });
+        }
+    }
+    
+    #[cfg(not(windows))]
+    {
+        let _ = (app, tab);
+    }
+}
 fn handle_download_event(
     app: &AppHandle,
     webview: &tauri::Webview,
@@ -238,12 +316,110 @@ fn save_download_to_log(filename: &str, file_path: &str) {
     }
 }
 
+/// Приостанавливает неактивный Claude webview для экономии CPU/RAM
+///
+/// На Windows: вызывает WebView2 TrySuspend() через ICoreWebView2_3.
+/// Suspend паузит script timers, анимации, минимизирует CPU рендерер-процесса.
+/// На не-Windows платформах — no-op.
+pub fn suspend_claude_tab(app: &AppHandle, tab: u8) {
+    let label = format!("claude_{}", tab);
+    
+    #[cfg(windows)]
+    {
+        if let Some(webview) = app.get_webview(&label) {
+            let _ = webview.with_webview(move |wv| {
+                unsafe {
+                    use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2_3;
+                    use windows_core::Interface;
+                    let core = wv.controller().CoreWebView2().unwrap();
+                    if let Ok(core3) = core.cast::<ICoreWebView2_3>() {
+                        let _ = core3.TrySuspend(None);
+                    }
+                }
+            });
+        }
+    }
+    
+    #[cfg(not(windows))]
+    {
+        let _ = (app, &label);
+    }
+}
+
+/// Возобновляет приостановленный Claude webview
+///
+/// На Windows: вызывает WebView2 Resume() через ICoreWebView2_3.
+/// Resume мгновенный — пользователь не заметит задержки.
+/// На не-Windows платформах — no-op.
+pub fn resume_claude_tab(app: &AppHandle, tab: u8) {
+    let label = format!("claude_{}", tab);
+    
+    #[cfg(windows)]
+    {
+        if let Some(webview) = app.get_webview(&label) {
+            let _ = webview.with_webview(move |wv| {
+                unsafe {
+                    use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2_3;
+                    use windows_core::Interface;
+                    let core = wv.controller().CoreWebView2().unwrap();
+                    if let Ok(core3) = core.cast::<ICoreWebView2_3>() {
+                        let _ = core3.Resume();
+                    }
+                }
+            });
+        }
+    }
+    
+    #[cfg(not(windows))]
+    {
+        let _ = (app, &label);
+    }
+}
+
+/// Поднимает z-order toolbar и downloads поверх Claude webview
+///
+/// Использует Win32 SetWindowPos(HWND_TOP) для изменения z-order
+/// без пересоздания webview. Сохраняет состояние, не вызывает мерцания.
+/// На не-Windows платформах — no-op.
+pub fn raise_toolbar_zorder(app: &AppHandle) {
+    #[cfg(windows)]
+    {
+        use windows::Win32::UI::WindowsAndMessaging::{
+            SetWindowPos, SWP_NOMOVE, SWP_NOSIZE, SWP_NOACTIVATE, HWND_TOP,
+        };
+        
+        for label in &["toolbar", "downloads"] {
+            if let Some(webview) = app.get_webview(label) {
+                let _ = webview.with_webview(move |wv| {
+                    unsafe {
+                        let mut hwnd = std::mem::zeroed();
+                        let _ = wv.controller().ParentWindow(&mut hwnd);
+                        if !hwnd.is_invalid() {
+                            let _ = SetWindowPos(
+                                hwnd,
+                                Some(HWND_TOP),
+                                0, 0, 0, 0,
+                                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+                            );
+                        }
+                    }
+                });
+            }
+        }
+    }
+    
+    #[cfg(not(windows))]
+    {
+        let _ = app;
+    }
+}
+
 /// Создаёт webview тулбара если он ещё не существует
 ///
 /// Вызывается ПОСЛЕ создания claude webview чтобы быть поверх.
 /// Потокобезопасная — использует мьютекс.
 pub fn ensure_toolbar(app: &AppHandle) -> Result<(), String> {
-    // Блокируем для предотвращения race condition с recreate_toolbar
+    // Блокируем для предотвращения race condition
     let _guard = TOOLBAR_CREATION_LOCK.lock()
         .map_err(|_| "Toolbar creation lock poisoned")?;
     
@@ -255,9 +431,13 @@ pub fn ensure_toolbar(app: &AppHandle) -> Result<(), String> {
             WebviewBuilder::new("toolbar", WebviewUrl::App("toolbar.html".into()))
                 .transparent(true)
                 .background_color(tauri::webview::Color(0, 0, 0, 0)),
-            LogicalPosition::new(-500.0, 0.0),
+            LogicalPosition::new(0.0, 0.0),
             LogicalSize::new(sizes::TOOLBAR_WIDTH, sizes::TOOLBAR_HEIGHT),
         ).map_err(|e| e.to_string())?;
+        // Скрываем сразу — resize_webviews покажет когда нужно
+        if let Some(toolbar) = app.get_webview("toolbar") {
+            let _ = toolbar.hide();
+        }
     }
     
     // Создаём downloads popup если его нет
@@ -266,61 +446,89 @@ pub fn ensure_toolbar(app: &AppHandle) -> Result<(), String> {
             WebviewBuilder::new("downloads", WebviewUrl::App("downloads.html".into()))
                 .transparent(true)
                 .background_color(tauri::webview::Color(0, 0, 0, 0)),
-            LogicalPosition::new(-500.0, 0.0),
+            LogicalPosition::new(0.0, 0.0),
             LogicalSize::new(sizes::DOWNLOADS_WIDTH, sizes::DOWNLOADS_HEIGHT),
         ).map_err(|e| e.to_string())?;
+        // Скрываем сразу — show_downloads покажет когда нужно
+        if let Some(downloads) = app.get_webview("downloads") {
+            let _ = downloads.hide();
+        }
     }
     
     Ok(())
 }
 
-/// Пересоздаёт toolbar чтобы поднять его z-order
-///
-/// Вызывается после создания новых Claude webview.
-/// Потокобезопасная — использует мьютекс.
-pub fn recreate_toolbar(app: &AppHandle) -> Result<(), String> {
-    // Блокируем для предотвращения race condition с ensure_toolbar
-    let _guard = TOOLBAR_CREATION_LOCK.lock()
-        .map_err(|_| "Toolbar creation lock poisoned")?;
+/// Обновляет layout UI панели
+fn layout_ui(app: &AppHandle, width: f64, height: f64,
+             is_visible: bool, ratio: f64) -> Result<(), String> {
+    let ui_webview = app.get_webview("ui").ok_or("UI webview not found")?;
     
-    let window = app.get_window("main").ok_or("Main window not found")?;
+    let ui_width = if is_visible { width * ratio } else { width };
     
-    // Закрываем существующие
-    if let Some(toolbar) = app.get_webview("toolbar") {
-        let _ = toolbar.close();
+    ui_webview.set_position(LogicalPosition::new(0.0, 0.0))
+        .map_err(|e| e.to_string())?;
+    ui_webview.set_size(LogicalSize::new(ui_width, height))
+        .map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+/// Обновляет layout Claude табов (показывает активный, скрывает остальные)
+fn layout_claude(app: &AppHandle, width: f64, height: f64,
+                 is_visible: bool, active_tab: u8, ratio: f64) -> Result<(), String> {
+    if is_visible {
+        let claude_x = width * ratio;
+        let claude_width = width - claude_x;
+        
+        for i in 1u8..=3 {
+            let label = format!("claude_{}", i);
+            if let Some(webview) = app.get_webview(&label) {
+                if i == active_tab {
+                    webview.set_position(LogicalPosition::new(claude_x, 0.0))
+                        .map_err(|e| e.to_string())?;
+                    webview.set_size(LogicalSize::new(claude_width, height))
+                        .map_err(|e| e.to_string())?;
+                    let _ = webview.show();
+                } else {
+                    let _ = webview.hide();
+                }
+            }
+        }
+    } else {
+        for i in 1u8..=3 {
+            let label = format!("claude_{}", i);
+            if let Some(webview) = app.get_webview(&label) {
+                let _ = webview.hide();
+            }
+        }
     }
-    if let Some(downloads) = app.get_webview("downloads") {
-        let _ = downloads.close();
-    }
     
-    // Задержка чтобы webview успели закрыться (WebView2 требует время)
-    std::thread::sleep(std::time::Duration::from_millis(50));
-    
-    // Проверяем что webview действительно закрылись
-    if app.get_webview("toolbar").is_some() || app.get_webview("downloads").is_some() {
-        // Если не закрылись — ждём ещё
-        std::thread::sleep(std::time::Duration::from_millis(100));
-    }
-    
-    // Создаём заново - теперь они будут поверх
-    if app.get_webview("toolbar").is_none() {
-        window.add_child(
-            WebviewBuilder::new("toolbar", WebviewUrl::App("toolbar.html".into()))
-                .transparent(true)
-                .background_color(tauri::webview::Color(0, 0, 0, 0)),
-            LogicalPosition::new(-500.0, 0.0),
-            LogicalSize::new(sizes::TOOLBAR_WIDTH, sizes::TOOLBAR_HEIGHT),
-        ).map_err(|e| e.to_string())?;
-    }
-    
-    if app.get_webview("downloads").is_none() {
-        window.add_child(
-            WebviewBuilder::new("downloads", WebviewUrl::App("downloads.html".into()))
-                .transparent(true)
-                .background_color(tauri::webview::Color(0, 0, 0, 0)),
-            LogicalPosition::new(-500.0, 0.0),
-            LogicalSize::new(sizes::DOWNLOADS_WIDTH, sizes::DOWNLOADS_HEIGHT),
-        ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Обновляет layout overlay-элементов (toolbar, downloads)
+fn layout_overlay(app: &AppHandle, width: f64, height: f64,
+                  is_visible: bool, ratio: f64) -> Result<(), String> {
+    if is_visible {
+        let claude_x = width * ratio;
+        let claude_width = width - claude_x;
+        
+        if let Some(toolbar) = app.get_webview("toolbar") {
+            let toolbar_x = claude_x + (claude_width - sizes::TOOLBAR_WIDTH) / 2.0;
+            let toolbar_y = height - sizes::TOOLBAR_HEIGHT - sizes::TOOLBAR_BOTTOM_OFFSET;
+            toolbar.set_position(LogicalPosition::new(toolbar_x, toolbar_y))
+                .map_err(|e| e.to_string())?;
+            toolbar.set_size(LogicalSize::new(sizes::TOOLBAR_WIDTH, sizes::TOOLBAR_HEIGHT))
+                .map_err(|e| e.to_string())?;
+            let _ = toolbar.show();
+        }
+    } else {
+        if let Some(toolbar) = app.get_webview("toolbar") {
+            let _ = toolbar.hide();
+        }
+        if let Some(downloads) = app.get_webview("downloads") {
+            let _ = downloads.hide();
+        }
     }
     
     Ok(())
@@ -339,72 +547,9 @@ pub fn resize_webviews(app: &AppHandle) -> Result<(), String> {
     let active_tab = ACTIVE_TAB.load(Ordering::SeqCst);
     let ratio = PANEL_RATIO.load(Ordering::SeqCst) as f64 / 100.0;
     
-    let ui_webview = app.get_webview("ui").ok_or("UI webview not found")?;
-    
-    if is_visible {
-        let ui_width = width * ratio;
-        let claude_width = width - ui_width;
-        let claude_x = ui_width;
-        
-        // UI - левая часть
-        ui_webview.set_position(LogicalPosition::new(0.0, 0.0))
-            .map_err(|e| e.to_string())?;
-        ui_webview.set_size(LogicalSize::new(ui_width, height))
-            .map_err(|e| e.to_string())?;
-        
-        // Claude tabs - правая часть
-        for i in 1u8..=3 {
-            let label = format!("claude_{}", i);
-            if let Some(webview) = app.get_webview(&label) {
-                if i == active_tab {
-                    webview.set_position(LogicalPosition::new(claude_x, 0.0))
-                        .map_err(|e| e.to_string())?;
-                    webview.set_size(LogicalSize::new(claude_width, height))
-                        .map_err(|e| e.to_string())?;
-                } else {
-                    webview.set_position(LogicalPosition::new(width * 2.0, 0.0))
-                        .map_err(|e| e.to_string())?;
-                }
-            }
-        }
-        
-        // Toolbar - внизу по центру области claude
-        if let Some(toolbar) = app.get_webview("toolbar") {
-            let toolbar_x = claude_x + (claude_width - sizes::TOOLBAR_WIDTH) / 2.0;
-            let toolbar_y = height - sizes::TOOLBAR_HEIGHT - sizes::TOOLBAR_BOTTOM_OFFSET;
-            toolbar.set_position(LogicalPosition::new(toolbar_x, toolbar_y))
-                .map_err(|e| e.to_string())?;
-            toolbar.set_size(LogicalSize::new(sizes::TOOLBAR_WIDTH, sizes::TOOLBAR_HEIGHT))
-                .map_err(|e| e.to_string())?;
-        }
-    } else {
-        // UI - на всю ширину
-        ui_webview.set_position(LogicalPosition::new(0.0, 0.0))
-            .map_err(|e| e.to_string())?;
-        ui_webview.set_size(LogicalSize::new(width, height))
-            .map_err(|e| e.to_string())?;
-        
-        // Все Claude скрываем
-        for i in 1u8..=3 {
-            let label = format!("claude_{}", i);
-            if let Some(webview) = app.get_webview(&label) {
-                webview.set_position(LogicalPosition::new(width * 2.0, 0.0))
-                    .map_err(|e| e.to_string())?;
-            }
-        }
-        
-        // Тулбар тоже скрываем
-        if let Some(toolbar) = app.get_webview("toolbar") {
-            toolbar.set_position(LogicalPosition::new(width * 2.0, 0.0))
-                .map_err(|e| e.to_string())?;
-        }
-        
-        // Downloads тоже скрываем
-        if let Some(downloads) = app.get_webview("downloads") {
-            downloads.set_position(LogicalPosition::new(width * 2.0, 0.0))
-                .map_err(|e| e.to_string())?;
-        }
-    }
+    layout_ui(app, width, height, is_visible, ratio)?;
+    layout_claude(app, width, height, is_visible, active_tab, ratio)?;
+    layout_overlay(app, width, height, is_visible, ratio)?;
     
     Ok(())
 }

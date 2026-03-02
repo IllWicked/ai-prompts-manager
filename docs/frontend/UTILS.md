@@ -21,6 +21,7 @@ const STORAGE_KEYS = {
     CLAUDE_SETTINGS: 'claudeSettings',
     CLAUDE_AUTO_SEND: 'claude_auto_send',
     ACTIVE_PROJECT: 'active-project',
+    CUSTOM_CANVAS_IMAGE: 'custom-canvas-image',
     CURRENT_COUNTRY: 'currentCountry',
     // Динамические
     workflow: (tabId) => `workflow-${tabId}`,
@@ -49,7 +50,6 @@ const TIMEOUTS = {
     INPUT_FOCUS: 100,
     DEBOUNCE_SAVE: 2000,
     AUTOSAVE: 30000,
-    MENU_SCROLL: 10,
     GENERATION_CHECK: 500,
     URL_SAVE: 2000
 };
@@ -99,7 +99,7 @@ await autoCheckPromptsUpdates();
 
 ---
 
-## utils.js (9 функций)
+## utils.js (8 функций + 12 DOM getters)
 
 | Функция | Описание |
 |---------|----------|
@@ -110,8 +110,7 @@ await autoCheckPromptsUpdates();
 | `getAppVersion()` | Версия через Tauri |
 | `generateItemId()` | Уникальный ID элемента |
 | `getGeneratingAnimationDelay()` | Синхронизированная задержка для generating-indicator (1000ms) |
-| `initCustomScrollbar(scrollable, scrollbar)` | Инициализация кастомного скроллбара |
-| `initScrollbarGlobalHandlers()` | Глобальные обработчики перетаскивания скроллбара |
+| `writeDiagnostic(eventType, details)` | Запись диагностики в файл через Tauri |
 
 ### DOM Getters (с кэшированием)
 
@@ -160,7 +159,7 @@ showToast('Ошибка загрузки', 3000);
 
 ---
 
-## storage.js (11 функций)
+## storage.js (15 функций)
 
 | Функция | Описание |
 |---------|----------|
@@ -170,11 +169,15 @@ showToast('Ошибка загрузки', 3000);
 | `saveToStorage(key, value)` | Сохранить JSON |
 | `safeSetItem(key, value)` | localStorage.setItem с QuotaExceeded protection |
 | `getAllTabs()` | Все вкладки (кэш + валидация) |
-| `saveAllTabs(tabs)` | Сохранить вкладки |
+| `saveAllTabs(tabs)` | Сохранить вкладки (localStorage + файл) |
 | `setTabsCache(tabs)` | Установить кэш (для undo) |
 | `isValidTab(tab)` | Валидация структуры |
 | `isValidTabsStructure(tabs)` | Валидация всех |
 | `repairTab(tabId, tab)` | Восстановление |
+| `isFileStorageAvailable()` | Проверка доступности файлового хранения |
+| `loadTabsFromFile()` | Загрузка вкладок из файла (backup) |
+| `saveTabsToFile(tabs)` | Сохранение вкладок в файл |
+| `initHybridStorage()` | Инициализация гибридного хранения (localStorage ↔ файл) |
 
 ### Примеры
 

@@ -17,6 +17,9 @@
 /** @type {number|null} Номер блока для конструктора полей */
 let currentConstructorBlockNumber = null;
 
+/** @type {boolean} Конструктор открыт из модалки редактирования */
+let currentConstructorFromEditModal = false;
+
 /** @type {number|null} Номер блока для динамического ввода */
 let currentDynamicInputBlock = null;
 
@@ -28,9 +31,19 @@ let currentDynamicInputBlock = null;
  * Показать модальное окно конструктора полей
  * @param {number} blockNumber - номер блока
  */
-function showInputConstructorModal(blockNumber) {
+function showInputConstructorModal(blockNumber, keepEditModal = false) {
     currentConstructorBlockNumber = blockNumber;
-    closeAllModals();
+    currentConstructorFromEditModal = keepEditModal;
+    if (keepEditModal) {
+        // Закрываем все модалки кроме edit-модалки
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            if (modal.id !== 'workflow-edit-modal') {
+                modal.classList.remove('open');
+            }
+        });
+    } else {
+        closeAllModals();
+    }
     
     const blocks = getTabBlocks(currentTab);
     const block = blocks.find(b => b.number === blockNumber);
@@ -67,7 +80,22 @@ function showInputConstructorModal(blockNumber) {
  */
 function hideInputConstructorModal() {
     document.getElementById('input-constructor-modal').classList.remove('open');
+    
+    // Если конструктор был открыт из edit-модалки — обновляем UI инструкции
+    if (currentConstructorFromEditModal) {
+        const modal = document.getElementById('workflow-edit-modal');
+        if (modal) {
+            const idx = parseInt(modal.dataset.editIndex);
+            const items = getTabItems(currentTab);
+            const blocks = items.filter(item => item.type === 'block');
+            if (blocks[idx] && typeof updateModalInstructionUI === 'function') {
+                updateModalInstructionUI(blocks[idx]);
+            }
+        }
+    }
+    
     currentConstructorBlockNumber = null;
+    currentConstructorFromEditModal = false;
 }
 
 /**
@@ -182,7 +210,7 @@ function saveConstructorFields() {
     // Получаем текст инструкции
     const instructionText = document.getElementById('constructor-instruction-text').value.trim();
     if (!instructionText) {
-        alert('Введите текст сноски');
+        alert('Введите текст инструкции');
         return;
     }
     
@@ -388,7 +416,7 @@ function showDynamicInputModal(blockNumber) {
                 <div class="optional-field-content ${isHidden ? 'hidden' : ''} mb-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1">${escapeHtml(field.label)}</label>
                     <div class="flex gap-2 items-center">
-                        <textarea class="dynamic-input flex-1 min-w-0 px-4 border-2 border-gray-200 rounded-lg focus:outline-none text-gray-700 transition-colors resize-none scrollbar-thin leading-5"
+                        <textarea class="dynamic-input flex-1 min-w-0 px-4 border-2 border-gray-200 rounded-lg focus:outline-none text-gray-700 transition-colors resize-none leading-5"
                                style="min-height: 42px; padding-top: 9px; padding-bottom: 7px;"
                                rows="1"
                                data-prefix="${escapeHtml(field.prefix || '')}"
@@ -445,7 +473,7 @@ function showDynamicInputModal(blockNumber) {
             fieldWrapper.innerHTML = `
                 <div class="mb-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1">${escapeHtml(field.label)}</label>
-                    <textarea class="dynamic-input w-full px-4 border-2 border-gray-200 rounded-lg focus:outline-none text-gray-700 transition-colors resize-none scrollbar-thin leading-5"
+                    <textarea class="dynamic-input w-full px-4 border-2 border-gray-200 rounded-lg focus:outline-none text-gray-700 transition-colors resize-none leading-5"
                            style="min-height: 42px; padding-top: 9px; padding-bottom: 7px;"
                            rows="1"
                            data-prefix="${escapeHtml(field.prefix || '')}"
@@ -536,7 +564,7 @@ function applyDynamicInput() {
         const storageKey = `field-value-${currentTab}-${blockId}-${fieldIndex}`;
         
         if (isOptional && isHidden) {
-            // Опциональное поле скрыто — удаляем из текста
+            // Опциональное поле скрыто — заменяем на невидимый маркер
             const fieldIdx = parseInt(fieldIndex);
             if (originalValue) {
                 const spacer = prefix.endsWith(' ') ? '' : ' ';
@@ -555,13 +583,16 @@ function applyDynamicInput() {
                         prefix + sp + originalValue
                     );
                 }
+                // Маркер позиции для скрытого поля
+                const fieldMarker = '\u200B{{FIELD:' + blockId + '-' + fieldIdx + '}}\u200B';
                 for (const pattern of patterns) {
                     const patternIndex = content.indexOf(pattern);
                     if (patternIndex !== -1) {
+                        // Сохраняем удалённый контент в маркер, а не в числовую позицию
                         if (block.instruction?.fields?.[fieldIdx]) {
-                            block.instruction.fields[fieldIdx].savedPosition = patternIndex;
+                            block.instruction.fields[fieldIdx].savedContent = pattern;
                         }
-                        content = content.substring(0, patternIndex) + content.substring(patternIndex + pattern.length);
+                        content = content.substring(0, patternIndex) + fieldMarker + content.substring(patternIndex + pattern.length);
                         content = content.replace(/  +/g, ' ');
                         changed = true;
                         break;
@@ -570,21 +601,31 @@ function applyDynamicInput() {
             }
             localStorage.removeItem(storageKey);
         } else if (isOptional && !isHidden && input.dataset.found === 'false') {
-            // Опциональное поле было скрыто, теперь показано - ВСТАВЛЯЕМ в текст
+            // Опциональное поле было скрыто, теперь показано — ищем маркер и заменяем
             const fieldIdx = parseInt(fieldIndex);
             if (newValue) {
-                const savedPosition = block.instruction?.fields?.[fieldIdx]?.savedPosition;
+                const fieldMarker = '\u200B{{FIELD:' + blockId + '-' + fieldIdx + '}}\u200B';
+                const savedContent = block.instruction?.fields?.[fieldIdx]?.savedContent;
                 
-                if (savedPosition !== undefined && savedPosition !== null) {
+                if (content.includes(fieldMarker)) {
+                    // Маркер найден — заменяем на оригинальный контент с новым значением
                     const spacer = prefix.endsWith(' ') ? '' : ' ';
                     const insertText = ' ' + prefix + spacer + newValue;
-                    let insertPos = savedPosition;
-                    if (insertPos > content.length) {
-                        insertPos = content.length;
-                    }
-                    content = content.substring(0, insertPos) + insertText + content.substring(insertPos);
+                    content = content.replace(fieldMarker, insertText);
                     changed = true;
-                    delete block.instruction.fields[fieldIdx].savedPosition;
+                    if (block.instruction?.fields?.[fieldIdx]) {
+                        delete block.instruction.fields[fieldIdx].savedContent;
+                    }
+                } else if (savedContent !== undefined) {
+                    // Fallback: маркер не найден (текст мог быть изменён), но есть savedContent
+                    // Вставляем в конец текста
+                    const spacer = prefix.endsWith(' ') ? '' : ' ';
+                    const insertText = '\n' + prefix + spacer + newValue;
+                    content = content + insertText;
+                    changed = true;
+                    if (block.instruction?.fields?.[fieldIdx]) {
+                        delete block.instruction.fields[fieldIdx].savedContent;
+                    }
                 }
                 localStorage.setItem(storageKey, newValue);
             }

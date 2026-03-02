@@ -4,7 +4,7 @@
 
 > **Примечание:** После рефакторинга v4.2.0 весь inline JavaScript вынесен в модули `dist/js/*.js`. Этот документ описывает API функций с указанием файлов, где они находятся.
 
-Справочник функций приложения. Общее количество ~289 функций в 35 модулях (включая внутренние). В таблице ниже — **публичные API функции** (~94), сгруппированные по категориям.
+Справочник функций приложения. Общее количество ~330 функций в 35 модулях (включая внутренние). В таблице ниже — **публичные API функции** (~102), сгруппированные по категориям.
 
 ---
 
@@ -21,20 +21,20 @@
 | [Block Collapse](#block-collapse) | 2 | `block-ui.js` | Сворачивание блоков |
 | [Block Scripts](#block-scripts) | 2 | `block-ui.js` | Управление скриптами |
 | [Block Automation](#block-automation) | 2 | `block-ui.js` | Флаги автоматизации |
-| [Data Persistence](#data-persistence) | 7 | `persistence.js` | Хранение данных |
-| [Scrollbar](#scrollbar) | 2 | `init.js` | Кастомный скроллбар |
+| [Data Persistence](#data-persistence) | 9 | `persistence.js` | Хранение данных |
 | [Attachments](#attachments) | 6 | `attachments.js` | Вложения файлов |
 | [Input Constructor](#input-constructor) | 6 | `dynamic-input.js` | Конструктор полей |
 | [Dynamic Input Modal](#dynamic-input-modal) | 3 | `dynamic-input.js` | Модалка ввода |
 | [Import Confirm](#import-confirm) | 2 | `export-import.js` | Диалог импорта |
 | [Settings Modal](#settings-modal) | 8 | `settings.js` | Настройки |
 | [Theme](#theme) | 5 | `settings.js` | Управление темами |
+| [Customization](#customization) | 8 | `settings.js` | Акцентный цвет, паттерны фона |
 | [Updates](#updates) | 5 | `updates.js` | Обновления |
 | [Context Menu](#context-menu) | 2 | `context-menu.js` | Контекстное меню |
 | [Clipboard](#clipboard) | 2 | `context-menu.js` | Буфер обмена |
 | [Dropdown](#dropdown) | 4 | `dropdown.js` | Унифицированные dropdown меню |
 | [Other](#port-events) | 4 | `init.js` | Прочие функции |
-| **Всего** | **~100** | | |
+| **Всего** | **~102** | | |
 
 ---
 
@@ -53,26 +53,19 @@
 
 | Функция | Описание |
 |---------|----------|
-| `detectLanguageInText(text)` | Определение языка по любой форме слова |
-| `detectAllLanguagesInText(text)` | Поиск всех языков в тексте |
-| `detectLanguageFromText()` | Определение языка из контента блоков |
-| `detectAndUpdateLanguageFromTab()` | Автодетекция при переключении вкладки |
 | `getActiveLanguageData()` | Получить данные языка с учётом страны |
 | `showLanguageToast(langName, countryName)` | Toast с названием языка и страны |
 | `insertLanguageFormAtCursor(textarea)` | Вставка формы языка (вызывает showLanguageFormMenu) |
 | `showLanguageFormMenu(textarea, anchorBtn)` | Унифицированное меню форм для тулбара и модалки |
 | `hasCountrySelection(langCode)` | Проверить наличие выбора стран |
 | `getCountriesForLanguage(langCode)` | Получить список стран для языка |
+| `detectAndUpdateLanguageFromTab()` | Синхронизация UI при переключении вкладки |
 
 ### Функции склонения (languages.js)
 
 | Функция | Описание |
 |---------|----------|
 | `generateAdjectiveForms(word)` | Генерирует все 24 формы прилагательного |
-| `getAllWordForms(word)` | Уникальные формы для поиска |
-| `detectWordForm(word, base)` | Определяет падеж и род слова |
-| `transformWord(word, fromBase, toBase)` | Преобразует с сохранением падежа |
-| `findLanguageByWord(word)` | Найти язык по любой форме слова |
 
 ### Глобальные переменные
 
@@ -84,20 +77,12 @@
 ### Пример
 
 ```javascript
-// Определить язык по любой форме
-detectLanguageInText('в английском сегменте');  // 'en'
-detectLanguageInText('немецкого языка');        // 'de'
-
 // Получить данные языка с учётом страны
 const langData = getActiveLanguageData();
 console.log(langData.lang);        // 'английский'
 console.log(langData.native);      // 'англоязычный'
 console.log(langData.country);     // 'США'
 console.log(langData.locale);      // 'en-US'
-
-// Трансформация с сохранением падежа
-transformWord('английского', 'английский', 'немецкий');
-// → 'немецкого'
 ```
 
 ---
@@ -268,18 +253,11 @@ await copyTextToClipboard('Text to copy');
 | `getCurrentStorageKey()` | Получить ключ текущей вкладки |
 | `saveToLocalStorage(key, content)` | Сохранение в localStorage |
 | `loadFromLocalStorage()` | Загрузка из localStorage |
+| `performReset()` | Выполнение сброса данных (сохраняет UI-настройки) |
 | `checkAppVersionAndReset()` | Проверка версии и сброс при необходимости |
+| `confirmReset()` | Ручной сброс с подтверждением |
 | `initializePersistence()` | Инициализация системы хранения |
 | `loadPrompts(preserveScroll)` | Загрузка промптов вкладки |
-
----
-
-## Scrollbar
-
-| Функция | Описание |
-|---------|----------|
-| `initCustomScrollbar(scrollable, scrollbar)` | Инициализация кастомного скроллбара |
-| `updateThumb()` | Обновление ползунка |
 
 ---
 
@@ -348,8 +326,8 @@ removeAttachmentFromBlock('block-123', 1);
 | `updateToggleButtons(btnClass, activeId)` | Обновить toggle-кнопки |
 | `updateAutoUpdateButtons(enabled)` | Обновить кнопки автообновления |
 | `updateThemeButtons(activeTheme)` | Обновить кнопки темы |
-| `confirmReset()` | Подтверждение сброса |
-| `updateDownloadsPathDisplay()` | Обновить отображение пути загрузок |
+| `confirmReset()` | Подтверждение сброса (`persistence.js`) |
+| `updateDownloadsPathDisplay()` | Обновить отображение пути загрузок (`init.js`) |
 
 ---
 
@@ -362,6 +340,21 @@ removeAttachmentFromBlock('block-123', 1);
 | `syncWindowBackground()` | Синхронизировать с Tauri |
 | `initThemeListener()` | Инициализировать слушатель системной темы |
 | `toggleAutoUpdate(enabled)` | Переключить автообновление |
+
+---
+
+## Customization
+
+| Функция | Описание |
+|---------|----------|
+| `setAccentColor(hex)` | Установить акцентный цвет |
+| `applyAccentColor(hex)` | Применить к CSS-переменным (`--claude-*`) |
+| `updateAccentUI(hex)` | Обновить UI пресетов цвета |
+| `setCanvasPattern(patternId)` | Установить паттерн фона холста |
+| `applyCanvasPattern(patternId)` | Применить паттерн к DOM |
+| `updatePatternUI(patternId)` | Обновить UI паттернов |
+| `uploadCanvasImage()` | Загрузить пользовательское изображение фона |
+| `initCustomization()` | Инициализация кастомизации при старте |
 
 ---
 

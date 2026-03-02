@@ -121,7 +121,7 @@ function alignCollapsedToOddGrid(node, blockId) {
     node.style.height = '';
     node.style.width = '';
     
-    // Создаём временный элемент для точного измерения ширины текста
+    // Создаём временный элемент для точного измерения ширины текста заголовка
     const measure = document.createElement('span');
     measure.style.cssText = 'position: absolute; visibility: hidden; white-space: nowrap; font-weight: 600; font-size: 26px;';
     measure.textContent = title.textContent;
@@ -143,12 +143,19 @@ function alignCollapsedToOddGrid(node, blockId) {
         filesBtnWidth = 40 + 14; // 40px кнопка + 14px gap
     }
     
+    // Измеряем ширину иконки инструкции
+    const instructionHint = node.querySelector('.collapsed-instruction-hint');
+    let instructionHintWidth = 0;
+    if (instructionHint) {
+        instructionHintWidth = 40 + 14; // 40px контейнер + 14px gap
+    }
+    
     // padding хедера 22px * 2 = 44px
     const headerPadding = 44;
-    const contentWidth = titleWidth + badgesWidth + filesBtnWidth + headerPadding;
+    const headerContentWidth = titleWidth + badgesWidth + filesBtnWidth + instructionHintWidth + headerPadding;
     
     // Находим минимальное ЧЁТНОЕ количество шагов
-    let steps = Math.ceil(contentWidth / gridSize);
+    let steps = Math.ceil(headerContentWidth / gridSize);
     if (steps < 2) steps = 2;
     // Делаем чётным - если нечётное, добавляем 1
     if (steps % 2 !== 0) steps += 1;

@@ -8,7 +8,7 @@
 use std::fs;
 use tauri::AppHandle;
 
-use crate::downloads::paths::{get_app_data_dir, get_archive_log_path, get_downloads_settings_path};
+use crate::downloads::paths::{get_app_data_dir, get_archive_log_path, get_downloads_settings_path, get_diagnostics_log_path};
 use crate::utils::platform::open_directory_in_system;
 
 /// Сбрасывает данные приложения (кроме логов и настроек загрузок)
@@ -16,6 +16,7 @@ use crate::utils::platform::open_directory_in_system;
 /// Удаляет папку данных приложения, но сохраняет:
 /// - `archive_log.json` — история скачанных файлов
 /// - `downloads_settings.json` — настройки пути загрузок
+/// - `diagnostics.json` — лог диагностики
 ///
 /// # Returns
 /// * `Ok(())` — данные успешно сброшены
@@ -44,6 +45,13 @@ pub fn reset_app_data() -> Result<(), String> {
         .filter(|p| p.exists())
         .and_then(|p| fs::read(p).ok());
     
+    // Сохраняем diagnostics.json перед удалением
+    let diagnostics_log_path = get_diagnostics_log_path();
+    let diagnostics_log_backup = diagnostics_log_path
+        .as_ref()
+        .filter(|p| p.exists())
+        .and_then(|p| fs::read(p).ok());
+    
     // Пытаемся удалить папку целиком
     if fs::remove_dir_all(&app_folder).is_err() {
         // Если не удалось — удаляем содержимое по отдельности, кроме защищённых файлов
@@ -53,7 +61,10 @@ pub fn reset_app_data() -> Result<(), String> {
                 let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
                 
                 // Не удаляем защищённые файлы
-                if filename != "archive_log.json" && filename != "downloads_settings.json" {
+                if filename != "archive_log.json" 
+                    && filename != "downloads_settings.json"
+                    && filename != "diagnostics.json" 
+                {
                     let _ = if path.is_dir() {
                         fs::remove_dir_all(&path)
                     } else {
@@ -72,6 +83,12 @@ pub fn reset_app_data() -> Result<(), String> {
     
     // Восстанавливаем downloads_settings.json
     if let (Some(backup), Some(path)) = (downloads_settings_backup, downloads_settings_path) {
+        let _ = fs::create_dir_all(&app_folder);
+        let _ = fs::write(&path, &backup);
+    }
+    
+    // Восстанавливаем diagnostics.json
+    if let (Some(backup), Some(path)) = (diagnostics_log_backup, diagnostics_log_path) {
         let _ = fs::create_dir_all(&app_folder);
         let _ = fs::write(&path, &backup);
     }

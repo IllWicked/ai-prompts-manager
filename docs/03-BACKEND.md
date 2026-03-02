@@ -8,17 +8,18 @@ Backend разбит на модули по функциональности:
 
 ```
 src-tauri/src/
-├── main.rs              (142 строки)  — точка входа, Tauri Builder
+├── main.rs              (174 строки)  — точка входа, Tauri Builder
 ├── lib.rs               (23 строки)  — реэкспорт модулей
-├── types.rs             (57 строк)   — структуры данных
-├── state.rs             (35 строк)  — глобальные состояния
-├── commands/            (46 команд)  — Tauri команды
+├── types.rs             (74 строки)  — структуры данных
+├── state.rs             (47 строк)   — глобальные состояния
+├── commands/            (55 команд)  — Tauri команды
 │   ├── mod.rs           — реэкспорт
 │   ├── app.rs           — управление приложением
 │   ├── claude.rs        — взаимодействие с Claude
 │   ├── toolbar.rs       — навигация и тулбар
 │   ├── downloads.rs     — управление загрузками
 │   ├── logs.rs          — работа с логами
+│   ├── storage.rs       — хранение вкладок (файловая система)
 │   └── attachments.rs   — аттачменты
 ├── downloads/           — логика загрузок
 │   ├── mod.rs
@@ -38,18 +39,18 @@ src-tauri/src/
 
 | Модуль | Описание |
 |--------|----------|
-| `types` | Структуры: `ArchiveLogEntry`, `DownloadEntry`, `DownloadsSettings`, `FileData` |
+| `types` | Структуры: `ArchiveLogEntry`, `DownloadEntry`, `DownloadsSettings`, `FileData`, `DiagnosticEntry` |
 | `state` | Глобальные: `CLAUDE_VISIBLE`, `ACTIVE_TAB`, `PANEL_RATIO`, Mutex locks |
-| `commands` | 46 Tauri команд, разбитых по доменам |
+| `commands` | 55 Tauri команд, разбитых по доменам |
 | `downloads` | Пути к логам, настройкам, генерация уникальных имён |
 | `utils` | MIME-типы, платформо-зависимые функции, константы |
-| `webview` | JS скрипты, создание/resize webview, обработка загрузок |
+| `webview` | JS скрипты, создание/resize webview, z-order, suspend/resume |
 
 ---
 
 ## Полный список Tauri Commands
 
-Всего **46 команд**. Вызов из JS: `window.__TAURI__.core.invoke('command', { params })`
+Всего **55 команд**. Вызов из JS: `window.__TAURI__.core.invoke('command', { params })`
 
 ### Downloads & Files (`commands/downloads.rs`)
 
@@ -71,6 +72,8 @@ src-tauri/src/
 | `get_archive_log` | — | `Vec<ArchiveLogEntry>` | Лог архивов |
 | `add_archive_log_entry` | `tab, filename, claudeUrl, filePath?` | — | Добавить |
 | `clear_archive_log` | — | — | Очистить |
+| `write_diagnostic` | `event_type, details` | — | Записать диагностику |
+| `export_diagnostics` | — | `String` | Экспортировать диагностику |
 
 ### Attachments (`commands/attachments.rs`)
 
@@ -79,6 +82,18 @@ src-tauri/src/
 | `read_file_for_attachment` | `path` | `FileData` | Читать для вложения |
 | `write_temp_file` | `filename, content` | `String` | Записать temp |
 | `attach_file_to_claude` | `tab, path` | — | Прикрепить файл |
+| `get_upload_count` | `tab` | `u32` | Счётчик загруженных файлов |
+| `reset_upload_count` | `tab` | — | Сбросить счётчик |
+| `increment_upload_count` | `tab` | — | Увеличить счётчик |
+
+### Storage (`commands/storage.rs`)
+
+| Команда | Параметры | Возврат | Описание |
+|---------|-----------|---------|----------|
+| `save_tabs_to_file` | `data` | — | Атомарная запись вкладок в файл (temp → rename) |
+| `load_tabs_from_file` | — | `String` | Загрузка вкладок из файла |
+| `delete_tabs_file` | — | — | Удалить файл вкладок |
+| `get_tabs_file_size` | — | `u64` | Размер файла в байтах |
 
 ### Claude WebView (`commands/claude.rs`)
 
@@ -137,6 +152,8 @@ src-tauri/src/
 | `reset_app_data` | — | — | Сброс данных |
 | `open_app_data_dir` | — | — | Открыть папку |
 
+> Команды `set_window_background` и `get_window_width` также в `app.rs` — см. [Panel & Window](#panel--window-commandsclauders-commandsapprs).
+
 ---
 
 ## Ключевые функции по модулям
@@ -146,9 +163,15 @@ src-tauri/src/
 | Функция | Описание |
 |---------|----------|
 | `ensure_claude_webview(app, tab, url)` | Создание Claude WebView с обработчиками |
+| `create_claude_webview(app, tab, url)` | Низкоуровневое создание без toolbar |
 | `ensure_toolbar(app)` | Создание toolbar и downloads popup |
-| `recreate_toolbar(app)` | Пересоздание для z-order |
-| `resize_webviews(app)` | Обновление размеров и позиций |
+| `raise_toolbar_zorder(app)` | Поднятие z-order через Win32 `SetWindowPos(HWND_TOP)` |
+| `suspend_claude_tab(app, tab)` | Приостановка через WebView2 `TrySuspend()` |
+| `resume_claude_tab(app, tab)` | Возобновление через WebView2 `Resume()` |
+| `resize_webviews(app)` | Оркестратор: вызывает layout_ui/claude/overlay |
+| `layout_ui(...)` | Позиция и размер UI панели |
+| `layout_claude(...)` | Show/hide Claude табов |
+| `layout_overlay(...)` | Позиция toolbar, hide downloads |
 
 ### webview/scripts.rs
 
@@ -169,6 +192,7 @@ src-tauri/src/
 | `get_archive_log_path()` | Путь к `archive_log.json` |
 | `get_downloads_log_path()` | Путь к `downloads_log.json` |
 | `get_downloads_settings_path()` | Путь к `downloads_settings.json` |
+| `get_diagnostics_log_path()` | Путь к `diagnostics.json` |
 | `get_custom_downloads_path()` | Чтение кастомного пути |
 | `save_custom_downloads_path(path)` | Сохранение кастомного пути |
 | `get_unique_filepath(dir, filename)` | Генерация уникального имени |
@@ -227,6 +251,7 @@ sequenceDiagram
 | `download-started` | Rust → JS | `string` (filename) | Начало загрузки |
 | `download-finished` | Rust → JS | `{filename, tab, url, file_path}` | Загрузка завершена |
 | `download-failed` | Rust → JS | `string` (filename) | Ошибка загрузки |
+| `startup-error` | Rust → JS | `{tab?: number, error: string}` | Ошибка создания webview |
 | `refresh-downloads` | Rust → JS | `()` | Обновить список |
 | `downloads-closed` | Rust → JS | `()` | Popup закрыт |
 
@@ -239,9 +264,19 @@ sequenceDiagram
 | Mutex | Назначение |
 |-------|------------|
 | `WEBVIEW_CREATION_LOCK` | Защита от параллельного создания Claude webview |
-| `TOOLBAR_CREATION_LOCK` | Защита от race condition между ensure_toolbar и recreate_toolbar |
+| `TOOLBAR_CREATION_LOCK` | Защита от race condition при создании toolbar |
 | `DOWNLOADS_LOG_LOCK` | Синхронизация записи в downloads_log.json |
 | `ARCHIVE_LOG_LOCK` | Синхронизация записи в archive_log.json |
+| `DIAGNOSTICS_LOG_LOCK` | Синхронизация записи в diagnostics_log.json |
+
+### Atomic State (`state.rs`)
+
+| Переменная | Тип | Назначение |
+|------------|-----|------------|
+| `CLAUDE_VISIBLE` | `AtomicBool` | Видимость панели Claude |
+| `ACTIVE_TAB` | `AtomicU8` | Активный таб Claude (1-3) |
+| `PANEL_RATIO` | `AtomicU32` | Соотношение панелей (35-65) |
+| `UPLOAD_COUNTERS` | `[AtomicU32; 3]` | Счётчики загруженных файлов по табам |
 
 ```rust
 // Пример использования (webview/manager.rs)
@@ -252,13 +287,14 @@ fn ensure_claude_webview(...) -> Result<(), String> {
     if app.get_webview(&label).is_some() {
         return Ok(()); // Double-check под локом
     }
-    // ... создание webview
+    // ... создание webview + hide()
+    // ... raise_toolbar_zorder() для z-order
 }
 
 fn ensure_toolbar(...) -> Result<(), String> {
     let _guard = TOOLBAR_CREATION_LOCK.lock()
         .map_err(|_| "Lock poisoned")?;
-    // ... создание toolbar/downloads если не существуют
+    // ... создание toolbar/downloads + hide()
 }
 ```
 
@@ -291,6 +327,7 @@ fn ensure_toolbar(...) -> Result<(), String> {
 | `MAX_ATTACHMENT_SIZE` | 50 MB | Макс. размер аттачмента |
 | `MAX_ARCHIVE_LOG_ENTRIES` | 1000 | Макс. записей в archive_log |
 | `MAX_DOWNLOADS_LOG_ENTRIES` | 500 | Макс. записей в downloads_log |
+| `MAX_DIAGNOSTICS_ENTRIES` | 500 | Макс. записей в diagnostics_log |
 
 ---
 

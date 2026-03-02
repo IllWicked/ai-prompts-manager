@@ -8,6 +8,168 @@
 
 ---
 
+## [4.3.0] - 2026-02-26 {#v430}
+
+### Улучшения
+
+#### Унификация скроллбаров
+- **Единый стиль:** Удалены отдельные стили для textarea/input (бледный thumb + непрозрачный track) и меню/выпадающих списков (серый thumb) — всё наследует глобальные правила (5px, прозрачный track, `rgba(0,0,0,0.2)` thumb с hover `0.3`, тёмная тема инвертирована)
+- **Track margin:** Отступы сверху/снизу чтобы ползунок не выходил за закруглённые углы — глобально 12px, workflow view mode 4px, downloads 4px/12px, textarea в модале редактирования 6px
+- **Downloads:** Ширина 6px → 5px, добавлен hover-эффект на thumb
+- **`#scroll-container`:** `overflow-y: scroll` → `auto` — полоска появляется только при переполнении
+
+#### Undo/Redo v3: hash comparison + input grouping + lazy capture (Stability Step 11: #11)
+- **djb2 hash comparison:** `hashTabData()` и `hashWorkflow()` — быстрая проверка изменений вместо `JSON.stringify` двух полных состояний. При коллизии хеша — дополнительная проверка по content/title
+- **Input grouping:** `InputGroup` объединяет быстрые правки (пауза < 2 сек) в одну операцию undo. `classify(force)` возвращает стратегию: `new` (новый snapshot), `extend` (продолжить группу, skip), `close_and_new` (завершить группу + новый snapshot)
+- **Lazy workflow capture:** `captureFullState()` захватывает workflow данные (positions, connections, sizes) только если `workflowMode === true` — экономит structuredClone в list mode
+- **Crash-safe restoring:** `restoring = true` ставится ДО apply, сбрасывается в `finally` блоке (вместо прежнего ручного сброса после всех операций)
+- **Полная обратная совместимость:** Все 16 call sites `UndoManager.snapshot()` работают без изменений. Public API идентичен v2
+
+#### Z-Order: SetWindowPos вместо recreate (Refactoring Phase 2)
+- **`raise_toolbar_zorder()`** — поднимает z-order toolbar/downloads через Win32 `SetWindowPos(HWND_TOP)` без пересоздания webview. Мгновенная операция, нет потери состояния, нет visual flash
+- **Удалён `recreate_toolbar()`** — функция закрытия + пересоздания toolbar больше не нужна
+- **Удалён `TOOLBAR_NEEDS_RECREATE: AtomicBool`** — флаг отложенного пересоздания больше не нужен
+- **`ensure_claude_webview`** — при создании нового Claude webview вызывает `raise_toolbar_zorder()` вместо установки флага
+
+#### Нативное скрытие webview: hide()/show() (Refactoring Phase 0)
+- **`webview.hide()`/`show()`** — вместо позиционирования за экран (`set_position(width*2, 0)`). WebView2 `put_IsVisible(FALSE)` throttle-ит анимации, снижает CPU, очищает GPU кэши
+- **`create_claude_webview`** — создание на `(0,0)` + `hide()` вместо `(width*2, 0)`
+- **`ensure_toolbar`** — создание на `(0,0)` + `hide()` вместо `(-500, 0)`
+- **`resize_webviews`** — активный таб: `show()`, неактивные: `hide()`, toolbar: `show()`/`hide()`
+- **`show_downloads`/`hide_downloads`** — используют `show()`/`hide()` вместо позиционирования
+
+#### Async startup (Refactoring Phase 3a)
+- **`tauri::async_runtime::spawn`** — вместо `std::thread::spawn` для startup задач
+- **`tokio::time::sleep`** — вместо `std::thread::sleep` (не блокирует thread pool)
+- **Задержки уменьшены:** 950ms → 250ms (50ms UI resize + 200ms перед созданием табов)
+- **Цикл `for tab in 1..=3`** — вместо трёх отдельных вызовов с паузами между ними
+
+#### Error propagation (Refactoring Phase 4a)
+- **`diagnostics.json` logging** — ошибки создания webview при startup и reset записываются в лог
+- **`startup-error` event** — emit в UI при ошибках создания Claude webview или toolbar
+- **`eprintln!`** — дублирование в stderr для отладки
+
+#### Suspend/Resume неактивных табов (Refactoring Phase 1)
+- **`suspend_claude_tab()`** — вызывает WebView2 `ICoreWebView2_3::TrySuspend()` для паузы script timers, анимаций, минимизации CPU
+- **`resume_claude_tab()`** — вызывает `ICoreWebView2_3::Resume()` для мгновенного возобновления
+- **Startup** — табы 2 и 3 suspended сразу после создания
+- **`toggle_claude`** — suspend при скрытии, resume при показе
+- **`switch_claude_tab`** — suspend предыдущий, resume новый
+
+#### Декомпозиция resize_webviews (Refactoring Phase 5)
+- **`layout_ui()`** — позиция и размер UI панели
+- **`layout_claude()`** — show/hide Claude табов
+- **`layout_overlay()`** — позиция toolbar, hide downloads
+- **`resize_webviews()`** — тонкий оркестратор из 3 вызовов вместо god-функции
+
+#### localStorage: гибридное хранение + мониторинг (Stability Step 9: #9)
+- **Rust: `commands/storage.rs`** — 4 команды файлового хранения: `save_tabs_to_file`, `load_tabs_from_file`, `delete_tabs_file`, `get_tabs_file_size`. Атомарная запись (temp → rename), авто-бэкап, восстановление из бэкапа при повреждении
+- **`StorageMonitor`** — мониторинг использования localStorage: `getUsageBytes()`, `getUsageFormatted()`, `getBreakdown()` (топ-10 тяжёлых ключей), `checkAndWarn()` (предупреждение при >80%)
+- **Гибридное хранение:** `saveAllTabs()` — синхронно пишет в localStorage (кэш) + асинхронно в файл (backup). `getAllTabs()` — синхронно из localStorage, при старте `initHybridStorage()` синхронизирует файл ↔ localStorage
+- **`initHybridStorage()`** — миграционная логика: если есть файл но нет localStorage → восстанавливает; если есть localStorage но нет файла → создаёт; оба есть → синхронизирует
+- **Reset:** `delete_tabs_file` вызывается при сбросе данных (persistence.js)
+
+#### Upload Interceptor: WebView2 WebResourceRequested (Stability Step 8: #2)
+- **Rust-side upload counters:** `UPLOAD_COUNTERS: [AtomicU32; 3]` в `state.rs` — один счётчик на каждый Claude таб
+- **3 новые Tauri команды:** `get_upload_count(tab)`, `reset_upload_count(tab)`, `increment_upload_count(tab)`
+- **Windows нативный перехват:** `setup_native_upload_interceptor()` в `manager.rs` — использует WebView2 `WebResourceRequested` для перехвата запросов к `/upload-file` на уровне сетевого стека. Не конфликтует с JS interceptors, работает с Service Workers
+- **Dual counting:** JS интерсептор в `claude_helpers.js` теперь также вызывает `increment_upload_count` через Tauri — оба счётчика (Rust + JS) синхронизируются
+- **`waitForFilesUploaded`:** Приоритет — Tauri команда `get_upload_count`, fallback — CDP eval `window.__uploadedFilesCount`
+- **Counter reset:** `reset_upload_count` (Tauri) + CDP reset (JS) — оба сбрасываются перед каждой операцией прикрепления
+- **Примечание:** Rust WebView2 код может потребовать минорных правок типов COM при первой компиляции (EventRegistrationToken path, COREWEBVIEW2_WEB_RESOURCE_CONTEXT enum)
+
+#### sendNodeToClaude: AbortController + checkpoint recovery (Stability Step 6: #6)
+- **AbortController:** `sendAbortController` — можно отменить отправку на любом этапе через `abortSendToClaude()`. При отмене на этапе attach/send — автоочистка редактора Claude
+- **`checkAborted(signal)`** — проверка перед каждым этапом и между долгими операциями (7 точек проверки)
+- **SendCheckpoint** — система чекпоинтов с 6 этапами: `init → open_claude → automation → attach → send → done`
+  - `set(stage, context)` — устанавливает текущий этап + эмитит `send-progress` CustomEvent
+  - `fail(error)` — записывает ошибку + эмитит `send-error` CustomEvent
+  - `retryContext` / `failedStage` / `lastError` — данные для повторной попытки
+- **Локализованные сообщения об ошибках:** Вместо общего "Ошибка при отправке" — "Ошибка на этапе прикрепления файлов" и т.д.
+- **Очистка редактора** при ошибке/отмене на этапах `attach` и `send` (когда в редакторе уже может быть незавершённый контент)
+- **Удалён `throw e`** из catch — ошибки обрабатываются и логируются через SendCheckpoint, не пробрасываются в вызывающий код
+
+#### Project Binding FSM + TTL + привязка по Claude tab (Stability Step 7: #4)
+- **ProjectFSM** — конечный автомат в `claude-state.js` с 5 состояниями: `idle → creating → bound → detached → finishing → idle`
+- **Привязка по Claude tab:** `ProjectFSM._data.claudeTab` — номер Claude таба (1-3) куда привязан проект. URL валидация проверяет только этот таб
+- **TTL 4 часа:** Автоматическое завершение проекта через `_ttlTimer`. При восстановлении из localStorage проверяется `boundAt`
+- **Detach grace period 60 сек:** Если Claude уходит со страницы проекта → `bound → detached`. Если не вернётся за 60 сек → auto-finish
+- **URL валидация:** `validateUrl(tab, url)` вызывается из обработчиков `claude-page-loaded` и `claude-url-changed`
+- **Crash recovery:** При восстановлении нестабильные состояния (`creating`, `finishing`) сбрасываются в `idle`
+- **Обратная совместимость:** `activeProject` обновляется при `bind()`/`finish()`. `isProjectActive()` и `isCurrentTabProjectOwner()` работают через FSM
+- **Затронутые файлы:** `claude-state.js` (+200 строк FSM), `claude-api.js` (startProject/finishProject/restoreProjectState → FSM делегация)
+
+#### CDP Resilience Layer: retry с backoff + adaptive timeout (Stability Step 5: #3)
+- **`cdpEval(tab, script, options)`** — центральная обёртка для всех CDP eval вызовов. Retry с exponential backoff (300ms → 600ms → 1200ms), настраиваемый maxRetries (по умолчанию 2), silent mode
+- **`CdpTimeout`** — адаптивный таймаут. Базовые уровни: fast (5с), standard (10с), slow (30с). При ошибках множитель растёт (1.0 → 1.5 → 2.0 → max 3.0), при успехах — плавно снижается к 1.0. Сбрасывается при restoreClaudeState
+- **`cdpPipeline(steps)`** — выполнение многошаговых операций с атомарностью. При ошибке на шаге N — rollback ранее выполненных шагов в обратном порядке
+- **Миграция:** Все 8 прямых вызовов `eval_in_claude_with_result` в claude-api.js заменены на `cdpEval` с подходящими параметрами:
+  - Polling-функции (waitForClaudeInput, waitForFileInput, waitForFilesUploaded): maxRetries=0 (loop — retry)
+  - Критичные операции (getOrganizationId, createProjectViaAPI): maxRetries=1
+  - Некритичные (counter reset, project detection): silent=true
+
+#### Dynamic Input: маркеры позиций вместо savedPosition (Stability Step 4: #8)
+- **Проблема:** При скрытии опционального поля его `savedPosition` (числовой индекс) становился невалидным если текст редактировался до повторного показа поля
+- **Решение:** Вместо числовой позиции — невидимый маркер `\u200B{{FIELD:blockId-fieldIdx}}\u200B` (zero-width space обёрнутый маркер)
+- **Скрытие поля:** Текст (prefix + value) заменяется на маркер. Маркер остаётся в данных — при переоткрытии модалки prefix не найден → поле показывается как «скрыто»
+- **Показ поля:** Маркер заменяется обратно на prefix + новое значение. Если маркер не найден (текст сильно изменён) — fallback вставка в конец
+- **Отправка в Claude:** `resolveMarkersToText()` также удаляет маркеры полей через `stripFieldMarkers()` — Claude получает чистый текст
+- **View mode:** `renderMarkedContent()` удаляет маркеры полей перед рендерингом
+- **`savedContent` вместо `savedPosition`:** Хранит полный паттерн удалённого текста (для fallback восстановления)
+
+#### Система маркеров языка (Stability Step 3: #12)
+- **Новая архитектура:** Вместо поиска и замены слов в тексте — явные маркеры `{{lang:nom.m}}`, `{{native:gen.f}}`, `{{country}}`, `{{locale}}`
+- **Маркеры в данных:** Хранятся как есть в `block.content`. При переключении языка данные НЕ меняются — меняется только отображение
+- **Отображение в view mode:** Маркеры раскрываются в текущие значения с оранжевой подсветкой (цвет Claude primary). При наведении — tooltip с типом маркера
+- **Отображение в edit mode:** Textarea показывает сырые маркеры. Вставка через меню «Язык» — автоматически
+- **Меню вставки:** Вставляет маркеры вместо готового текста. Пользователь выбирает категорию → падеж → род, получает маркер
+- **Переключение языка (`applyLanguage`):** Стало тривиальным — просто `currentLanguage = newLang` + `renderWorkflow()`. Нет сканирования/замены текста
+- **Отправка в Claude:** `resolveMarkersToText()` раскрывает все маркеры перед отправкой. Claude получает чистый текст
+- **Детекция языка:** Если в блоках есть маркеры — автодетекция пропускается (язык управляется селектором). Для старых промптов без маркеров — fallback на текстовую детекцию
+- **Ключевые функции:** `resolveMarker()`, `resolveMarkersToText()`, `renderMarkedContent()`, `hasLanguageMarkers()`
+
+#### Автодиагностика и эвристический поиск селекторов (Stability Step 2: #1A+1B)
+- **Health-check при запуске:** `runSelectorHealthCheck()` проверяет 5 критических селекторов (proseMirror, sendButton, stopButton, leftNav, scrollContainer) через 3 сек после загрузки. Результат пишется в `diagnostics.json` — пользователь ничего не видит
+- **Эвристический поиск `__findElSmart__(path)`:** Новая функция, которая сначала ищет стандартным `__findEl__` (по selectors.json), а при неудаче — пробует эвристики на основе `aria-*`, `role`, `contenteditable` и структурной навигации
+- **8 эвристик:** proseMirror (contenteditable+textbox), sendButton (submit в форме рядом с редактором), fileInput, stopButton (aria-label Stop), leftNav (nav[aria-label]), pinSidebarButton, scrollContainer (overflow-y с достаточной высотой), titleContainer (truncate/font-bold в header)
+- **Логирование fallback:** При срабатывании эвристики пишется `selector_heuristic_fallback` в диагностику (дедупликация: не чаще раза в 5 мин на селектор)
+- **Миграция вызовов:** `hideSidebar`, `setupSidebarObserver`, `truncateChatTitle` переведены на `__findElSmart__`
+
+#### Инструкции блоков — исправления
+- **Переименование:** «Сноска» → «Инструкция» в контекстном меню, модалке конструктора и алерте валидации
+- **Баг: инструкция не появлялась через контекстное меню** — контекстное меню использовало `getTabItems()` (без поля `number`), `addBlockInstruction(undefined)` молча не сохраняло данные. Исправлено на `getTabBlocks()` с корректным `block.number`
+- **Иконка инструкции в collapsed блоках:** вместо показа instruction strip (который ломал порты и связи), collapsed блок с инструкцией показывает компактную иконку ⓘ в хедере. При наведении — tooltip с текстом инструкции. Если инструкция кликабельная (есть поля) — клик по тексту открывает модалку `showDynamicInputModal`
+
+#### Заметки на canvas
+- **Новый тип элемента:** текстовые заметки — чисто визуальные блоки на canvas для организации работы. Не имеют портов, не участвуют в сборке промпта
+- **Добавление:** кнопка «Заметка» в тулбаре + пункт «Создать заметку» в контекстном меню canvas (ПКМ)
+- **Редактирование:** textarea в edit mode, drag по рамке, resize за нижний правый угол
+- **Удаление:** кнопка × при hover или через контекстное меню заметки
+- **Хранение:** `workflowNotes[]` в `workflow-state` (localStorage), per-tab
+- **View mode:** заметки видны как read-only текст, учитываются в расчёте bounds/zoom
+
+#### Кастомизация оформления
+- **Акцентный цвет:** 8 пресетов + произвольный цвет через color picker. Динамически пересчитывает все `--claude-*` CSS-переменные (primary, light, code, shadow, selection, dark, darker) через `<style>` inject
+- **Фон холста:** 5 CSS-паттернов (точки, сетка, диагональ, кресты, соты) + загрузка своего изображения (base64 в localStorage, лимит 2MB)
+- **UI:** новые секции «Акцентный цвет» и «Фон холста» в модалке настроек. Кружки цветов с галкой для акцента, квадратные плитки с мини-превью для паттернов
+- **Хранение:** `accentColor` и `canvasPattern` в settings, `CUSTOM_CANVAS_IMAGE` отдельный ключ
+
+### Исправлено
+- **Auto-send галочка:** `--claude-dark` и `--claude-darker` в `.dark` не перезаписывались динамическим акцентом — хардкод `#b15730` в статическом CSS побеждал по наследованию. Добавлены в динамический `.dark`-блок `applyAccentColor()`
+- **Reset сохраняет UI-настройки:** `performReset()` теперь сохраняет и восстанавливает пользовательский фон (`CUSTOM_CANVAS_IMAGE`) наравне с `SETTINGS` (тема, акцент, паттерн). Затрагивает и автосброс при обновлении, и ручной Reset All
+
+### Удалено
+- CSS-класс `scrollbar-thin` — использовался в 4 местах (HTML/JS), но не имел CSS-определения
+- `detectWordForm()`, `transformWord()` из `languages.js` — мёртвый код (определены и экспортированы, но нигде не вызывались), остаток от pre-маркерного подхода с прямой заменой текста
+- **Легаси автодетекция языка** — удалены 6 функций: `includesWholeWord()`, `detectLanguageInText()`, `detectAllLanguagesInText()`, `detectLanguageFromText()`, `getAllWordForms()`, `findLanguageByWord()`. Маркерная система делает автодетекцию по содержимому контрпродуктивной — язык управляется только селектором (localStorage). `detectAndUpdateLanguageFromTab()` упрощена до синхронизации UI
+- Константа `TIMEOUTS.MENU_SCROLL` — определена в config.js, нигде не использовалась (артефакт удалённого кастомного скроллбара)
+- Секция документации Scrollbar (функции `initCustomScrollbar`, `initScrollbarGlobalHandlers`, `updateThumb`) — функции не существовали в коде
+
+### Затронутые файлы
+`styles.css`, `index.html`, `downloads.html`, `dynamic-input.js`, `config.js`, `languages.js`, `language-ui.js`, `workflow-render.js`, `claude-api.js`, `claude_helpers.js`, `init.js`, `block-ui.js`, `connections.js`, `app-state.js`, `workflow-state.js`, `workflow-zoom.js`, `storage.js`, `settings.js`, `export-import.js`, `workflow-interactions.js`, `context-menu.js`
+
+---
+
 ## [4.2.16] - 2026-02-20 {#v4216}
 
 ### Улучшения

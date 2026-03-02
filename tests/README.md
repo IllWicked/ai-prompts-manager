@@ -2,14 +2,14 @@
 
 ## Обзор
 
-Unit-тесты для AI Prompts Manager v4.2.0. Тесты написаны на Jest с использованием jsdom для эмуляции браузерного окружения.
+Unit-тесты для AI Prompts Manager v4.3.0. Тесты написаны на Jest с использованием jsdom для эмуляции браузерного окружения.
 
 ## Статистика
 
 | Метрика | Значение |
 |---------|----------|
 | Test Suites | 7 passed |
-| Tests | 265 total (260 passed, 5 skipped) |
+| Tests | 262 total (257 passed, 5 skipped) |
 | Время выполнения | ~3.6s |
 
 ### Покрытие по модулям
@@ -17,12 +17,12 @@ Unit-тесты для AI Prompts Manager v4.2.0. Тесты написаны н
 | Модуль | Тестов | Статус |
 |--------|--------|--------|
 | smoke.test.js | 11 | ✅ Passed |
-| storage.test.js | 52 (2 skipped) | ✅ Passed |
-| tabs.test.js | 51 | ✅ Passed |
+| storage.test.js | 51 (2 skipped) | ✅ Passed |
+| tabs.test.js | 49 | ✅ Passed |
 | undo.test.js | 44 | ✅ Passed |
 | connections.test.js | 35 | ✅ Passed |
-| utils.test.js | 39 (3 skipped) | ✅ Passed |
-| export-import.test.js | 28 | ✅ Passed |
+| utils.test.js | 42 (3 skipped) | ✅ Passed |
+| export-import.test.js | 30 | ✅ Passed |
 
 ### Пропущенные тесты (5)
 

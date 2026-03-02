@@ -1,6 +1,6 @@
 # AI Prompts Manager — Документация
 
-> **Версия:** 4.2.16 | [CHANGELOG](reference/CHANGELOG.md)
+> **Версия:** 4.3.0 | [CHANGELOG](reference/CHANGELOG.md)
 
 ## Быстрый старт
 
@@ -91,6 +91,7 @@ cd src-tauri && cargo tauri dev
 | [DATA-MIGRATIONS](reference/DATA-MIGRATIONS.md) | Версионирование данных |
 | [PROJECT-MANAGER](reference/PROJECT-MANAGER.md) | CLI управления |
 | [TROUBLESHOOTING-SELECTORS](reference/TROUBLESHOOTING-SELECTORS.md) | Диагностика селекторов |
+| [STABILITY-IMPROVEMENTS](reference/STABILITY-IMPROVEMENTS.md) | История улучшений стабильности |
 
 ### Tests
 
@@ -119,10 +120,20 @@ cd src-tauri && cargo tauri dev
 | Ключ | Описание |
 |------|----------|
 | `ai-prompts-manager-tabs` | Данные вкладок |
-| `ai-prompts-manager-settings` | Настройки |
+| `ai-prompts-manager-settings` | Настройки (тема, акцент, паттерн) |
+| `ai-prompts-manager-tab` | ID текущей вкладки |
+| `ai-prompts-manager-language` | Текущий язык |
+| `ai-prompts-manager-version` | Версия формата данных |
+| `ai-prompts-manager-app-version` | Версия приложения |
 | `workflow-{tabId}` | Позиции и связи workflow |
+| `workflowZoom` | Текущий zoom |
 | `claudeSettings` | Состояние Claude панели |
+| `claude_auto_send` | Автоотправка |
 | `active-project` | Привязка к проекту |
+| `collapsed-blocks` | Свёрнутые блоки |
+| `currentCountry` | Страна для мультигео |
+
+> **Полный список:** [frontend/UTILS.md](frontend/UTILS.md) → `STORAGE_KEYS`, [reference/GLOSSARY.md](reference/GLOSSARY.md) → `STORAGE_KEYS`
 
 ---
 

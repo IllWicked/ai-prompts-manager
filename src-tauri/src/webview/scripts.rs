@@ -181,6 +181,9 @@ pub fn get_generation_monitor_script() -> String {
             
             setInterval(checkGenerating, 300);
             checkGenerating();
+            
+            // Экспорт для принудительной проверки из Rust (обход throttle в скрытых webview)
+            window.__checkGenerating = checkGenerating;
         }})()
     "#, selectors = CLAUDE_SELECTORS_JSON, helpers = CLAUDE_HELPERS_JS)
 }

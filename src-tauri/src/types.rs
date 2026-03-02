@@ -60,3 +60,15 @@ pub struct FileData {
     /// Содержимое файла в base64
     pub data: String,
 }
+
+/// Запись в логе диагностики (технические события для отладки)
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DiagnosticEntry {
+    /// Временная метка в формате ISO 8601
+    pub timestamp: String,
+    /// Тип события (selector_broken, cdp_timeout, storage_error, send_error и т.д.)
+    pub event_type: String,
+    /// JSON-строка с деталями события
+    #[serde(default)]
+    pub details: String,
+}

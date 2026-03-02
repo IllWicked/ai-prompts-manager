@@ -2,10 +2,8 @@
  * AI Prompts Manager - Language UI
  * Функции для работы с языковым интерфейсом и переключением языков
  * 
- * @requires languages.js (LANGUAGES, LANGUAGE_COUNTRIES, getLanguageWithCountry, hasCountrySelection, getCountriesForLanguage, generateAdjectiveForms, getAllWordForms, transformWord, findLanguageByWord)
+ * @requires languages.js (LANGUAGES, LANGUAGE_COUNTRIES, getLanguageWithCountry, hasCountrySelection, getCountriesForLanguage, generateAdjectiveForms)
  * @requires config.js (STORAGE_KEYS)
- * @requires tabs.js (getTabBlocks, getTabItems)
- * @requires storage.js (getAllTabs, saveAllTabs)
  * @requires workflow-render.js (renderWorkflow)
  * @requires toast.js (showToast)
  */
@@ -26,119 +24,6 @@ function getActiveLanguageData() {
         return getLanguageWithCountry(currentLanguage, currentCountry);
     }
     return LANGUAGES[currentLanguage];
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ДЕТЕКТИРОВАНИЕ ЯЗЫКА
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Проверяет, содержит ли текст слово как отдельное (не часть другого слова)
- * Использует Unicode-aware проверку границ, т.к. \b не работает с кириллицей
- * @param {string} textLower - текст в нижнем регистре
- * @param {string} wordLower - искомое слово в нижнем регистре
- * @returns {boolean}
- */
-function includesWholeWord(textLower, wordLower) {
-    let pos = 0;
-    while (pos <= textLower.length - wordLower.length) {
-        const idx = textLower.indexOf(wordLower, pos);
-        if (idx === -1) return false;
-        
-        const before = idx > 0 ? textLower[idx - 1] : '';
-        const after = idx + wordLower.length < textLower.length ? textLower[idx + wordLower.length] : '';
-        
-        const boundaryBefore = !before || /[^\p{L}\p{N}]/u.test(before);
-        const boundaryAfter = !after || /[^\p{L}\p{N}]/u.test(after);
-        
-        if (boundaryBefore && boundaryAfter) return true;
-        pos = idx + 1;
-    }
-    return false;
-}
-
-/**
- * Определяет язык из конкретного текста
- * Ищет любую форму (любой падеж/род) слов lang и native
- * @param {string} text - текст для анализа
- * @returns {string|null} - код языка или null если не определён
- */
-function detectLanguageInText(text) {
-    const textLower = text.toLowerCase();
-    
-    // Проверяем все языки
-    for (const [langCode, langData] of Object.entries(LANGUAGES)) {
-        // Проверяем все формы lang (английский, английского, английском...)
-        const langForms = getAllWordForms(langData.lang);
-        for (const form of langForms) {
-            if (includesWholeWord(textLower, form.toLowerCase())) {
-                return langCode;
-            }
-        }
-        
-        // Проверяем все формы native (англоязычный, англоязычного...)
-        const nativeForms = getAllWordForms(langData.native);
-        for (const form of nativeForms) {
-            if (includesWholeWord(textLower, form.toLowerCase())) {
-                return langCode;
-            }
-        }
-        
-        // Проверяем название страны
-        if (langData.country && includesWholeWord(textLower, langData.country.toLowerCase())) {
-            return langCode;
-        }
-        
-        // Проверяем технические страницы (уникальные для каждого языка)
-        if (langData.privacyPolicy && langData.privacyPolicy !== 'Privacy Policy' && text.includes(langData.privacyPolicy)) {
-            return langCode;
-        }
-    }
-    
-    return null;
-}
-
-/**
- * Найти ВСЕ языки в тексте (для проверки конфликтов внутри одного блока)
- * @param {string} text - текст для анализа
- * @returns {string[]} - массив кодов языков
- */
-function detectAllLanguagesInText(text) {
-    const foundLangs = new Set();
-    const textLower = text.toLowerCase();
-    
-    for (const [langCode, langData] of Object.entries(LANGUAGES)) {
-        // Проверяем все формы lang
-        const langForms = getAllWordForms(langData.lang);
-        const hasLangForm = langForms.some(form => includesWholeWord(textLower, form.toLowerCase()));
-        
-        // Проверяем все формы native  
-        const nativeForms = getAllWordForms(langData.native);
-        const hasNativeForm = nativeForms.some(form => includesWholeWord(textLower, form.toLowerCase()));
-        
-        // Проверяем страну
-        const hasCountry = langData.country && includesWholeWord(textLower, langData.country.toLowerCase());
-        
-        if (hasLangForm || hasNativeForm || hasCountry) {
-            foundLangs.add(langCode);
-        }
-    }
-    
-    return [...foundLangs];
-}
-
-/**
- * Определяет язык из текста промптов (первый блок)
- * @returns {string} - код языка (по умолчанию 'en')
- */
-function detectLanguageFromText() {
-    // Определяем язык из первого блока
-    const blocks = getTabBlocks(currentTab);
-    if (blocks.length > 0 && blocks[0].content) {
-        const detected = detectLanguageInText(blocks[0].content);
-        return detected || 'en';
-    }
-    return 'en';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -222,7 +107,7 @@ function showLanguageFormMenu(textarea, anchorBtn) {
         closeCallback: closeMenu
     });
     
-    // Функция вставки текста
+    // Функция вставки маркера (или значения для country/locale)
     function insertValue(value) {
         if (textarea) {
             insertTextIntoTextarea(textarea, value, true);
@@ -232,7 +117,7 @@ function showLanguageFormMenu(textarea, anchorBtn) {
         closeMenu();
     }
     
-    // Функция показа подменю с падежами
+    // Функция показа подменю с падежами — вставляет МАРКЕРЫ
     function showCasesSubmenu(type, optionElement) {
         const baseWord = type === 'lang' ? langData.lang : langData.native;
         const forms = generateAdjectiveForms(baseWord);
@@ -266,6 +151,8 @@ function showLanguageFormMenu(textarea, anchorBtn) {
                 const formValue = forms[formKey];
                 if (!formValue) continue;
                 
+                const marker = `{{${type}:${formKey}}}`;
+                
                 const option = document.createElement('div');
                 option.className = 'lang-form-option';
                 option.innerHTML = `
@@ -274,7 +161,7 @@ function showLanguageFormMenu(textarea, anchorBtn) {
                 `;
                 option.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    insertValue(formValue);
+                    insertValue(marker);
                 });
                 submenuInner.appendChild(option);
             }
@@ -311,20 +198,23 @@ function showLanguageFormMenu(textarea, anchorBtn) {
                 option.classList.add('submenu-open');
                 showCasesSubmenu(type, option);
             });
-            // Клик на форму с подменю — вставляем первый падеж (именительный мужского рода)
+            // Клик на форму с подменю — вставляем маркер именительного мужского рода
             option.addEventListener('click', () => {
-                const baseWord = type === 'lang' ? langData.lang : langData.native;
-                const forms = generateAdjectiveForms(baseWord);
-                const firstForm = forms['nom.m']; // именительный мужского рода
-                if (firstForm) {
-                    insertValue(firstForm);
-                }
+                const marker = `{{${type}:nom.m}}`;
+                insertValue(marker);
             });
         } else {
             option.addEventListener('mouseenter', () => hideSubmenu());
             option.addEventListener('click', () => {
-                const value = option.dataset.value;
-                if (value) insertValue(value);
+                // country и locale — вставляем маркеры
+                if (type === 'country') {
+                    insertValue('{{country}}');
+                } else if (type === 'locale') {
+                    insertValue('{{locale}}');
+                } else {
+                    const value = option.dataset.value;
+                    if (value) insertValue(value);
+                }
             });
         }
     });
@@ -510,153 +400,43 @@ function initLanguageSelector() {
         optionElement.classList.add('submenu-open');
     }
     
-    // Функция замены языка с объектами данных
-    // Заменяет формы исходного языка на формы целевого языка
-    function replaceLanguageWithData(text, fromLangCode, toLangData) {
-        if (!fromLangCode || !toLangData) return text;
-        let result = text;
-        
-        const baseLang = LANGUAGES[fromLangCode];
-        if (!baseLang) return text;
-        
-        // Функция замены с сохранением регистра первой буквы
-        function replacePreservingCase(text, fromWord, toWord) {
-            const escaped = fromWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            return text.replace(new RegExp(escaped, 'gi'), (match) => {
-                if (match[0] === match[0].toUpperCase()) {
-                    return toWord[0].toUpperCase() + toWord.slice(1);
-                }
-                return toWord;
-            });
-        }
-        
-        // Технические страницы
-        if (baseLang.privacyPolicy && toLangData.privacyPolicy) {
-            result = result.split(baseLang.privacyPolicy).join(toLangData.privacyPolicy);
-        }
-        if (baseLang.aboutUs && toLangData.aboutUs) {
-            result = result.split(baseLang.aboutUs).join(toLangData.aboutUs);
-        }
-        if (baseLang.legalInfo && toLangData.legalInfo) {
-            result = result.split(baseLang.legalInfo).join(toLangData.legalInfo);
-        }
-        if (baseLang.cookiePolicy && toLangData.cookiePolicy) {
-            result = result.split(baseLang.cookiePolicy).join(toLangData.cookiePolicy);
-        }
-        
-        // Замена названия страны
-        if (baseLang.country && toLangData.country && baseLang.country !== toLangData.country) {
-            result = result.split(baseLang.country).join(toLangData.country);
-        }
-        
-        // Замена кода локали
-        if (baseLang.locale && toLangData.locale && baseLang.locale !== toLangData.locale) {
-            result = result.split(baseLang.locale).join(toLangData.locale);
-        }
-        
-        // Также заменяем названия стран из LANGUAGE_COUNTRIES
-        const countries = LANGUAGE_COUNTRIES[fromLangCode];
-        if (countries) {
-            for (const country of countries) {
-                if (country.name && toLangData.country && country.name !== toLangData.country) {
-                    result = result.split(country.name).join(toLangData.country);
-                }
-                // Заменяем также локали из списка стран
-                if (country.locale && toLangData.locale && country.locale !== toLangData.locale) {
-                    result = result.split(country.locale).join(toLangData.locale);
-                }
-            }
-        }
-        
-        // Замена форм lang (английский → немецкий) с автоопределением падежа
-        const fromLangForms = getAllWordForms(baseLang.lang);
-        for (const form of fromLangForms) {
-            const transformed = transformWord(form, baseLang.lang, toLangData.lang);
-            if (transformed) {
-                result = replacePreservingCase(result, form, transformed);
-            }
-        }
-        
-        // Замена форм native (англоязычный → немецкоязычный) с автоопределением падежа
-        const fromNativeForms = getAllWordForms(baseLang.native);
-        for (const form of fromNativeForms) {
-            const transformed = transformWord(form, baseLang.native, toLangData.native);
-            if (transformed) {
-                result = replacePreservingCase(result, form, transformed);
-            }
-        }
-        
-        return result;
-    }
-    
-    // Функция применения языка со страной
+    // Функция применения языка со страной (маркерная система)
+    // Маркеры в данных не меняются — меняется только их отображение
     function applyLanguageWithCountry(langCode, countryCode) {
-        const oldLangCode = currentLanguage;
         currentLanguage = langCode;
         currentCountry = countryCode;
+        window.currentCountry = countryCode;
         const newData = getActiveLanguageData();
         
         updateSelectedUI(langCode, countryCode);
         localStorage.setItem(STORAGE_KEYS.LANGUAGE, langCode);
         localStorage.setItem(STORAGE_KEYS.CURRENT_COUNTRY, countryCode || '');
         
-        // Snapshot ДО замены языка в контенте
-        UndoManager.snapshot(true);
+        // Сохраняем язык в данные текущей вкладки
+        saveLanguageToTab(langCode, countryCode);
         
-        const items = getTabItems(currentTab);
-        let changed = false;
-        items.forEach(item => {
-            if (item.type === 'block' && item.content) {
-                const newContent = replaceLanguageWithData(item.content, oldLangCode, newData);
-                if (newContent !== item.content) {
-                    item.content = newContent;
-                    changed = true;
-                }
-            }
-        });
-        
-        if (changed) {
-            const allTabs = getAllTabs();
-            allTabs[currentTab].items = items;
-            saveAllTabs(allTabs);
-            renderWorkflow();
-        }
+        // Перерендерить — маркеры раскроются в новые значения
+        renderWorkflow();
         
         showLanguageToast(newData.lang, newData.country);
     }
     
     // Функция применения языка (для языков без мультигео)
     function applyLanguage(langCode) {
-        const oldLangCode = currentLanguage;
         currentLanguage = langCode;
         currentCountry = hasCountrySelection(langCode) ? getCountriesForLanguage(langCode)[0].code : null;
+        window.currentCountry = currentCountry;
         const newData = getActiveLanguageData();
         
         updateSelectedUI(langCode, currentCountry);
         localStorage.setItem(STORAGE_KEYS.LANGUAGE, langCode);
         localStorage.setItem(STORAGE_KEYS.CURRENT_COUNTRY, currentCountry || '');
         
-        // Snapshot ДО замены языка в контенте
-        UndoManager.snapshot(true);
+        // Сохраняем язык в данные текущей вкладки
+        saveLanguageToTab(langCode, currentCountry);
         
-        const items = getTabItems(currentTab);
-        let changed = false;
-        items.forEach(item => {
-            if (item.type === 'block' && item.content) {
-                const newContent = replaceLanguageWithData(item.content, oldLangCode, newData);
-                if (newContent !== item.content) {
-                    item.content = newContent;
-                    changed = true;
-                }
-            }
-        });
-        
-        if (changed) {
-            const allTabs = getAllTabs();
-            allTabs[currentTab].items = items;
-            saveAllTabs(allTabs);
-            renderWorkflow();
-        }
+        // Перерендерить — маркеры раскроются в новые значения
+        renderWorkflow();
         
         showLanguageToast(newData.lang, currentCountry ? newData.country : null);
     }
@@ -668,13 +448,14 @@ function initLanguageSelector() {
     if (savedLang && LANGUAGES[savedLang]) {
         currentLanguage = savedLang;
         currentCountry = savedCountry || (hasCountrySelection(savedLang) ? getCountriesForLanguage(savedLang)[0].code : null);
+        window.currentCountry = currentCountry;
         updateSelectedUI(savedLang, currentCountry);
     } else {
-        const textLang = detectLanguageFromText();
-        currentLanguage = textLang;
-        currentCountry = hasCountrySelection(textLang) ? getCountriesForLanguage(textLang)[0].code : null;
-        updateSelectedUI(textLang, currentCountry);
-        localStorage.setItem(STORAGE_KEYS.LANGUAGE, textLang);
+        currentLanguage = 'en';
+        currentCountry = hasCountrySelection('en') ? getCountriesForLanguage('en')[0].code : null;
+        window.currentCountry = currentCountry;
+        updateSelectedUI('en', currentCountry);
+        localStorage.setItem(STORAGE_KEYS.LANGUAGE, 'en');
         localStorage.setItem(STORAGE_KEYS.CURRENT_COUNTRY, currentCountry || '');
     }
     
@@ -733,100 +514,51 @@ function initLanguageSelector() {
         }
     });
     
-    // Функция определения и обновления языка из текущей вкладки
+    // Сохранить язык в данные текущей вкладки
+    function saveLanguageToTab(langCode, countryCode) {
+        try {
+            const tabs = getAllTabs();
+            if (tabs[currentTab]) {
+                tabs[currentTab].language = langCode;
+                tabs[currentTab].country = countryCode || null;
+                saveAllTabs(tabs);
+            }
+        } catch (e) {
+            // Ignore
+        }
+    }
+    
+    // Загрузить язык из данных вкладки и обновить селектор
     function detectAndUpdateLanguageFromTab() {
-        const blocks = getTabBlocks(currentTab);
-        
-        if (blocks.length === 0) {
-            currentLanguage = 'en';
-            currentCountry = hasCountrySelection('en') ? getCountriesForLanguage('en')[0].code : null;
-            updateSelectedUI('en', currentCountry);
-            localStorage.setItem(STORAGE_KEYS.LANGUAGE, 'en');
-            localStorage.setItem(STORAGE_KEYS.CURRENT_COUNTRY, currentCountry || '');
-            return;
-        }
-        
-        // Собираем все уникальные формы языков (используя новую систему)
-        const allLanguageForms = new Set();
-        for (const [langCode, langData] of Object.entries(LANGUAGES)) {
-            // Добавляем все формы lang
-            getAllWordForms(langData.lang).forEach(f => allLanguageForms.add(f.toLowerCase()));
-            // Добавляем все формы native
-            getAllWordForms(langData.native).forEach(f => allLanguageForms.add(f.toLowerCase()));
-            // Добавляем страну
-            if (langData.country) allLanguageForms.add(langData.country.toLowerCase());
-        }
-        // Добавляем названия стран из LANGUAGE_COUNTRIES
-        for (const countries of Object.values(LANGUAGE_COUNTRIES)) {
-            for (const country of countries) {
-                if (country.name) allLanguageForms.add(country.name.toLowerCase());
+        try {
+            const tabs = getAllTabs();
+            const tab = tabs[currentTab];
+            if (tab && tab.language && LANGUAGES[tab.language]) {
+                const langCode = tab.language;
+                const countryCode = tab.country || (hasCountrySelection(langCode) ? getCountriesForLanguage(langCode)[0].code : null);
+                
+                // Обновляем только если язык отличается
+                if (langCode !== currentLanguage || countryCode !== currentCountry) {
+                    currentLanguage = langCode;
+                    currentCountry = countryCode;
+                    localStorage.setItem(STORAGE_KEYS.LANGUAGE, langCode);
+                    localStorage.setItem(STORAGE_KEYS.CURRENT_COUNTRY, countryCode || '');
+                    
+                    // Обновляем глобальные переменные
+                    window.currentCountry = currentCountry;
+                    
+                    updateSelectedUI(langCode, countryCode);
+                    // Перерендерить маркеры с новым языком
+                    renderWorkflow();
+                }
+                return;
             }
+        } catch (e) {
+            // Ignore
         }
         
-        const blockLanguages = [];
-        const problematicBlocks = [];
-        
-        for (const block of blocks) {
-            if (!block.content) continue;
-            
-            const contentLower = block.content.toLowerCase();
-            const hasLanguageForms = [...allLanguageForms].some(form => 
-                includesWholeWord(contentLower, form)
-            );
-            
-            if (!hasLanguageForms) continue;
-            
-            const allLangsInBlock = detectAllLanguagesInText(block.content);
-            if (allLangsInBlock.length > 1) {
-                problematicBlocks.push(block.title || `Блок ${block.number}`);
-                continue;
-            }
-            
-            const lang = detectLanguageInText(block.content);
-            if (lang) {
-                blockLanguages.push({ block, lang });
-            } else {
-                problematicBlocks.push(block.title || `Блок ${block.number}`);
-            }
-        }
-        
-        const uniqueLangs = [...new Set(blockLanguages.map(b => b.lang))];
-        
-        if (uniqueLangs.length === 0 && problematicBlocks.length === 0) {
-            currentLanguage = 'en';
-            currentCountry = hasCountrySelection('en') ? getCountriesForLanguage('en')[0].code : null;
-            updateSelectedUI('en', currentCountry);
-            localStorage.setItem(STORAGE_KEYS.LANGUAGE, 'en');
-            localStorage.setItem(STORAGE_KEYS.CURRENT_COUNTRY, currentCountry || '');
-            return;
-        }
-        
-        if (uniqueLangs.length === 0 && problematicBlocks.length > 0) {
-            showToast(`Ошибка языка в: ${problematicBlocks.join(', ')}`, 4000);
-            currentLanguage = 'en';
-            currentCountry = hasCountrySelection('en') ? getCountriesForLanguage('en')[0].code : null;
-            updateSelectedUI('en', currentCountry);
-            return;
-        }
-        
-        if (uniqueLangs.length > 1) {
-            const mainLang = uniqueLangs[0];
-            const conflictBlocks = blockLanguages
-                .filter(b => b.lang !== mainLang)
-                .map(b => b.block.title || `Блок ${b.block.number}`);
-            showToast(`Конфликт языков в: ${conflictBlocks.join(', ')}`, 4000);
-        }
-        
-        if (problematicBlocks.length > 0) {
-            showToast(`Ошибка языка в: ${problematicBlocks.join(', ')}`, 4000);
-        }
-        
-        const detectedLang = uniqueLangs[0];
-        currentLanguage = detectedLang;
-        currentCountry = hasCountrySelection(detectedLang) ? getCountriesForLanguage(detectedLang)[0].code : null;
-        updateSelectedUI(detectedLang, currentCountry);
-        localStorage.setItem(STORAGE_KEYS.LANGUAGE, detectedLang);
-        localStorage.setItem(STORAGE_KEYS.CURRENT_COUNTRY, currentCountry || '');
+        // Fallback: просто синхронизируем UI
+        updateSelectedUI(currentLanguage, currentCountry);
     }
     
     window.detectAndUpdateLanguageFromTab = detectAndUpdateLanguageFromTab;
@@ -838,9 +570,6 @@ function initLanguageSelector() {
 
 window.currentCountry = currentCountry;
 window.getActiveLanguageData = getActiveLanguageData;
-window.detectLanguageInText = detectLanguageInText;
-window.detectAllLanguagesInText = detectAllLanguagesInText;
-window.detectLanguageFromText = detectLanguageFromText;
 window.insertLanguageFormAtCursor = insertLanguageFormAtCursor;
 window.showLanguageFormMenu = showLanguageFormMenu;
 window.showLanguageToast = showLanguageToast;

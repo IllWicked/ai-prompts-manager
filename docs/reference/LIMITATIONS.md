@@ -256,7 +256,7 @@ function hideSidebar() {
 
 **Проблема:** Новые WebView создаются под существующими.
 
-**Решение:** `recreate_toolbar()` пересоздаёт toolbar и downloads WebView поверх Claude.
+**Решение:** `raise_toolbar_zorder()` поднимает z-order toolbar и downloads через Win32 `SetWindowPos(HWND_TOP)` без пересоздания.
 
 ---
 

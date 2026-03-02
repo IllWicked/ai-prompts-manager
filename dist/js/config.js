@@ -26,6 +26,9 @@ const STORAGE_KEYS = {
     CLAUDE_AUTO_SEND: 'claude_auto_send',
     ACTIVE_PROJECT: 'active-project', // Привязка к проекту Claude
     
+    // Кастомизация
+    CUSTOM_CANVAS_IMAGE: 'custom-canvas-image', // base64 пользовательского фона
+    
     // Языки
     CURRENT_COUNTRY: 'currentCountry', // Выбранная страна для мультигео языков
     
@@ -65,11 +68,35 @@ const SVG_ICONS = {
     editAlt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>',
     script: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>',
     automation: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
-    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>'
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>',
+    footnote: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>'
 };
 
 // Версия данных (увеличить при изменении структуры)
 const CURRENT_DATA_VERSION = 4;
+
+// Пресеты акцентных цветов
+const ACCENT_PRESETS = [
+    { name: 'Orange', color: '#ec7441' },
+    { name: 'Ocean Blue',    color: '#4a90d9' },
+    { name: 'Emerald',       color: '#10b981' },
+    { name: 'Royal Purple',  color: '#8b5cf6' },
+    { name: 'Rose',          color: '#f43f5e' },
+    { name: 'Amber',         color: '#f59e0b' },
+    { name: 'Teal',          color: '#14b8a6' },
+    { name: 'Slate',         color: '#64748b' }
+];
+
+// Пресеты паттернов фона canvas
+const PATTERN_PRESETS = [
+    { id: 'none',      name: 'Нет' },
+    { id: 'grid',      name: 'Сетка' },
+    { id: 'diagonal',  name: 'Диагональ' },
+    { id: 'waves',     name: 'Волны' },
+    { id: 'squares',   name: 'Квадраты' },
+    { id: 'grid3d',    name: 'Матрица' },
+    { id: 'custom',    name: 'Своё' }
+];
 
 // Константы таймаутов (мс)
 const TIMEOUTS = {
@@ -79,7 +106,6 @@ const TIMEOUTS = {
     INPUT_FOCUS: 100,      // Фокус на input
     DEBOUNCE_SAVE: 2000,   // Debounce автосохранения
     AUTOSAVE: 30000,       // Периодическое автосохранение
-    MENU_SCROLL: 10,       // Обновление скроллбара меню
     GENERATION_CHECK: 500, // Проверка статуса генерации
     URL_SAVE: 2000         // Сохранение URL табов
 };

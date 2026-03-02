@@ -117,15 +117,38 @@ removeBlockInstruction(1);
 
 ---
 
-## undo.js — UndoManager v2
+## undo.js — UndoManager v3
 
-Command-based per-tab система истории изменений.
+Incremental snapshots + input grouping + hash comparison. Per-tab система истории.
 
 **Принцип:** snapshot создаётся только по явной команде из точки действия пользователя (ДО изменения). Save-функции (`saveAllTabs`, `saveWorkflowState`) не триггерят undo.
 
 **Константы:**
 - `MAX_HISTORY_SIZE = 50` — максимум записей в истории
 - `SNAPSHOT_DEBOUNCE_MS = 1000` — debounce для набора текста
+- `INPUT_GROUP_MS = 2000` — пауза для группировки быстрых правок
+
+### Внутренние функции
+
+| Функция | Описание |
+|---------|----------|
+| `djb2Hash(str)` | Быстрое хеширование строки |
+| `hashTabData(tabData)` | Хеш данных вкладки (content + title блоков) |
+| `hashWorkflow()` | Хеш workflow состояния (positions, connections, sizes) |
+| `captureFullState()` | Захват полного состояния (lazy workflow — только в workflow mode) |
+| `hasStateChanged(lastSnapshot)` | Проверка изменений через hash comparison |
+| `applyState(state)` | Применение состояния при undo/redo (crash-safe через `finally`) |
+
+### InputGroup
+
+Объединяет быстрые правки (пауза < 2 сек) в одну операцию undo:
+
+| Метод | Описание |
+|-------|----------|
+| `InputGroup.classify(force)` | Возвращает стратегию: `new`, `extend` (skip), `close_and_new` |
+| `InputGroup.start()` | Начать новую группу |
+| `InputGroup.touch()` | Обновить timestamp |
+| `InputGroup.close()` | Завершить группу |
 
 ### UndoManager API
 

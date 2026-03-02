@@ -28,16 +28,20 @@
 
 ---
 
-## claude-api.js (33 функции)
+## claude-api.js (37 функций)
 
-### Core (7 функций)
+### Core (11 функций)
 
 | Функция | Описание |
 |---------|----------|
+| `cdpEval(tab, script, timeout)` | CDP вызов с результатом (низкоуровневый) |
+| `cdpPipeline(tab, steps)` | Последовательное выполнение CDP шагов |
 | `evalInClaude(tab, script)` | Выполнить JS в Claude WebView |
 | `navigateClaude(tab, url)` | Навигация с ожиданием загрузки |
 | `sendNodeToClaude(index, chatTab)` | Отправить блок в Claude |
 | `sendTextToClaude(text, tab)` | Отправить текст |
+| `abortSendToClaude()` | Прервать текущую отправку |
+| `checkAborted()` | Проверка флага прерывания (throws при abort) |
 | `toggleClaude()` | Показать/скрыть панель |
 | `switchClaudeTab(tab)` | Переключить таб (навигирует на claude.ai если about:blank) |
 | `newChatInTab(tab, clearName)` | Создать новый чат в табе |

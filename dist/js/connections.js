@@ -254,7 +254,6 @@ function renderConnections() {
         // Все соединения теперь анимированные пунктирные
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('d', d);
-        path.setAttribute('stroke', '#ec7441');
         path.setAttribute('stroke-width', isEditMode ? '3' : '4');
         path.setAttribute('fill', 'none');
         path.setAttribute('stroke-linecap', 'round');
@@ -441,7 +440,7 @@ function setupPortEvents(port) {
             return;
         }
         tempLineEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        tempLineEl.setAttribute('stroke', '#ec7441');
+        tempLineEl.classList.add('workflow-connection-path');
         tempLineEl.setAttribute('stroke-width', '4');
         tempLineEl.setAttribute('stroke-dasharray', '8,8');
         tempLineEl.setAttribute('fill', 'none');

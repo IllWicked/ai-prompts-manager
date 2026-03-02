@@ -2,7 +2,7 @@
 
 [← Назад к Frontend](../02-FRONTEND.md)
 
-Каталог основных функций UI, определённых в модулях `dist/js/*.js` (~94 UI-функций из общих ~289 функций в 35 JS модулях).
+Каталог основных функций UI, определённых в модулях `dist/js/*.js` (~102 UI-функций из общих ~330 функций в 35 JS модулях).
 
 > **Полный API reference:** [INDEX-HTML-API.md](INDEX-HTML-API.md) (функции по модулям)
 
@@ -38,28 +38,25 @@
 
 ---
 
-## Language (10+ функций)
+## Language (7 функций)
 
 | Функция | Описание |
 |---------|----------|
-| `detectLanguageInText(text)` | Найти язык по любой форме |
-| `detectAllLanguagesInText(text)` | Найти все языки |
-| `detectLanguageFromText()` | Из контента блоков |
-| `detectAndUpdateLanguageFromTab()` | При переключении вкладки |
 | `getActiveLanguageData()` | Данные языка с учётом страны |
 | `insertLanguageFormAtCursor(textarea)` | Вставить форму (для модалки) |
 | `showLanguageFormMenu(textarea, anchorBtn)` | Унифицированное меню форм |
 | `showLanguageToast(langName, countryName)` | Toast при смене |
 | `hasCountrySelection(langCode)` | Есть ли выбор стран |
 | `getCountriesForLanguage(langCode)` | Список стран для языка |
+| `detectAndUpdateLanguageFromTab()` | Синхронизация UI при переключении вкладки |
 
-**Функции склонения:** `generateAdjectiveForms()`, `getAllWordForms()`, `transformWord()`, `detectWordForm()`
+**Функции склонения:** `generateAdjectiveForms()`
 
 **Глобальные переменные:** `currentLanguage`, `currentCountry`
 
 ---
 
-## Tab Selector (11 функций)
+## Tab Selector (10 функций)
 
 | Функция | Описание |
 |---------|----------|
@@ -100,7 +97,7 @@
 
 ---
 
-## Block UI (6 функций)
+## Block UI (7 функций)
 
 | Функция | Описание |
 |---------|----------|
@@ -110,10 +107,11 @@
 | `updateBlockScriptBadges(blockId)` | Обновить бейджи скриптов |
 | `toggleBlockAutomation(blockId, flag)` | Переключить флаг |
 | `updateBlockAutomationBadges(blockId)` | Обновить бейджи автоматизации |
+| `syncItemMetadata(tabId, blockId)` | Синхронизация метаданных блока |
 
 ---
 
-## Persistence (7 функций)
+## Persistence (9 функций)
 
 | Функция | Описание |
 |---------|----------|
@@ -121,18 +119,11 @@
 | `getCurrentStorageKey()` | Ключ хранения |
 | `saveToLocalStorage(key, content)` | Сохранение (debounced) |
 | `loadFromLocalStorage()` | Загрузка |
-| `checkAppVersionAndReset()` | Проверка версии |
+| `performReset()` | Выполнение сброса данных (сохраняет UI-настройки) |
+| `checkAppVersionAndReset()` | Проверка версии и авто-сброс |
+| `confirmReset()` | Ручной сброс с подтверждением |
 | `initializePersistence()` | Инициализация |
 | `loadPrompts(preserveScroll)` | Загрузка и рендеринг |
-
----
-
-## Scrollbar (2 функции)
-
-| Функция | Описание |
-|---------|----------|
-| `initCustomScrollbar(scrollable, scrollbar)` | Инициализация |
-| `updateThumb()` | Обновление ползунка |
 
 ---
 
@@ -172,7 +163,7 @@
 
 ---
 
-## Edit Mode (4 функции)
+## Edit Mode (3 функции)
 
 | Функция | Описание |
 |---------|----------|
@@ -214,6 +205,21 @@
 | `syncWindowBackground()` | Синхронизация с Tauri |
 | `initThemeListener()` | Слушатель системной |
 | `toggleAutoUpdate(enabled)` | Переключить |
+
+---
+
+## Customization (8 функций)
+
+| Функция | Описание |
+|---------|----------|
+| `setAccentColor(hex)` | Установить акцентный цвет |
+| `applyAccentColor(hex)` | Применить к CSS-переменным |
+| `updateAccentUI(hex)` | Обновить UI пресетов |
+| `setCanvasPattern(patternId)` | Установить паттерн фона |
+| `applyCanvasPattern(patternId)` | Применить паттерн к DOM |
+| `updatePatternUI(patternId)` | Обновить UI паттернов |
+| `uploadCanvasImage()` | Загрузить пользовательское изображение |
+| `initCustomization()` | Инициализация кастомизации |
 
 ---
 

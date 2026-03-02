@@ -20,17 +20,17 @@
 
 | Категория | Модули | Функций |
 |-----------|--------|---------|
-| Ядро | config.js, app-state.js, utils.js, toast.js, storage.js, modals.js, dropdown.js | ~35 |
-| Языки/скрипты | languages.js, language-ui.js, embedded-scripts.js, embedded-scripts-spellcheck.js | ~25 |
-| Вкладки/блоки | tabs.js, tab-selector.js, blocks.js, block-ui.js, undo.js | ~40 |
-| Данные | persistence.js, export-import.js, remote-prompts.js | ~20 |
-| UI | settings.js, updates.js, context-menu.js, dynamic-input.js, edit-helpers.js, attachments.js | ~50 |
-| Workflow | workflow-state.js, workflow-grid.js, workflow-zoom.js, workflow-render.js, workflow-interactions.js, connections.js | ~40 |
-| Claude | claude-state.js, claude-ui.js, claude-api.js | ~45 (5+5+35) |
+| Ядро | config.js, app-state.js, utils.js, toast.js, storage.js, modals.js, dropdown.js | ~46 |
+| Языки/скрипты | languages.js, language-ui.js, embedded-scripts.js, embedded-scripts-spellcheck.js | ~17 |
+| Вкладки/блоки | tabs.js, tab-selector.js, blocks.js, block-ui.js, undo.js | ~42 |
+| Данные | persistence.js, export-import.js, remote-prompts.js | ~32 |
+| UI | settings.js, updates.js, context-menu.js, dynamic-input.js, edit-helpers.js, attachments.js | ~65 |
+| Workflow | workflow-state.js, workflow-grid.js, workflow-zoom.js, workflow-render.js, workflow-interactions.js, connections.js | ~51 |
+| Claude | claude-state.js, claude-ui.js, claude-api.js | ~48 (5+6+37) |
 | Инициализация | init.js | ~30 |
-| **Всего** | **35 файлов** | **~289** |
+| **Всего** | **35 файлов** | **~340** |
 
-> **Примечание:** Число ~289 включает все функции (публичные API + внутренние helpers). Публичных API функций около 94 — см. [INDEX-HTML-API.md](frontend/INDEX-HTML-API.md).
+> **Примечание:** Число ~340 включает все функции (публичные API + внутренние helpers). Публичных API функций около 102 — см. [INDEX-HTML-API.md](frontend/INDEX-HTML-API.md).
 
 ## Быстрый доступ
 

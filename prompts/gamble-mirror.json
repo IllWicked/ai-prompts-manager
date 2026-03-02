@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "exportDate": "2026-03-02T10:41:54.962Z",
+  "exportDate": "2026-03-02T12:20:04.843Z",
   "tab": {
     "id": "gamble-mirror",
     "name": "GAMBLE-MIRROR",
-    "version": "1.0.13",
+    "version": "1.0.14",
     "items": [
       {
         "id": "item_1772279464236_7uv5elwuu",
@@ -194,7 +194,7 @@
   "workflow": {
     "positions": {
       "item_1772279464236_7uv5elwuu": {
-        "x": 2000,
+        "x": 2080,
         "y": 2280
       },
       "item_1772279464236_rjek90zyb": {
@@ -313,7 +313,7 @@
     "notes": [
       {
         "id": "note_workflow_guide",
-        "x": 2840,
+        "x": 2920,
         "y": 2280,
         "text": "КАК РАБОТАТЬ С ПАЙПЛАЙНОМ:\n\n1. Из таска берём: название казино, домен, официальные сайты, ключи и LSI-слова. С официального сайта делаем скриншот для дизайна.\n\n2. В блоке «Подготовка» кликаем на инструкцию и заполняем ВСЕ поля — название, домен, все ключи и все LSI-слова. Копируем и вставляем.\n\n3. Генерим контент-план. Дальше идём параллельно:\n— Чат 1: Контент → Фактчек → Спеллчек.\n— Чат 2: Дизайн (НЕ ЗАБЫВАЕМ СКРИНШОТ).\n\n4. Полученные файлы (content-plan.md, content.html, design.html) кидаем в «Слияние».\n\n5. «Аудит» проверяет index.html автоматическим скриптом + анализ JS-компонентов. Все проблемы исправляет.\n\n6. В «Финализации» указываем оф. сайты и стрим, генерируем тех. страницы, IMAGE_REQUIREMENTS.txt и упаковываем в архив.\n\nGEO-LSI:\nЕсли в таске кроме обычных LSI есть ещё набор geo-ориентированных LSI-фраз (например, под AU) — прогоняем весь пайплайн повторно с этими фразами вместо обычных LSI. Результат кладётся в подпапку с кодом GEO внутри основного архива. Например: основной сайт в корне, а AU-версия в подпапке AU/. Это делается через промпт Финализация, но можно и вручную.\nТо есть должно получиться две версии сайта под один домен, но под разные наборы LSI-фраз.",
         "width": 720,
@@ -329,10 +329,10 @@
       },
       {
         "id": "note_1772447636687",
-        "text": "Официальные сайты и бренды:\n\nWinSpirit     https://winspirit.com/en/\nGoldenbet     https://goldenbet.com/eng/\nWinShark     https://7winshark77.com/en-au\nFreshBet     https://freshbet.com/\nMonro     https://monro.casino/\nJackpo Jill     https://www.jackpotjill.shop/en/\nMafia Casino     https://mafiacasino.com/au/\nStellar Spins     https://www.stellarspins.ai/en\nRickycasino     https://www.rickycasino.com/en-AU\n\nИспользовать для скриншотов и указывать для анализа.",
+        "text": "Использовать для скриншотов и указывать для анализа.\n\nОфициальные сайты и бренды:\n\nWinSpirit     https://winspirit.com/en/\nGoldenbet     https://goldenbet.com/eng/\nWinShark     https://7winshark77.com/en-au\nFreshBet     https://freshbet.com/\nMonro     https://monro.casino/\nJackpo Jill     https://www.jackpotjill.shop/en/\nMafia Casino     https://mafiacasino.com/au/\nStellar Spins     https://www.stellarspins.ai/en\nRickycasino     https://www.rickycasino.com/en-AU\nWolf Winner     https://www.wolfwinner.fun/en\nWild Fortune     https://www.wildfortune.io/en\nWild Tokyo     https://wildtokyo.com/en\nLevelUp Casino     https://levelupcasino.com/\nFairGo Casino     https://www.fairgocasino.com/",
         "x": 1440,
         "y": 2280,
-        "width": 520,
+        "width": 560,
         "height": 520
       }
     ]

@@ -1,10 +1,5 @@
 {
   "tabs": {
-    "bet-linkbuilding": {
-      "name": "BET-LINKBUILDING",
-      "version": "1.0.5",
-      "order": 1
-    },
     "bet-pillar-clkeys": {
       "name": "BET-PILLAR-CLKEYS",
       "version": "1.0.9",

@@ -12,8 +12,8 @@
     },
     "gamble-mirror": {
       "name": "GAMBLE-MIRROR",
-      "version": "1.0.12",
-      "order": 4
+      "version": "1.0.13",
+      "order": 5
     },
     "bet-pillar-main": {
       "name": "BET-PILLAR-MAIN",
@@ -23,7 +23,7 @@
     "gamble-pillar-main": {
       "name": "GAMBLE-PILLAR-MAIN",
       "version": "1.0.5",
-      "order": 5
+      "order": 4
     }
   },
   "release_notes": "ЧТО НОВОГО:",

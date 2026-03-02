@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "exportDate": "2026-03-02T09:00:02.374Z",
+  "exportDate": "2026-03-02T10:38:35.298Z",
   "tab": {
     "id": "gamble-mirror",
     "name": "GAMBLE-MIRROR",
-    "version": "1.0.11",
+    "version": "1.0.12",
     "items": [
       {
         "id": "item_1772279464236_7uv5elwuu",
@@ -189,15 +189,12 @@
         "collapsed": false,
         "hasAttachments": true
       }
-    ],
-    "userModified": true,
-    "language": "en",
-    "country": "us"
+    ]
   },
   "workflow": {
     "positions": {
       "item_1772279464236_7uv5elwuu": {
-        "x": 1880,
+        "x": 2000,
         "y": 2280
       },
       "item_1772279464236_rjek90zyb": {
@@ -231,7 +228,7 @@
     },
     "sizes": {
       "item_1772279464236_7uv5elwuu": {
-        "width": 880,
+        "width": 760,
         "height": 520
       },
       "item_1772279464236_rjek90zyb": {
@@ -329,6 +326,14 @@
         "y": 4160,
         "width": 720,
         "height": 280
+      },
+      {
+        "id": "note_1772447636687",
+        "text": "Официальные сайты и бренды:\n\nWinSpirit     https://winspirit.com/en/\nGoldenbet     https://goldenbet.com/eng/\nWinShark     https://7winshark77.com/en-au\nFreshBet     https://freshbet.com/\nMonro     https://monro.casino/\nJackpo Jill     https://www.jackpotjill.shop/en/\nMafia Casino     https://mafiacasino.com/au/\nStellar Spins     https://www.stellarspins.ai/en\nRickycasino     https://www.rickycasino.com/en-AU\n\nИспользовать для скриншотов и указывать для анализа.",
+        "x": 1440,
+        "y": 2280,
+        "width": 520,
+        "height": 520
       }
     ]
   }

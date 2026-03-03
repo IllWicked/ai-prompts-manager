@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "exportDate": "2026-03-02T12:20:04.843Z",
+  "exportDate": "2026-03-03T07:20:24.953Z",
   "tab": {
     "id": "gamble-mirror",
     "name": "GAMBLE-MIRROR",
-    "version": "1.0.14",
+    "version": "1.0.15",
     "items": [
       {
         "id": "item_1772279464236_7uv5elwuu",
@@ -174,22 +174,22 @@
             {
               "label": "Стрим",
               "placeholder": "0",
-              "prefix": "Текущий стрим:",
+              "prefix": "текущий стрим:",
               "optional": false
             },
             {
               "label": "GEO-код",
               "placeholder": "XX",
               "prefix": "GEO-код:",
-              "optional": true,
-              "savedContent": "\nGEO-код: XX"
+              "optional": true
             }
           ]
         },
         "collapsed": false,
         "hasAttachments": true
       }
-    ]
+    ],
+    "userModified": true
   },
   "workflow": {
     "positions": {

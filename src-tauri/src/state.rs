@@ -29,6 +29,16 @@ pub static UPLOAD_COUNTERS: [AtomicU32; 3] = [
     AtomicU32::new(0),
 ];
 
+/// Статус генерации по табам Claude [tab1, tab2, tab3]
+/// Обновляется COM-событием DocumentTitleChanged (Windows):
+/// JS fetch interceptor ставит маркер (\u200B) в document.title при начале/конце генерации,
+/// COM handler читает title и обновляет AtomicBool — без eval, без sleep.
+pub static GENERATING_STATE: [AtomicBool; 3] = [
+    AtomicBool::new(false),
+    AtomicBool::new(false),
+    AtomicBool::new(false),
+];
+
 /// Мьютекс для защиты от race condition при создании webview
 /// Используется при быстром переключении табов или параллельных вызовах
 pub static WEBVIEW_CREATION_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));

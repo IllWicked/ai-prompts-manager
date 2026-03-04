@@ -62,8 +62,8 @@ pub fn get_claude_init_script(tab: u8) -> String {
         // Загружаем общие функции
         {helpers}
         
-        // СРАЗУ устанавливаем интерсептор загрузки файлов (без задержки!)
-        setupUploadInterceptor();
+        // СРАЗУ устанавливаем fetch-интерсептор (загрузки + генерация)
+        setupFetchInterceptor();
         
         // Ждём готовности DOM
         function onReady(fn) {{
@@ -75,44 +75,9 @@ pub fn get_claude_init_script(tab: u8) -> String {
         }}
         
         onReady(function() {{
-            // Запускаем сразу без задержки
-            initClaudeWithMonitor();
-        }});
-        
-        function initClaudeWithMonitor() {{
-            let lastState = null;
-            
-            // Мониторинг генерации - используем централизованные селекторы
-            function checkGenerating() {{
-                const SEL = window.__SEL__;
-                let stopBtn = null;
-                
-                // Поиск по массиву селекторов generation.stopButton
-                const stopSelectors = SEL.generation.stopButton;
-                for (const sel of stopSelectors) {{
-                    stopBtn = document.querySelector(sel);
-                    if (stopBtn) break;
-                }}
-                
-                const streamingEl = document.querySelector(SEL.generation.streamingIndicator);
-                const thinkingEl = document.querySelector(SEL.generation.thinkingIndicator);
-                const isGenerating = !!(stopBtn || streamingEl || thinkingEl);
-                
-                if (isGenerating !== lastState) {{
-                    lastState = isGenerating;
-                    const currentUrl = new URL(window.location.href);
-                    currentUrl.hash = isGenerating ? "generating" : "";
-                    history.replaceState(null, "", currentUrl.toString());
-                }}
-            }}
-            
             // Инициализация UI
             initClaudeUI();
-            
-            // Мониторинг генерации
-            setInterval(checkGenerating, 300);
-            checkGenerating();
-        }}
+        }});
     }})();
     "##, tab = tab, selectors = CLAUDE_SELECTORS_JSON, helpers = CLAUDE_HELPERS_JS)
 }
@@ -130,60 +95,16 @@ pub fn get_claude_init_script(tab: u8) -> String {
 pub fn get_generation_monitor_script() -> String {
     format!(r#"
         (function() {{
-            if (window.__generationMonitorActive) return;
-            window.__generationMonitorActive = true;
+            if (window.__fetchInterceptorInstalled) return;
             
-            // Селекторы доступны глобально (из init script)
-            // Если нет - загружаем
             if (!window.__SEL__) {{
                 window.__SEL__ = {selectors};
             }}
             
-            // Загружаем общие функции
             {helpers}
             
-            let lastState = null;
-            
-            // Инициализация UI
+            setupFetchInterceptor();
             initClaudeUI();
-            
-            // Мониторинг генерации - используем централизованные селекторы
-            function checkGenerating() {{
-                const SEL = window.__SEL__;
-                let stopBtn = null;
-                
-                // Поиск по массиву селекторов generation.stopButton
-                const stopSelectors = SEL?.generation?.stopButton || [];
-                for (const sel of stopSelectors) {{
-                    stopBtn = document.querySelector(sel);
-                    if (stopBtn) break;
-                }}
-                
-                const streamingEl = SEL?.generation?.streamingIndicator ? 
-                    document.querySelector(SEL.generation.streamingIndicator) : null;
-                const thinkingEl = SEL?.generation?.thinkingIndicator ? 
-                    document.querySelector(SEL.generation.thinkingIndicator) : null;
-                
-                const isGenerating = !!(stopBtn || streamingEl || thinkingEl);
-                
-                if (isGenerating !== lastState) {{
-                    lastState = isGenerating;
-                    
-                    const currentUrl = new URL(window.location.href);
-                    if (isGenerating) {{
-                        currentUrl.hash = 'generating';
-                    }} else {{
-                        currentUrl.hash = '';
-                    }}
-                    history.replaceState(null, '', currentUrl.toString());
-                }}
-            }}
-            
-            setInterval(checkGenerating, 300);
-            checkGenerating();
-            
-            // Экспорт для принудительной проверки из Rust (обход throttle в скрытых webview)
-            window.__checkGenerating = checkGenerating;
         }})()
     "#, selectors = CLAUDE_SELECTORS_JSON, helpers = CLAUDE_HELPERS_JS)
 }

@@ -3266,6 +3266,9 @@ header .flex {
     overflow: auto;
     white-space: pre-wrap;
     word-break: break-word;
+    -webkit-user-select: text !important;
+    user-select: text !important;
+    cursor: text;
 }
 
 /* Кнопка удаления — в handle, скрыта, показывается при hover */

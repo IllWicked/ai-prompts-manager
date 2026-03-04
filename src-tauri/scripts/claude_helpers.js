@@ -330,32 +330,118 @@ function truncateChatTitle() {
 }
 
 /**
- * Устанавливает перехватчик fetch для отслеживания загрузки файлов
- * Увеличивает window.__uploadedFilesCount при успешной загрузке
- * Также инкрементирует Rust-счётчик через Tauri команду (если доступна)
+ * Перехватчик fetch: отслеживает загрузку файлов И генерацию ответов Claude.
+ * 
+ * Генерация: при POST на /completion ставит маркер \u200B в document.title.
+ * Rust читает title через COM-событие DocumentTitleChanged — без eval/sleep.
+ * Маркер снимается когда SSE-стрим закрывается (ReadableStream done/cancel/error).
+ * 
+ * Загрузки: инкрементирует счётчик при успешном upload-file.
  */
-function setupUploadInterceptor() {
-    if (window.__uploadInterceptorInstalled) return;
+function setupFetchInterceptor() {
+    if (window.__fetchInterceptorInstalled) return;
+    window.__fetchInterceptorInstalled = true;
+    // Backward compat — старое имя
+    window.__uploadInterceptorInstalled = true;
     
     window.__uploadedFilesCount = 0;
-    window.__uploadInterceptorInstalled = true;
+    window.__isGenerating = false;
     
     const origFetch = window.fetch;
     window.__originalFetch = origFetch;
     
+    const tabNum = window.__CLAUDE_TAB__ || 1;
+    
+    // Счётчик активных стримов + debounce для сброса
+    // Claude может делать несколько /completion запросов подряд
+    // (thinking + response, multi-step), поэтому нельзя сбрасывать сразу
+    let activeStreams = 0;
+    let offTimer = null;
+    const DEBOUNCE_MS = 2500;
+    
+    function notifyRust(generating) {
+        try {
+            if (window.__TAURI__) {
+                window.__TAURI__.core.invoke('set_generation_state', { tab: tabNum, generating: generating });
+            }
+        } catch(e) {}
+    }
+    
+    function streamStarted() {
+        activeStreams++;
+        if (offTimer) { clearTimeout(offTimer); offTimer = null; }
+        if (!window.__isGenerating) {
+            window.__isGenerating = true;
+            notifyRust(true);
+        }
+    }
+    
+    function streamEnded() {
+        activeStreams = Math.max(0, activeStreams - 1);
+        // Не сбрасываем сразу — ждём: может следующий стрим начнётся
+        if (offTimer) clearTimeout(offTimer);
+        offTimer = setTimeout(() => {
+            offTimer = null;
+            if (activeStreams === 0 && window.__isGenerating) {
+                window.__isGenerating = false;
+                notifyRust(false);
+            }
+        }, DEBOUNCE_MS);
+    }
+    
     window.fetch = async function(...args) {
-        const response = await origFetch.apply(this, args);
+        const url = (args[0] instanceof Request ? args[0].url : args[0]?.toString?.()) || '';
+        const method = ((args[1]?.method || (args[0] instanceof Request ? args[0].method : '')) || 'GET').toUpperCase();
         
-        // Проверяем это upload-file запрос
-        const url = args[0]?.toString?.() || args[0] || '';
+        const isCompletion = url.includes('/completion') && method === 'POST';
+        
+        let response;
+        try {
+            response = await origFetch.apply(this, args);
+        } catch(e) {
+            if (isCompletion) streamEnded();
+            throw e;
+        }
+        
+        // === Генерация: оборачиваем SSE ReadableStream ===
+        if (isCompletion && response.ok && response.body) {
+            streamStarted();
+            
+            const reader = response.body.getReader();
+            const stream = new ReadableStream({
+                pull(controller) {
+                    return reader.read().then(({ done, value }) => {
+                        if (done) {
+                            controller.close();
+                            streamEnded();
+                            return;
+                        }
+                        controller.enqueue(value);
+                    }).catch(err => {
+                        try { controller.error(err); } catch(_) {}
+                        streamEnded();
+                    });
+                },
+                cancel(reason) {
+                    reader.cancel(reason);
+                    streamEnded();
+                }
+            });
+            
+            return new Response(stream, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers
+            });
+        }
+        
+        // === Загрузки ===
         if (url.includes('/upload-file')) {
             try {
-                // Клонируем response чтобы прочитать body
                 const clone = response.clone();
                 const data = await clone.json();
                 if (data.success || data.file_name || data.sanitized_name) {
                     window.__uploadedFilesCount++;
-                    // Также инкрементируем Rust-счётчик (fallback dual counting)
                     try {
                         if (window.__TAURI__?.core?.invoke) {
                             window.__TAURI__.core.invoke('increment_upload_count', { 
@@ -364,14 +450,15 @@ function setupUploadInterceptor() {
                         }
                     } catch(_) {}
                 }
-            } catch(e) {
-                // Ignore parse errors
-            }
+            } catch(e) {}
         }
         
         return response;
     };
 }
+
+// Backward compat alias
+function setupUploadInterceptor() { setupFetchInterceptor(); }
 
 function initClaudeUI() {
     // Получаем селектор для artifact controls
@@ -448,7 +535,7 @@ function setupUrlChangeDetection() {
             const oldUrl = lastUrl;
             lastUrl = location.href;
             
-            // Игнорируем изменения только в hash (generation monitor ставит #generating)
+            // Игнорируем изменения только в hash
             const oldBase = oldUrl.split('#')[0];
             const newBase = location.href.split('#')[0];
             if (oldBase === newBase) return;

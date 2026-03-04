@@ -48,6 +48,9 @@ pub fn ensure_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Res
         // Регистрируем нативный перехватчик загрузок (Windows: WebResourceRequested)
         setup_native_upload_interceptor(app, tab);
         
+        // Регистрируем COM-обработчик DocumentTitleChanged для мониторинга генерации
+        setup_title_change_monitor(app, tab);
+        
         // Поднимаем z-order toolbar поверх нового Claude webview
         if app.get_webview("toolbar").is_some() {
             raise_toolbar_zorder(app);
@@ -192,6 +195,10 @@ fn setup_native_upload_interceptor(app: &AppHandle, tab: u8) {
         let _ = (app, tab);
     }
 }
+
+/// Заглушка — мониторинг генерации теперь через JS invoke (set_generation_state).
+/// Сохранена для обратной совместимости вызовов из main.rs и ensure_claude_webview.
+pub fn setup_title_change_monitor(_app: &AppHandle, _tab: u8) {}
 fn handle_download_event(
     app: &AppHandle,
     webview: &tauri::Webview,

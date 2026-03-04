@@ -1,11 +1,7 @@
-Версия 4.3.1 Hotfix
+Версия 4.3.2 Hotfix
 
 ИСПРАВЛЕНИЯ:
-- Паттерн «Матрица» больше не роняет FPS — анимация переведена на GPU-композитинг (transform вместо background-position), убраны glow-дубли с blur
-- project-manager.py: update_app_version() теперь обновляет README.md и package.json
-- project-manager.py: save_tab() больше не теряет поле version
-- Добавлен package-lock.json для GitHub Actions
-- Обновлена документация (числа строк, подсчёт функций, пропущенная команда)
+- Мониторинг генерации в скрытых чатах: полностью нативный — fetch interceptor → document.title маркер → COM DocumentTitleChanged → AtomicBool. Работает в скрытых WebView2 без JS polling, eval или sleep
 
 Версия 4.3.0
 

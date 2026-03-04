@@ -54,6 +54,7 @@ fn main() {
             claude::eval_in_claude_with_result,
             claude::inject_generation_monitor,
             claude::check_generation_status,
+            claude::set_generation_state,
             claude::insert_text_to_claude,
             
             // Attachments commands
@@ -136,6 +137,9 @@ fn main() {
                         let _ = app_handle.emit("startup-error", serde_json::json!({
                             "tab": tab, "error": e
                         }));
+                    } else {
+                        // Регистрируем COM-обработчик DocumentTitleChanged
+                        webview::setup_title_change_monitor(&app_handle, tab);
                     }
                 }
                 

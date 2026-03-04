@@ -20,6 +20,7 @@ pub use scripts::{
 pub use manager::{
     ensure_claude_webview,
     create_claude_webview,
+    setup_title_change_monitor,
     ensure_toolbar,
     raise_toolbar_zorder,
     suspend_claude_tab,

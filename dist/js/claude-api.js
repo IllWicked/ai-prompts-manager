@@ -1214,6 +1214,26 @@ function startGenerationMonitor() {
     if (generationCheckInterval) return;
     generationCheckInterval = setInterval(checkAllGenerationStatus, 500);
     
+    // COM-событие DocumentTitleChanged → мгновенная реакция без polling-задержки
+    if (!window.__generationEventListenerInstalled) {
+        window.__generationEventListenerInstalled = true;
+        try {
+            window.__TAURI__.event.listen('generation-state-changed', (event) => {
+                const { tab, generating } = event.payload || {};
+                if (tab >= 1 && tab <= 3) {
+                    const wasGenerating = generatingTabs[tab] || false;
+                    if (wasGenerating !== generating) {
+                        generatingTabs[tab] = generating;
+                        if (wasGenerating && !generating) {
+                            showToast(`Чат ${tab}: Claude закончил`, 3000);
+                        }
+                        updateClaudeUI();
+                    }
+                }
+            });
+        } catch(e) {}
+    }
+    
     // Периодически сохраняем URL табов (каждые 5 сек)
     if (!urlSaveInterval) {
         urlSaveInterval = setInterval(async () => {

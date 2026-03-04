@@ -10,7 +10,7 @@
 use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::state::{CLAUDE_VISIBLE, ACTIVE_TAB, PANEL_RATIO};
+use crate::state::{CLAUDE_VISIBLE, ACTIVE_TAB, PANEL_RATIO, GENERATING_STATE};
 use crate::webview::scripts::get_generation_monitor_script;
 use crate::webview::manager::{
     ensure_claude_webview, create_claude_webview, raise_toolbar_zorder,
@@ -487,23 +487,33 @@ pub async fn inject_generation_monitor(app: AppHandle, tab: u8) -> Result<(), St
     Ok(())
 }
 
-/// Проверяет статус генерации по хешу URL
+/// Проверяет статус генерации по табу
 ///
-/// Принудительно вызывает __checkGenerating() через eval перед чтением,
-/// т.к. setInterval throttle-ится в скрытых webview (WebView2 put_IsVisible(false)).
+/// Читает GENERATING_STATE AtomicBool, который обновляется COM-событием
+/// DocumentTitleChanged — без eval, без sleep, без JS-polling.
 #[tauri::command]
-pub async fn check_generation_status(app: AppHandle, tab: u8) -> Result<bool, String> {
-    let label = format!("claude_{}", tab);
-    if let Some(webview) = app.get_webview(&label) {
-        // Принудительная проверка — eval выполнится даже в скрытом webview
-        let _ = webview.eval("if(window.__checkGenerating)window.__checkGenerating()");
-        // Даём renderer обработать скрипт и обновить hash через history.replaceState
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-        if let Ok(url) = webview.url() {
-            return Ok(url.to_string().contains("#generating"));
+pub async fn check_generation_status(_app: AppHandle, tab: u8) -> Result<bool, String> {
+    if tab >= 1 && tab <= 3 {
+        Ok(GENERATING_STATE[(tab - 1) as usize].load(Ordering::SeqCst))
+    } else {
+        Ok(false)
+    }
+}
+
+/// Устанавливает статус генерации для таба
+/// Вызывается из JS fetch interceptor в Claude webview
+#[tauri::command]
+pub async fn set_generation_state(app: AppHandle, tab: u8, generating: bool) -> Result<(), String> {
+    if tab >= 1 && tab <= 3 {
+        let was = GENERATING_STATE[(tab - 1) as usize].swap(generating, Ordering::SeqCst);
+        if was != generating {
+            let _ = app.emit("generation-state-changed", serde_json::json!({
+                "tab": tab,
+                "generating": generating
+            }));
         }
     }
-    Ok(false)
+    Ok(())
 }
 
 /// Вставляет текст в редактор Claude и опционально отправляет

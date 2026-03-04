@@ -81,6 +81,7 @@ pub use claude::{
     eval_in_claude_with_result,
     inject_generation_monitor,
     check_generation_status,
+    set_generation_state,
     insert_text_to_claude,
 };
 

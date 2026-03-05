@@ -17,15 +17,15 @@
     },
     "bet-pillar-main": {
       "name": "BET-PILLAR-MAIN",
-      "version": "1.0.27",
+      "version": "1.0.28",
       "order": 4
     },
     "gamble-pillar-main": {
       "name": "GAMBLE-PILLAR-MAIN",
-      "version": "1.0.7",
+      "version": "1.0.8",
       "order": 5
     }
   },
   "release_notes": "ЧТО НОВОГО:",
-  "updated": "2026-03-04"
+  "updated": "2026-03-05"
 }

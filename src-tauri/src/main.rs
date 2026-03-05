@@ -8,7 +8,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use tauri::{
-    Emitter,
     WebviewBuilder, WebviewUrl, WindowBuilder,
     LogicalPosition, LogicalSize,
 };
@@ -35,6 +34,7 @@ fn main() {
             app::get_window_width,
             
             // Claude commands
+            claude::init_claude_webviews,
             claude::preload_claude,
             claude::toggle_claude,
             claude::get_active_tab,
@@ -125,42 +125,8 @@ fn main() {
                 tokio::time::sleep(std::time::Duration::from_millis(50)).await;
                 let _ = webview::resize_webviews(&app_handle);
                 
-                // Создаём все три Claude webview при старте
-                tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-                for tab in 1u8..=3 {
-                    if let Err(e) = webview::create_claude_webview(&app_handle, tab, None) {
-                        eprintln!("[Startup] Failed to create claude_{}: {}", tab, e);
-                        let _ = logs::write_diagnostic(
-                            "startup_error".to_string(),
-                            format!("{{\"tab\":{},\"error\":\"{}\"}}", tab, e),
-                        );
-                        let _ = app_handle.emit("startup-error", serde_json::json!({
-                            "tab": tab, "error": e
-                        }));
-                    } else {
-                        // Регистрируем COM-обработчик DocumentTitleChanged
-                        webview::setup_title_change_monitor(&app_handle, tab);
-                    }
-                }
-                
-                // Создаём toolbar/downloads поверх всех Claude
-                if let Err(e) = webview::ensure_toolbar(&app_handle) {
-                    eprintln!("[Startup] Failed to create toolbar: {}", e);
-                    let _ = logs::write_diagnostic(
-                        "startup_error".to_string(),
-                        format!("{{\"component\":\"toolbar\",\"error\":\"{}\"}}", e),
-                    );
-                }
-                
-                // Suspend неактивные табы (2 и 3) для экономии CPU/RAM
-                webview::suspend_claude_tab(&app_handle, 2);
-                webview::suspend_claude_tab(&app_handle, 3);
-                
-                // Поднимаем z-order toolbar
-                webview::raise_toolbar_zorder(&app_handle);
-                
-                // Синхронизируем позиции всех webview
-                let _ = webview::resize_webviews(&app_handle);
+                // Claude WebView и toolbar создаются по запросу из JS
+                // через команду init_claude_webviews (если offlineMode выключен)
             });
             
             // Обработчик изменения размера окна

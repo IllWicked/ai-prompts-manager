@@ -15,8 +15,48 @@ use crate::webview::scripts::get_generation_monitor_script;
 use crate::webview::manager::{
     ensure_claude_webview, create_claude_webview, raise_toolbar_zorder,
     suspend_claude_tab, resume_claude_tab, resize_webviews,
+    ensure_toolbar, setup_title_change_monitor,
 };
 use crate::utils::dimensions::animation::{ANIMATION_STEPS, ANIMATION_DELAY_MS};
+
+/// Инициализация всех Claude webview и toolbar
+///
+/// Вызывается из JS только если offlineMode выключен.
+/// Создаёт 3 Claude webview, toolbar, suspend неактивные табы.
+#[tauri::command]
+pub async fn init_claude_webviews(app: AppHandle) -> Result<(), String> {
+    use crate::commands::logs;
+    
+    for tab in 1u8..=3 {
+        if let Err(e) = create_claude_webview(&app, tab, None) {
+            eprintln!("[init_claude_webviews] Failed to create claude_{}: {}", tab, e);
+            let _ = logs::write_diagnostic(
+                "startup_error".to_string(),
+                format!("{{\"tab\":{},\"error\":\"{}\"}}", tab, e),
+            );
+            let _ = app.emit("startup-error", serde_json::json!({
+                "tab": tab, "error": e
+            }));
+        } else {
+            setup_title_change_monitor(&app, tab);
+        }
+    }
+    
+    if let Err(e) = ensure_toolbar(&app) {
+        eprintln!("[init_claude_webviews] Failed to create toolbar: {}", e);
+        let _ = logs::write_diagnostic(
+            "startup_error".to_string(),
+            format!("{{\"component\":\"toolbar\",\"error\":\"{}\"}}", e),
+        );
+    }
+    
+    suspend_claude_tab(&app, 2);
+    suspend_claude_tab(&app, 3);
+    raise_toolbar_zorder(&app);
+    let _ = resize_webviews(&app);
+    
+    Ok(())
+}
 
 /// Предзагружает Claude webview в фоне (без показа)
 ///

@@ -680,8 +680,30 @@
             <!-- Hidden input для импорта файлов -->
             <input type="file" id="import-file-input" accept=".json" multiple class="hidden">
             
-            <!-- Переключатель режима редактирования -->
+            <!-- Оффлайн-режим -->
             <div class="mb-3 pt-2 border-t border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div class="flex flex-col justify-center">
+                        <span class="text-sm font-medium text-gray-700 leading-tight">Оффлайн-режим</span>
+                        <p class="text-xs text-gray-500 leading-tight">Без загрузки Claude, копирование промптов</p>
+                    </div>
+                    <div class="flex items-center bg-gray-100 rounded-lg p-0.5 flex-shrink-0">
+                        <button id="offline-mode-off" class="offline-mode-btn flex items-center justify-center w-8 h-8 rounded-md transition-all" title="Выключено">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                        <button id="offline-mode-on" class="offline-mode-btn flex items-center justify-center w-8 h-8 rounded-md transition-all" title="Включено">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Переключатель режима редактирования -->
+            <div class="mb-3">
                 <div class="flex items-center justify-between">
                     <div class="flex flex-col justify-center">
                         <span class="text-sm font-medium text-gray-700 leading-tight">Режим редактирования</span>
@@ -757,7 +779,7 @@
             <!-- Версия и кнопка закрытия -->
             <div class="pt-2 border-t border-gray-200 flex items-center justify-between">
                 <span id="version-label" class="text-xs text-gray-400 cursor-default select-none">
-                    Версия: <span id="settings-version">4.3.2</span>
+                    Версия: <span id="settings-version">4.3.3</span>
                 </span>
                 <button id="settings-close-btn" class="btn btn-primary">
                     Закрыть
@@ -821,7 +843,7 @@
     <script>
         /**
          * ╔═══════════════════════════════════════════════════════════════════════════╗
-         * ║                    AI PROMPTS MANAGER v4.3.2                              ║
+         * ║                    AI PROMPTS MANAGER v4.3.3                              ║
          * ║                                                                           ║
          * ║  Tauri 2.0 приложение для управления промптами с интеграцией Claude AI   ║
          * ╚═══════════════════════════════════════════════════════════════════════════╝

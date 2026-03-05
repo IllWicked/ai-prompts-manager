@@ -342,13 +342,17 @@ function autoPositionNodes(promptsData) {
 function generateExpandedFooterHtml(index, chatTabs, options = {}) {
     const { showChatButtons = true } = options;
     const arrowSvg = SVG_ICONS.arrow;
+    const copySvg = SVG_ICONS.copy;
     const editSvg = SVG_ICONS.edit;
     
     // Кнопка редактирования: полный текст → иконка + "Ред." → только иконка
     let html = `<button class="workflow-node-btn edit-btn" onclick="editWorkflowNode(${index})" title="Редактировать">${editSvg}<span class="btn-label-full">Редактировать</span><span class="btn-label-short">Ред.</span></button>`;
     
-    // Кнопки отправки в чаты (если разрешено)
-    if (showChatButtons) {
+    // Оффлайн-режим: одна кнопка «Скопировать» вместо кнопок чатов
+    if (isOfflineMode()) {
+        html += `<button class="workflow-node-btn primary copy-btn" onclick="copyNodeContent(${index})" title="Скопировать промпт">${copySvg}<span class="btn-label-chat">Скопировать</span></button>`;
+    } else if (showChatButtons) {
+        // Кнопки отправки в чаты (если разрешено)
         if (chatTabs.length === 1) {
             const isGen = generatingTabs[chatTabs[0]] || false;
             html += `<button class="workflow-node-btn primary chat-btn" onclick="sendNodeToClaude(${index}, ${chatTabs[0]})" title="Отправить в чат"${isGen ? ' disabled' : ''}>${arrowSvg}<span class="btn-label-chat">Чат</span></button>`;
@@ -1304,12 +1308,18 @@ function setupNodeEvents(node, index) {
         });
     });
     
-    // Клик по collapsed блоку во view mode - отправить промпт в текущий выбранный чат
-    // Только если блок не заблокирован проектом (не имеет класс project-restricted)
-    if (!isEditMode && node.classList.contains('collapsed') && !node.classList.contains('project-restricted')) {
+    // Клик по collapsed блоку во view mode
+    // Оффлайн: копировать промпт (всегда). Онлайн: отправить в текущий чат Claude
+    // Только если блок не заблокирован проектом (не имеет класс project-restricted) — кроме оффлайн
+    const canClickCollapsed = !isEditMode && node.classList.contains('collapsed') && 
+        (isOfflineMode() || !node.classList.contains('project-restricted'));
+    if (canClickCollapsed) {
         node.addEventListener('click', (e) => {
-            // Отправляем в текущий активный чат Claude (не в привязанный к блоку)
-            sendNodeToClaude(index, activeClaudeTab);
+            if (isOfflineMode()) {
+                copyNodeContent(index);
+            } else {
+                sendNodeToClaude(index, activeClaudeTab);
+            }
         });
     }
 }
@@ -1809,10 +1819,36 @@ function saveBlockContent(blockId, content, isBlur = false) {
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// COPY NODE CONTENT (Оффлайн-режим)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Копировать содержимое блока в буфер обмена
+ * @param {number} index - индекс блока
+ */
+async function copyNodeContent(index) {
+    const blocks = getTabBlocks(currentTab);
+    if (!blocks[index]) return;
+    
+    const block = blocks[index];
+    // Раскрываем маркеры языка — копируем чистый текст
+    const text = resolveMarkersToText(block.content || '', currentLanguage, currentCountry);
+    
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast('Скопировано');
+    } catch (e) {
+        console.error('[Copy] Failed:', e);
+        showToast('Ошибка копирования');
+    }
+}
+
 // Экспорт
 window.initWorkflow = initWorkflow;
 window.renderWorkflow = renderWorkflow;
 window.saveBlockContent = saveBlockContent;
 window.editWorkflowNode = editWorkflowNode;
+window.copyNodeContent = copyNodeContent;
 window.deleteWorkflowBlock = deleteWorkflowBlock;
 window.createWorkflowNote = createWorkflowNote;

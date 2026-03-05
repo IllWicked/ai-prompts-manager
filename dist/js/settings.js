@@ -25,6 +25,9 @@ function showSettingsModal() {
     // Устанавливаем состояние кнопок автообновлений
     updateAutoUpdateButtons(settings.autoUpdate);
     
+    // Устанавливаем состояние оффлайн-режима
+    updateOfflineModeButtons(settings.offlineMode);
+    
     // Устанавливаем активную тему
     updateThemeButtons(settings.theme);
     
@@ -747,6 +750,56 @@ function toggleAutoUpdate(enabled) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ОФФЛАЙН-РЕЖИМ
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Проверить, включён ли оффлайн-режим
+ * @returns {boolean}
+ */
+function isOfflineMode() {
+    return getSettings().offlineMode === true;
+}
+
+/**
+ * Обновить состояние кнопок оффлайн-режима
+ * @param {boolean} enabled
+ */
+function updateOfflineModeButtons(enabled) {
+    updateToggleButtons('offline-mode-btn', enabled ? 'offline-mode-on' : 'offline-mode-off');
+}
+
+/**
+ * Переключить оффлайн-режим
+ * @param {boolean} enabled
+ */
+function setOfflineMode(enabled) {
+    const settings = getSettings();
+    settings.offlineMode = enabled;
+    saveSettings(settings);
+    applyOfflineMode(enabled);
+    
+    // Перерендерим workflow чтобы кнопки обновились сразу
+    if (typeof renderWorkflow === 'function') {
+        renderWorkflow();
+    }
+    
+    showToast(enabled 
+        ? 'Оффлайн-режим включён. Перезапустите для полного применения.' 
+        : 'Оффлайн-режим выключен. Перезапустите для загрузки Claude.'
+    );
+}
+
+/**
+ * Применить оффлайн-режим (CSS-класс на body)
+ * @param {boolean} [enabled] - если не передан, берёт из настроек
+ */
+function applyOfflineMode(enabled) {
+    const offline = enabled !== undefined ? enabled : isOfflineMode();
+    document.body.classList.toggle('offline-mode', offline);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ЭКСПОРТ
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -759,12 +812,16 @@ window.showArchiveLogModal = showArchiveLogModal;
 window.hideArchiveLogModal = hideArchiveLogModal;
 window.updateToggleButtons = updateToggleButtons;
 window.updateAutoUpdateButtons = updateAutoUpdateButtons;
+window.updateOfflineModeButtons = updateOfflineModeButtons;
 window.updateThemeButtons = updateThemeButtons;
 window.setTheme = setTheme;
 window.syncWindowBackground = syncWindowBackground;
 window.applyTheme = applyTheme;
 window.initThemeListener = initThemeListener;
 window.toggleAutoUpdate = toggleAutoUpdate;
+window.isOfflineMode = isOfflineMode;
+window.setOfflineMode = setOfflineMode;
+window.applyOfflineMode = applyOfflineMode;
 window.applyAccentColor = applyAccentColor;
 window.setAccentColor = setAccentColor;
 window.applyCanvasPattern = applyCanvasPattern;

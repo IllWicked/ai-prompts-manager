@@ -1262,19 +1262,22 @@ body {
 /* Переключатель темы */
 .theme-btn,
 .auto-update-btn,
-.edit-mode-btn {
+.edit-mode-btn,
+.offline-mode-btn {
     color: var(--text-muted);
 }
 .theme-btn.active,
 .auto-update-btn.active,
-.edit-mode-btn.active {
+.edit-mode-btn.active,
+.offline-mode-btn.active {
     background: white;
     color: var(--claude-primary);
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 .theme-btn:hover:not(.active),
 .auto-update-btn:hover:not(.active),
-.edit-mode-btn:hover:not(.active) {
+.edit-mode-btn:hover:not(.active),
+.offline-mode-btn:hover:not(.active) {
     background: rgba(255,255,255,0.5);
 }
 
@@ -2007,7 +2010,8 @@ body {
 
 /* Переключатель темы и автообновлений в тёмном режиме */
 .dark .theme-btn,
-.dark .auto-update-btn {
+.dark .auto-update-btn,
+.dark .offline-mode-btn {
     color: var(--text-muted);
 }
 .dark .theme-btn span,
@@ -2016,7 +2020,8 @@ body {
 }
 .dark .theme-btn.active,
 .dark .auto-update-btn.active,
-.dark .edit-mode-btn.active {
+.dark .edit-mode-btn.active,
+.dark .offline-mode-btn.active {
     background: var(--bg-elevated);
     color: var(--claude-primary);
 }
@@ -2026,7 +2031,8 @@ body {
 }
 .dark .theme-btn:hover:not(.active),
 .dark .auto-update-btn:hover:not(.active),
-.dark .edit-mode-btn:hover:not(.active) {
+.dark .edit-mode-btn:hover:not(.active),
+.dark .offline-mode-btn:hover:not(.active) {
     background: rgba(255,255,255,0.1);
 }
 
@@ -4361,4 +4367,29 @@ header .flex {
 .continue-project-btn.hiding {
     opacity: 0;
     transform: translateY(20px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ОФФЛАЙН-РЕЖИМ
+   Скрывает все Claude-связанные элементы когда body.offline-mode
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Кнопка Claude + Auto send */
+body.offline-mode .claude-controls {
+    display: none;
+}
+
+/* Разделитель после Claude controls */
+body.offline-mode .claude-controls + .toolbar-separator {
+    display: none;
+}
+
+/* Бейдж привязки к чату на блоках */
+body.offline-mode .workflow-node-chat-badge {
+    display: none;
+}
+
+/* Курсор copy для collapsed блоков в оффлайн-режиме */
+body.offline-mode .workflow-container:not(.edit-mode) .workflow-node.collapsed {
+    cursor: copy;
 }

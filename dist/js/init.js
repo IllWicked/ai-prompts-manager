@@ -905,6 +905,16 @@ function initSettingsHandlers() {
         updateAutoUpdateButtons(true);
     });
     
+    // Оффлайн-режим
+    document.getElementById('offline-mode-off')?.addEventListener('click', () => {
+        setOfflineMode(false);
+        updateOfflineModeButtons(false);
+    });
+    document.getElementById('offline-mode-on')?.addEventListener('click', () => {
+        setOfflineMode(true);
+        updateOfflineModeButtons(true);
+    });
+    
     // Ручная проверка обновлений
     document.getElementById('manual-update-check-btn')?.addEventListener('click', async () => {
         const btn = document.getElementById('manual-update-check-btn');
@@ -1292,6 +1302,9 @@ function initApp() {
     initAutocompleteDisable();
     initTextSelectionProtection();
     
+    // 0.5. Применяем оффлайн-режим (CSS-класс на body)
+    applyOfflineMode();
+    
     // 1. Загружаем состояние блоков
     loadBlockScripts();
     loadCollapsedBlocks();
@@ -1420,6 +1433,13 @@ function initApp() {
     
     // 10. Claude интеграция
     initClaudeHandlers();
+    
+    // 10.5. Инициализация Claude WebView (только если не оффлайн)
+    if (!isOfflineMode() && window.__TAURI__) {
+        window.__TAURI__.core.invoke('init_claude_webviews').catch(e => {
+            console.warn('[Init] Claude webviews init failed:', e);
+        });
+    }
     
     // 11. (Скроллбар — нативный webkit, стили в CSS)
     

@@ -25,10 +25,10 @@
 const MAX_HISTORY_SIZE = 50;
 
 /** @constant {number} Debounce для snapshot при наборе текста (мс) */
-const SNAPSHOT_DEBOUNCE_MS = 1000;
+const SNAPSHOT_DEBOUNCE_MS = 300;
 
 /** @constant {number} Группировка ввода: макс. пауза между нажатиями (мс) */
-const INPUT_GROUP_MS = 2000;
+const INPUT_GROUP_MS = 800;
 
 /** @type {boolean} Предотвращение прыжка скролла при рендере */
 let skipScrollOnRender = false;
@@ -171,6 +171,12 @@ function captureFullState() {
     const tabs = getAllTabs();
     const tabData = tabs[tabId] ? structuredClone(tabs[tabId]) : null;
     
+    // Notes — отдельная сущность, не участвуют в undo промптов.
+    // Сохраняем ссылку но убираем из snapshot чтобы undo не удалял заметки.
+    if (tabData) {
+        delete tabData.notes;
+    }
+    
     // Workflow — только если в workflow mode
     let workflow = null;
     if (workflowMode) {
@@ -273,7 +279,12 @@ function applyState(state) {
     // Данные вкладки
     if (state.tabData) {
         const tabs = getAllTabs();
-        tabs[tabId] = structuredClone(state.tabData);
+        const restored = structuredClone(state.tabData);
+        // Сохраняем текущие notes — они не участвуют в undo
+        if (tabs[tabId]?.notes) {
+            restored.notes = tabs[tabId].notes;
+        }
+        tabs[tabId] = restored;
         localStorage.setItem(STORAGE_KEYS.TABS, JSON.stringify(tabs));
         setTabsCache(tabs);
     }

@@ -266,16 +266,14 @@ function hideSidebar() {
 
 **Решение:**
 ```javascript
-// Перехват history API
-const originalPushState = history.pushState;
-history.pushState = function(...args) {
-    originalPushState.apply(this, args);
-    notifyUrlChange();
-};
+// popstate ловит back/forward
+window.addEventListener('popstate', () => checkUrlChange());
 
-// Backup проверка каждые 2 сек
+// Polling каждые 2 сек ловит pushState-навигацию
 setInterval(checkUrlChange, 2000);
 ```
+
+SPA-переходы обнаруживаются с задержкой до 2 сек (polling). Для кнопки "Продолжить проект" и инвалидации org-кэша это некритично.
 
 ---
 

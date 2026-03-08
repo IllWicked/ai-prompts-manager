@@ -55,7 +55,83 @@ pub async fn init_claude_webviews(app: AppHandle) -> Result<(), String> {
     raise_toolbar_zorder(&app);
     let _ = resize_webviews(&app);
     
+    // Запускаем фоновый мониторинг генерации через CDP polling
+    start_generation_polling(app.clone());
+    
     Ok(())
+}
+
+/// Фоновый мониторинг генерации на суспендированных табах через CDP.
+///
+/// Каждые 800мс проверяет фоновые табы (не активный видимый) через
+/// CDP Runtime.evaluate — работает даже на суспендированных WebView2.
+/// Активный видимый таб мониторится JS DOM monitor (setupGenerationMonitor).
+///
+/// Debounce: генерация считается завершённой только после 3 последовательных
+/// проверок без индикаторов (~2.4 сек), чтобы не сбросить статус
+/// в паузе между thinking и response.
+fn start_generation_polling(app: AppHandle) {
+    use crate::webview::scripts::GENERATION_CHECK_SCRIPT;
+    
+    tauri::async_runtime::spawn(async move {
+        let mut idle_counts = [0u32; 3];
+        const IDLE_THRESHOLD: u32 = 3; // 3 × 800ms ≈ 2.4 сек debounce
+        
+        loop {
+            tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+            
+            for tab_idx in 0..3usize {
+                let tab = (tab_idx + 1) as u8;
+                let label = format!("claude_{}", tab);
+                
+                // Пропускаем несуществующие табы
+                if app.get_webview(&label).is_none() { continue; }
+                
+                // Пропускаем активный видимый таб — его мониторит JS DOM monitor
+                let is_active_visible = ACTIVE_TAB.load(Ordering::SeqCst) == tab
+                    && CLAUDE_VISIBLE.load(Ordering::SeqCst);
+                if is_active_visible { continue; }
+                
+                // CDP проверка: querySelector на stop button / streaming / thinking
+                match eval_in_claude_with_result(
+                    app.clone(), tab, GENERATION_CHECK_SCRIPT.to_string(), Some(3)
+                ).await {
+                    Ok(result) => {
+                        let is_generating = result.contains("true");
+                        let was_generating = GENERATING_STATE[tab_idx].load(Ordering::SeqCst);
+                        
+                        if is_generating {
+                            // Генерация обнаружена — сбрасываем idle счётчик
+                            idle_counts[tab_idx] = 0;
+                            if !was_generating {
+                                // Новая генерация на фоновом табе
+                                GENERATING_STATE[tab_idx].store(true, Ordering::SeqCst);
+                                let _ = app.emit("generation-state-changed", serde_json::json!({
+                                    "tab": tab,
+                                    "generating": true
+                                }));
+                            }
+                        } else if was_generating {
+                            // Индикаторов нет, но был generating — debounce
+                            idle_counts[tab_idx] += 1;
+                            if idle_counts[tab_idx] >= IDLE_THRESHOLD {
+                                // Подтверждённое завершение генерации
+                                GENERATING_STATE[tab_idx].store(false, Ordering::SeqCst);
+                                let _ = app.emit("generation-state-changed", serde_json::json!({
+                                    "tab": tab,
+                                    "generating": false
+                                }));
+                                idle_counts[tab_idx] = 0;
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        // CDP не ответил — не меняем состояние
+                    }
+                }
+            }
+        }
+    });
 }
 
 /// Предзагружает Claude webview в фоне (без показа)
@@ -529,8 +605,9 @@ pub async fn inject_generation_monitor(app: AppHandle, tab: u8) -> Result<(), St
 
 /// Проверяет статус генерации по табу
 ///
-/// Читает GENERATING_STATE AtomicBool, который обновляется COM-событием
-/// DocumentTitleChanged — без eval, без sleep, без JS-polling.
+/// Читает GENERATING_STATE AtomicBool, который обновляется:
+/// - JS DOM monitor (активный видимый таб)
+/// - Rust CDP polling (фоновые суспендированные табы)
 #[tauri::command]
 pub async fn check_generation_status(_app: AppHandle, tab: u8) -> Result<bool, String> {
     if tab >= 1 && tab <= 3 {
@@ -541,7 +618,7 @@ pub async fn check_generation_status(_app: AppHandle, tab: u8) -> Result<bool, S
 }
 
 /// Устанавливает статус генерации для таба
-/// Вызывается из JS fetch interceptor в Claude webview
+/// Вызывается из DOM monitor в Claude webview
 #[tauri::command]
 pub async fn set_generation_state(app: AppHandle, tab: u8, generating: bool) -> Result<(), String> {
     if tab >= 1 && tab <= 3 {
@@ -557,6 +634,9 @@ pub async fn set_generation_state(app: AppHandle, tab: u8, generating: bool) -> 
 }
 
 /// Вставляет текст в редактор Claude и опционально отправляет
+///
+/// Использует ClipboardEvent('paste') для вставки текста — выглядит
+/// идентично реальному Ctrl+V для Claude.ai.
 ///
 /// # Arguments
 /// * `tab` - номер таба
@@ -596,26 +676,25 @@ pub async fn insert_text_to_claude(
                 return false;
             }}
             
+            // Фокусируем и очищаем
+            pmElement.focus();
             const editor = pmElement.editor;
-            
-            if (editor && editor.commands && typeof editor.commands.insertContent === 'function') {{
-                editor.commands.focus();
+            if (editor && editor.commands && typeof editor.commands.clearContent === 'function') {{
                 editor.commands.clearContent();
-                editor.commands.insertContent({{ type: 'text', text: text }});
-            }} else if (editor && editor.editorView) {{
-                const view = editor.editorView;
-                const tr = view.state.tr;
-                tr.delete(0, view.state.doc.content.size);
-                tr.insertText(text, 0);
-                view.dispatch(tr);
             }} else {{
-                pmElement.focus();
                 pmElement.innerHTML = '';
-                const p = document.createElement('p');
-                p.textContent = text;
-                pmElement.appendChild(p);
-                pmElement.dispatchEvent(new Event('input', {{ bubbles: true }}));
             }}
+            
+            // Вставляем через paste event — идентично реальному Ctrl+V
+            const dataTransfer = new DataTransfer();
+            dataTransfer.setData('text/plain', text);
+            
+            const pasteEvent = new ClipboardEvent('paste', {{
+                bubbles: true,
+                cancelable: true,
+                clipboardData: dataTransfer
+            }});
+            pmElement.dispatchEvent(pasteEvent);
             
             if (AUTO_SEND) {{
                 let attempts = 0;
@@ -686,7 +765,8 @@ pub async fn insert_text_to_claude(
                     }}
                 }};
                 
-                setTimeout(tryToSend, 200);
+                // Рандомная задержка перед первой попыткой Send (300-700мс)
+                setTimeout(tryToSend, 300 + Math.floor(Math.random() * 400));
             }}
             
             return true;

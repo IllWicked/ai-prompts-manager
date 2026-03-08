@@ -62,9 +62,6 @@ pub fn get_claude_init_script(tab: u8) -> String {
         // Загружаем общие функции
         {helpers}
         
-        // СРАЗУ устанавливаем fetch-интерсептор (загрузки + генерация)
-        setupFetchInterceptor();
-        
         // Ждём готовности DOM
         function onReady(fn) {{
             if (document.readyState === "loading") {{
@@ -77,6 +74,8 @@ pub fn get_claude_init_script(tab: u8) -> String {
         onReady(function() {{
             // Инициализация UI
             initClaudeUI();
+            // DOM-based мониторинг генерации (запускаем после DOM ready)
+            setupGenerationMonitor();
         }});
     }})();
     "##, tab = tab, selectors = CLAUDE_SELECTORS_JSON, helpers = CLAUDE_HELPERS_JS)
@@ -95,7 +94,7 @@ pub fn get_claude_init_script(tab: u8) -> String {
 pub fn get_generation_monitor_script() -> String {
     format!(r#"
         (function() {{
-            if (window.__fetchInterceptorInstalled) return;
+            if (window.__generationMonitorInstalled) return;
             
             if (!window.__SEL__) {{
                 window.__SEL__ = {selectors};
@@ -103,7 +102,7 @@ pub fn get_generation_monitor_script() -> String {
             
             {helpers}
             
-            setupFetchInterceptor();
+            setupGenerationMonitor();
             initClaudeUI();
         }})()
     "#, selectors = CLAUDE_SELECTORS_JSON, helpers = CLAUDE_HELPERS_JS)
@@ -175,3 +174,8 @@ pub fn get_click_script(x: f64, y: f64) -> String {
         }})();
     "#, x = x, y = y)
 }
+
+/// Компактный JS для проверки статуса генерации через DOM.
+/// Возвращает true если генерация идёт (stop button / streaming / thinking),
+/// false если idle. Используется Rust polling через CDP на суспендированных табах.
+pub const GENERATION_CHECK_SCRIPT: &str = r#"(function(){var S=window.__SEL__;if(!S||!S.generation)return false;var g=S.generation;if(g.stopButton){var a=Array.isArray(g.stopButton)?g.stopButton:[g.stopButton];for(var i=0;i<a.length;i++){try{if(document.querySelector(a[i]))return true}catch(e){}}}if(g.streamingIndicator){try{if(document.querySelector(g.streamingIndicator))return true}catch(e){}}if(g.thinkingIndicator){try{if(document.querySelector(g.thinkingIndicator))return true}catch(e){}}return false})()"#;

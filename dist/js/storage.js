@@ -13,7 +13,7 @@ const DEFAULT_SETTINGS = {
     adminMode: false, // Режим редактирования
     accentColor: '#ec7441', // Акцентный цвет
     canvasPattern: 'none', // Паттерн фона: 'none','grid','diagonal','waves','squares','grid3d','custom'
-    offlineMode: true // Оффлайн-режим: без Claude WebView, копирование вместо отправки
+    offlineMode: false // Оффлайн-режим: без Claude WebView, копирование вместо отправки
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

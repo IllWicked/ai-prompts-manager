@@ -330,135 +330,87 @@ function truncateChatTitle() {
 }
 
 /**
- * Перехватчик fetch: отслеживает загрузку файлов И генерацию ответов Claude.
+ * Мониторинг генерации через DOM-наблюдение.
  * 
- * Генерация: при POST на /completion ставит маркер \u200B в document.title.
- * Rust читает title через COM-событие DocumentTitleChanged — без eval/sleep.
- * Маркер снимается когда SSE-стрим закрывается (ReadableStream done/cancel/error).
+ * Проверяет наличие индикаторов генерации (stop button, streaming indicator,
+ * thinking indicator) и уведомляет Rust через set_generation_state.
  * 
- * Загрузки: инкрементирует счётчик при успешном upload-file.
+ * НЕ патчит window.fetch, НЕ оборачивает Response/ReadableStream.
+ * Подсчёт загрузок файлов — только на стороне Rust (WebResourceRequested).
  */
-function setupFetchInterceptor() {
-    if (window.__fetchInterceptorInstalled) return;
-    window.__fetchInterceptorInstalled = true;
-    // Backward compat — старое имя
-    window.__uploadInterceptorInstalled = true;
-    
-    window.__uploadedFilesCount = 0;
-    window.__isGenerating = false;
-    
-    const origFetch = window.fetch;
-    window.__originalFetch = origFetch;
+function setupGenerationMonitor() {
+    if (window.__generationMonitorInstalled) return;
+    window.__generationMonitorInstalled = true;
     
     const tabNum = window.__CLAUDE_TAB__ || 1;
-    
-    // Счётчик активных стримов + debounce для сброса
-    // Claude может делать несколько /completion запросов подряд
-    // (thinking + response, multi-step), поэтому нельзя сбрасывать сразу
-    let activeStreams = 0;
+    let wasGenerating = false;
     let offTimer = null;
-    const DEBOUNCE_MS = 2500;
+    // Задержка перед сбросом: Claude может делать thinking → response
+    // с короткой паузой между стримами, не сбрасываем сразу
+    const DEBOUNCE_OFF_MS = 2000;
     
     function notifyRust(generating) {
         try {
-            if (window.__TAURI__) {
+            if (window.__TAURI__?.core?.invoke) {
                 window.__TAURI__.core.invoke('set_generation_state', { tab: tabNum, generating: generating });
             }
         } catch(e) {}
     }
     
-    function streamStarted() {
-        activeStreams++;
-        if (offTimer) { clearTimeout(offTimer); offTimer = null; }
-        if (!window.__isGenerating) {
-            window.__isGenerating = true;
+    function checkGeneration() {
+        const SEL = window.__SEL__;
+        if (!SEL) return;
+        
+        let isGenerating = false;
+        
+        // 1. Stop button — самый надёжный индикатор
+        const stopSelectors = SEL.generation?.stopButton;
+        if (stopSelectors) {
+            const arr = Array.isArray(stopSelectors) ? stopSelectors : [stopSelectors];
+            for (const sel of arr) {
+                try { if (document.querySelector(sel)) { isGenerating = true; break; } } catch(e) {}
+            }
+        }
+        
+        // 2. Streaming indicator
+        if (!isGenerating && SEL.generation?.streamingIndicator) {
+            try { if (document.querySelector(SEL.generation.streamingIndicator)) isGenerating = true; } catch(e) {}
+        }
+        
+        // 3. Thinking indicator
+        if (!isGenerating && SEL.generation?.thinkingIndicator) {
+            try { if (document.querySelector(SEL.generation.thinkingIndicator)) isGenerating = true; } catch(e) {}
+        }
+        
+        // Переход idle → generating: мгновенно
+        if (isGenerating && !wasGenerating) {
+            if (offTimer) { clearTimeout(offTimer); offTimer = null; }
+            wasGenerating = true;
             notifyRust(true);
         }
-    }
-    
-    function streamEnded() {
-        activeStreams = Math.max(0, activeStreams - 1);
-        // Не сбрасываем сразу — ждём: может следующий стрим начнётся
-        if (offTimer) clearTimeout(offTimer);
-        offTimer = setTimeout(() => {
-            offTimer = null;
-            if (activeStreams === 0 && window.__isGenerating) {
-                window.__isGenerating = false;
-                notifyRust(false);
+        // Переход generating → idle: с debounce (пауза между thinking и response)
+        else if (!isGenerating && wasGenerating) {
+            if (!offTimer) {
+                offTimer = setTimeout(() => {
+                    offTimer = null;
+                    wasGenerating = false;
+                    notifyRust(false);
+                }, DEBOUNCE_OFF_MS);
             }
-        }, DEBOUNCE_MS);
+        }
+        // Всё ещё генерирует — отменяем pending off timer
+        else if (isGenerating && wasGenerating && offTimer) {
+            clearTimeout(offTimer);
+            offTimer = null;
+        }
     }
     
-    window.fetch = async function(...args) {
-        const url = (args[0] instanceof Request ? args[0].url : args[0]?.toString?.()) || '';
-        const method = ((args[1]?.method || (args[0] instanceof Request ? args[0].method : '')) || 'GET').toUpperCase();
-        
-        const isCompletion = url.includes('/completion') && method === 'POST';
-        
-        let response;
-        try {
-            response = await origFetch.apply(this, args);
-        } catch(e) {
-            if (isCompletion) streamEnded();
-            throw e;
-        }
-        
-        // === Генерация: оборачиваем SSE ReadableStream ===
-        if (isCompletion && response.ok && response.body) {
-            streamStarted();
-            
-            const reader = response.body.getReader();
-            const stream = new ReadableStream({
-                pull(controller) {
-                    return reader.read().then(({ done, value }) => {
-                        if (done) {
-                            controller.close();
-                            streamEnded();
-                            return;
-                        }
-                        controller.enqueue(value);
-                    }).catch(err => {
-                        try { controller.error(err); } catch(_) {}
-                        streamEnded();
-                    });
-                },
-                cancel(reason) {
-                    reader.cancel(reason);
-                    streamEnded();
-                }
-            });
-            
-            return new Response(stream, {
-                status: response.status,
-                statusText: response.statusText,
-                headers: response.headers
-            });
-        }
-        
-        // === Загрузки ===
-        if (url.includes('/upload-file')) {
-            try {
-                const clone = response.clone();
-                const data = await clone.json();
-                if (data.success || data.file_name || data.sanitized_name) {
-                    window.__uploadedFilesCount++;
-                    try {
-                        if (window.__TAURI__?.core?.invoke) {
-                            window.__TAURI__.core.invoke('increment_upload_count', { 
-                                tab: window.__CLAUDE_TAB__ || 1 
-                            });
-                        }
-                    } catch(_) {}
-                }
-            } catch(e) {}
-        }
-        
-        return response;
-    };
+    // Polling с умеренной частотой
+    if (window.__generationMonitorInterval) {
+        clearInterval(window.__generationMonitorInterval);
+    }
+    window.__generationMonitorInterval = setInterval(checkGeneration, 700);
 }
-
-// Backward compat alias
-function setupUploadInterceptor() { setupFetchInterceptor(); }
 
 function initClaudeUI() {
     // Получаем селектор для artifact controls
@@ -522,6 +474,9 @@ function setupGlobalClickListener() {
 /**
  * Отслеживает изменения URL и уведомляет Tauri
  * Нужно для детекции перехода на страницу проекта
+ * 
+ * Использует popstate (back/forward) + polling каждые 2 сек.
+ * Не патчит history.pushState/replaceState.
  */
 function setupUrlChangeDetection() {
     if (window.__urlChangeDetectionInstalled) return;
@@ -540,7 +495,7 @@ function setupUrlChangeDetection() {
             const newBase = location.href.split('#')[0];
             if (oldBase === newBase) return;
             
-            // Уведомляем через postMessage в Tauri
+            // Уведомляем Tauri
             if (window.__TAURI__?.core?.invoke) {
                 window.__TAURI__.core.invoke('notify_url_change', { 
                     tab: window.__CLAUDE_TAB__ || 1,
@@ -555,22 +510,7 @@ function setupUrlChangeDetection() {
         setTimeout(checkUrlChange, 100);
     });
     
-    // Перехватываем pushState и replaceState
-    const origPushState = history.pushState;
-    const origReplaceState = history.replaceState;
-    
-    history.pushState = function(...args) {
-        origPushState.apply(this, args);
-        setTimeout(checkUrlChange, 100);
-    };
-    
-    history.replaceState = function(...args) {
-        origReplaceState.apply(this, args);
-        setTimeout(checkUrlChange, 100);
-    };
-    
-    // Также проверяем периодически (на случай навигации через клики)
-    // Сохраняем ID для возможности очистки
+    // Периодическая проверка (ловит SPA-навигацию через pushState)
     if (window.__urlCheckInterval) {
         clearInterval(window.__urlCheckInterval);
     }

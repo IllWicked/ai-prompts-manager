@@ -97,7 +97,7 @@ Runtime.evaluate({ expression: "..." })
 - APM использует CDP только для конкретных операций
 - Код инъекций открыт и проверяем (`claude_helpers.js`)
 - Нет отправки данных на внешние серверы
-- Cookies сессии не читаются и не передаются
+- Из cookies читается только `lastActiveOrg` (для создания проектов)
 - Весь код выполняется локально
 
 ### Инжектируемые скрипты
@@ -105,8 +105,8 @@ Runtime.evaluate({ expression: "..." })
 | Скрипт | Назначение |
 |--------|------------|
 | `initClaudeUI()` | Скрытие sidebar, ghost button |
-| `setupUploadInterceptor()` | Подсчёт загруженных файлов |
-| `setupUrlChangeDetection()` | Отслеживание навигации |
+| `setupGenerationMonitor()` | DOM-мониторинг генерации (без monkey-patching) |
+| `setupUrlChangeDetection()` | Отслеживание навигации (polling + popstate) |
 
 **Код скриптов:** `src-tauri/scripts/claude_helpers.js`
 

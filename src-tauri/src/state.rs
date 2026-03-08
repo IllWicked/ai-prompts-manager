@@ -30,9 +30,8 @@ pub static UPLOAD_COUNTERS: [AtomicU32; 3] = [
 ];
 
 /// Статус генерации по табам Claude [tab1, tab2, tab3]
-/// Обновляется COM-событием DocumentTitleChanged (Windows):
-/// JS fetch interceptor ставит маркер (\u200B) в document.title при начале/конце генерации,
-/// COM handler читает title и обновляет AtomicBool — без eval, без sleep.
+/// Обновляется JS-мониторингом DOM (наличие stop button / streaming indicator)
+/// через Tauri invoke set_generation_state.
 pub static GENERATING_STATE: [AtomicBool; 3] = [
     AtomicBool::new(false),
     AtomicBool::new(false),

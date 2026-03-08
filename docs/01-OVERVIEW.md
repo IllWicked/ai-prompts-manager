@@ -29,12 +29,12 @@ ai-prompts-manager/
 │   │   ├── lib.rs              # Реэкспорт модулей
 │   │   ├── types.rs            # Структуры данных
 │   │   ├── state.rs            # Глобальные состояния
-│   │   ├── commands/           # Tauri команды (7 файлов, 55 команд)
+│   │   ├── commands/           # Tauri команды (7 файлов, 57 команд)
 │   │   ├── downloads/          # Логика загрузок
 │   │   ├── utils/              # Утилиты (MIME, платформа, размеры)
 │   │   └── webview/            # Управление WebView
 │   ├── scripts/
-│   │   └── claude_helpers.js   # Инжектируемый скрипт для Claude WebView (~490 строк)
+│   │   └── claude_helpers.js   # Инжектируемый скрипт для Claude WebView (~520 строк)
 │   ├── tauri.conf.json         # Конфигурация Tauri
 │   ├── Cargo.toml              # Зависимости Rust
 │   └── capabilities/           # Permissions
@@ -126,7 +126,7 @@ sequenceDiagram
     User->>UI: Клик "Отправить"
     UI->>UI: getBlockContent(blockId)
     UI->>Tauri: invoke('insert_text_to_claude')
-    Tauri->>Claude: CDP: editor.insertContent()
+    Tauri->>Claude: CDP: ClipboardEvent('paste')
     Claude-->>Tauri: success
     Tauri-->>UI: result
     UI->>LS: saveClaudeSettings()

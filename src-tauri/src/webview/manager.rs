@@ -133,12 +133,7 @@ pub fn create_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Res
 ///
 /// На Windows: использует WebView2 WebResourceRequested для перехвата
 /// запросов к `/upload-file` на уровне сетевого стека.
-/// На других платформах: no-op (используется JS интерсептор как fallback).
-///
-/// Преимущества нативного перехвата:
-/// - Не конфликтует с другими fetch-interceptors
-/// - Работает даже если Claude.ai использует Service Workers
-/// - Не зависит от JS-контекста
+/// На других платформах: no-op.
 fn setup_native_upload_interceptor(app: &AppHandle, tab: u8) {
     #[cfg(windows)]
     {
@@ -153,36 +148,29 @@ fn setup_native_upload_interceptor(app: &AppHandle, tab: u8) {
                     
                     let core: ICoreWebView2 = wv.controller().CoreWebView2().unwrap();
                     
-                    // Добавляем фильтр: перехватываем все запросы к upload-file
                     let filter: Vec<u16> = "*upload-file*"
                         .encode_utf16()
                         .chain(std::iter::once(0))
                         .collect();
-                    let filter_pcwstr = windows_core::PCWSTR::from_raw(filter.as_ptr());
-                    
-                    let _ = core.AddWebResourceRequestedFilter(filter_pcwstr, 
-                        webview2_com::Microsoft::Web::WebView2::Win32::COREWEBVIEW2_WEB_RESOURCE_CONTEXT(0) // ALL
+                    let _ = core.AddWebResourceRequestedFilter(
+                        windows_core::PCWSTR::from_raw(filter.as_ptr()),
+                        webview2_com::Microsoft::Web::WebView2::Win32::COREWEBVIEW2_WEB_RESOURCE_CONTEXT(0)
                     );
                     
-                    // Обработчик: считаем загрузки
-                    // Фильтр уже гарантирует что URL содержит "upload-file"
-                    // поэтому не нужно читать URI — просто инкрементируем
                     let handler = WebResourceRequestedEventHandler::create(Box::new(
                         move |_sender, _args| {
                             if tab_index < 3 {
                                 UPLOAD_COUNTERS[tab_index].fetch_add(
-                                    1, 
-                                    std::sync::atomic::Ordering::SeqCst
+                                    1, std::sync::atomic::Ordering::SeqCst
                                 );
                             }
                             Ok(())
                         }
                     ));
                     
-                    // EventRegistrationToken — просто i64, не нужен отдельный import
                     let mut token: i64 = 0;
                     let _ = core.add_WebResourceRequested(
-                        &handler, 
+                        &handler,
                         &mut token as *mut i64 as *mut _
                     );
                 }

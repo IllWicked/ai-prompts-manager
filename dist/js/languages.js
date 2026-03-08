@@ -565,8 +565,7 @@ function renderMarkedContent(text, langCode, countryCode) {
         const type = match[1];
         const form = match[2] || '';
         const resolved = resolveMarker(type, form, langCode, countryCode);
-        const tooltip = form ? `${type}:${form}` : type;
-        parts.push(`<span class="lang-marker" data-marker="${escapeHtmlForMarkers(match[0])}" title="${tooltip}">${escapeHtmlForMarkers(resolved)}</span>`);
+        parts.push(`<span class="lang-marker" data-marker="${escapeHtmlForMarkers(match[0])}">${escapeHtmlForMarkers(resolved)}</span>`);
         lastIndex = regex.lastIndex;
     }
     

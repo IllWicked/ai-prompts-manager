@@ -115,65 +115,19 @@ pub fn export_diagnostics() -> Result<String, String> {
 
 ---
 
-## 2. Upload Interceptor — monkey-patch fetch
+## ~~2. Upload Interceptor — monkey-patch fetch~~
 
-**Проблема:** Перехват `window.fetch` в чужом production-сайте. Может конфликтовать с другими interceptors, не работает с Service Workers, зависит от endpoint `/upload-file`.
+**Статус:** ✅ Решено в v4.3.4
 
-### Рекомендации
+Перехват `window.fetch` заменён на:
+- **Подсчёт загрузок:** нативный `WebResourceRequested` фильтр `*upload-file*` на уровне WebView2 (Rust, `webview/manager.rs`)
+- **Мониторинг генерации:** DOM-based `setupGenerationMonitor()` — `setInterval` 700мс, проверяет stop button / streaming / thinking через `querySelector`. Для фоновых суспендированных табов — Rust CDP polling (`start_generation_polling` в `commands/claude.rs`)
+- **Вставка текста:** `ClipboardEvent('paste')` вместо `editor.commands.insertContent()`
 
-**A. Перенести перехват на уровень WebView2 (Rust)**
+Никакого monkey-patching нативных API (`window.fetch`, `history.pushState`).
 
-WebView2 предоставляет нативный API `WebResourceRequested` для перехвата сетевых запросов на уровне хост-приложения. Это намного надёжнее, чем monkey-patch в JS:
-
-```rust
-// В webview/manager.rs при создании Claude WebView
-webview.add_web_resource_requested_filter(
-    "*/upload-file*", 
-    COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL
-)?;
-
-webview.on_web_resource_requested(|_webview, args| {
-    let uri = args.request().uri()?;
-    if uri.contains("/upload-file") {
-        // Инкрементировать счётчик загрузок в state.rs
-        UPLOAD_COUNTER.fetch_add(1, Ordering::SeqCst);
-    }
-    Ok(()) // Не блокируем запрос, только считаем
-})?;
-```
-
-**Преимущества:**
-- Работает на уровне сетевого стека, не зависит от JS-контекста
-- Не конфликтует с другими fetch-interceptors
-- Работает даже если Claude.ai использует Service Workers
-- Таури через `wry` предоставляет доступ к `on_web_resource_request`
-
-**B. Если нативный перехват невозможен — Proxy вместо replacement**
-
-Использовать `ES6 Proxy` вместо замены `window.fetch`. Proxy невидим для `toString()` проверок и менее инвазивен:
-
-```javascript
-window.fetch = new Proxy(window.fetch, {
-    apply(target, thisArg, args) {
-        const [url] = args;
-        if (typeof url === 'string' && url.includes('/upload-file')) {
-            window.__uploadedFilesCount++;
-        }
-        return Reflect.apply(target, thisArg, args);
-    }
-});
-```
-
-**C. Множественные паттерны endpoint'а**
-
-Вместо хардкода `/upload-file` использовать массив паттернов с wildcard:
-
-```javascript
-const UPLOAD_PATTERNS = ['/upload-file', '/api/upload', '/files/upload', '/upload'];
-```
-
-**Трудозатраты:** A — ~8-12 часов (требует изучения wry API), B — ~2 часа  
-**Приоритет:** 🟡 Средний — работает стабильно, пока не изменится endpoint
+**Трудозатраты:** Выполнено  
+**Приоритет:** ~~🟡 Средний~~ → ✅ Готово
 
 ---
 
@@ -305,9 +259,9 @@ function checkProjectStaleness() {
 
 ## ~~5. URL Change Detection — перехват history.pushState~~
 
-**Статус:** Снято с плана.
+**Статус:** ✅ Решено в v4.3.4
 
-Текущий перехват `pushState` + `replaceState` + `popstate` + backup polling работает стабильно. Navigation API — теоретическое улучшение на случай если Anthropic сменит механизм навигации. Переход на Navigation API у них потребует масштабных изменений, поэтому превентивный рефакторинг не оправдан. Если сломается — добавляется за ~2 часа по факту.
+Перехват `history.pushState` / `history.replaceState` убран. URL отслеживается через `popstate` listener + polling `location.href` каждые 2 секунды. SPA-переходы обнаруживаются с задержкой до 2 сек — некритично для кнопки "Продолжить проект".
 
 ---
 

@@ -180,7 +180,6 @@ window.__SEL__ = {
 | Функция | Описание |
 |---------|----------|
 | `hideGhostButton()` | Скрытие "призрачной" кнопки (оптимизировано через `:has()`) |
-| `setupGhostObserver()` | MutationObserver для отслеживания ghost-кнопки |
 | `setupCombinedObserver()` | Объединённый MutationObserver с debounce |
 | `hideSidebar()` | Отключение pointer-events сайдбара |
 | `setupSidebarObserver()` | MutationObserver для сайдбара (точечный) |
@@ -222,31 +221,22 @@ function setupGlobalClickListener()
 - Вызывает `invoke('hide_downloads')` при любом клике
 - Устанавливает `window.__globalClickListenerInstalled = true`
 
-### Upload Interceptor
+### Generation Monitor
 
 ```javascript
-function setupUploadInterceptor()
+function setupGenerationMonitor()
 ```
 
-Перехватывает `fetch` для отслеживания загрузки:
-- `window.__uploadInterceptorInstalled = true`
-- `window.__uploadedFilesCount = 0`
-- При `/upload-file` увеличивает счётчик
+Мониторинг генерации через DOM-наблюдение (без monkey-patching):
+- `window.__generationMonitorInstalled = true`
+- Проверяет наличие stop button, streaming indicator, thinking indicator
+- `setInterval` каждые 700мс
+- Уведомляет Rust через `set_generation_state`
 
-**Session ID защита от race condition:**
+Подсчёт загрузок файлов — только на стороне Rust (WebResourceRequested).
 
-При отправке блока с файлами генерируется уникальный `uploadSessionId`:
-```javascript
-const uploadSessionId = Date.now().toString() + Math.random().toString(36).slice(2);
-window.__uploadSessionId = uploadSessionId;
-```
-
-Это защищает от ситуации, когда пользователь вручную прикрепляет файл между сбросом счётчика и началом автоматического attach.
-
-**Ограничения:**
-- Monkey-patching fetch может конфликтовать с другими interceptors
-- Не работает с Service Workers
-- Зависит от endpoint `/upload-file` (может измениться)
+Для фоновых суспендированных табов используется Rust CDP polling
+(см. `start_generation_polling` в `commands/claude.rs`).
 
 ### URL Change Detection
 
@@ -255,10 +245,9 @@ function setupUrlChangeDetection()
 ```
 
 Отслеживает URL для детекции проекта:
-- Перехватывает `history.pushState/replaceState`
-- Слушает `popstate`
+- Слушает `popstate` (back/forward)
+- Polling `location.href` каждые 2 сек
 - Уведомляет Tauri через `notify_url_change`
-- Backup проверка каждые 2 сек
 
 ### Глобальные переменные
 
@@ -266,8 +255,8 @@ function setupUrlChangeDetection()
 |------------|----------|
 | `window.__SEL__` | Селекторы |
 | `window.__CLAUDE_TAB__` | Номер таба (1-3) |
-| `window.__uploadedFilesCount` | Счётчик файлов |
-| `window.__uploadInterceptorInstalled` | Флаг |
+| `window.__generationMonitorInstalled` | Флаг мониторинга генерации |
+| `window.__generationMonitorInterval` | Интервал мониторинга генерации |
 | `window.__combinedObserver` | Объединённый MutationObserver (ghost + UI) |
 | `window.__sidebarObserver` | MutationObserver для сайдбара |
 | `window.__urlChangeDetectionInstalled` | Флаг |
@@ -427,7 +416,7 @@ sequenceDiagram
     API->>UI: updateProjectIndicator()
 
     Note over UI,Storage: Продолжение проекта
-    Claude->>Tauri: URL changed (history.pushState)
+    Claude->>Tauri: URL changed (polling detection)
     Tauri->>UI: claude-url-changed event
     UI->>API: checkForContinueProject()
     API->>UI: showContinueButton(uuid)

@@ -12,7 +12,7 @@ src-tauri/src/
 ├── lib.rs               (23 строки)  — реэкспорт модулей
 ├── types.rs             (74 строки)  — структуры данных
 ├── state.rs             (47 строк)   — глобальные состояния
-├── commands/            (55 команд)  — Tauri команды
+├── commands/            (57 команд)  — Tauri команды
 │   ├── mod.rs           — реэкспорт
 │   ├── app.rs           — управление приложением
 │   ├── claude.rs        — взаимодействие с Claude
@@ -41,7 +41,7 @@ src-tauri/src/
 |--------|----------|
 | `types` | Структуры: `ArchiveLogEntry`, `DownloadEntry`, `DownloadsSettings`, `FileData`, `DiagnosticEntry` |
 | `state` | Глобальные: `CLAUDE_VISIBLE`, `ACTIVE_TAB`, `PANEL_RATIO`, Mutex locks |
-| `commands` | 55 Tauri команд, разбитых по доменам |
+| `commands` | 57 Tauri команд, разбитых по доменам |
 | `downloads` | Пути к логам, настройкам, генерация уникальных имён |
 | `utils` | MIME-типы, платформо-зависимые функции, константы |
 | `webview` | JS скрипты, создание/resize webview, z-order, suspend/resume |
@@ -50,7 +50,7 @@ src-tauri/src/
 
 ## Полный список Tauri Commands
 
-Всего **55 команд**. Вызов из JS: `window.__TAURI__.core.invoke('command', { params })`
+Всего **57 команд**. Вызов из JS: `window.__TAURI__.core.invoke('command', { params })`
 
 ### Downloads & Files (`commands/downloads.rs`)
 
@@ -119,9 +119,11 @@ src-tauri/src/
 |---------|-----------|---------|----------|
 | `eval_in_claude` | `tab, script` | — | JS fire-and-forget |
 | `eval_in_claude_with_result` | `tab, script, timeout?` | `String` | JS с результатом (CDP) |
-| `insert_text_to_claude` | `tab, text, autoSend` | — | Вставить текст |
+| `insert_text_to_claude` | `tab, text, autoSend` | — | Вставить текст (через ClipboardEvent) |
 | `inject_generation_monitor` | `tab` | — | Мониторинг генерации |
 | `check_generation_status` | `tab` | `bool` | Статус генерации |
+| `set_generation_state` | `tab, generating` | — | Установить статус генерации |
+| `init_claude_webviews` | — | — | Инициализация всех Claude webview, toolbar, polling |
 
 ### Panel & Window (`commands/claude.rs`, `commands/app.rs`)
 
@@ -179,6 +181,7 @@ src-tauri/src/
 |-------------------|----------|
 | `CLAUDE_HELPERS_JS` | JS helpers из `scripts/claude_helpers.js` |
 | `CLAUDE_SELECTORS_JSON` | Селекторы из `scripts/selectors.json` |
+| `GENERATION_CHECK_SCRIPT` | Компактный JS для проверки генерации через CDP |
 | `get_claude_init_script(tab)` | Генерация init script для таба |
 | `get_generation_monitor_script()` | Скрипт мониторинга генерации |
 | `get_scroll_script(delta_y)` | Скрипт для скролла |

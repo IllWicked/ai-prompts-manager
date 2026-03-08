@@ -8,6 +8,38 @@
 
 ---
 
+## [4.3.4] - 2026-03-08 {#v434}
+
+### Исправления
+
+#### Антибот-совместимость: удаление monkey-patching
+- **Удалён `setupFetchInterceptor()`** — перехват `window.fetch` с обёрткой `ReadableStream` для `/completion` и клонированием response для `/upload-file`. Вероятная причина блокировок аккаунтов
+- **Удалён патчинг `history.pushState`/`history.replaceState`** — детектируется через `.toString()`. Заменён на `popstate` listener + `setInterval(checkUrlChange, 2000)`
+- **Удалена передача данных через URL** — параметры `__apm_org` и `__apm_project` в `history.replaceState` убраны. Organization ID читается из cookie `lastActiveOrg` через CDP
+- **Удалён `fetch('/api/organizations')`** — fallback для получения org_id через внутренний API Claude убран
+
+#### Вставка текста: ClipboardEvent вместо ProseMirror API
+- **`insert_text_to_claude`** — 3 fallback-уровня (`editor.commands.insertContent`, `editorView.dispatch`, `innerHTML`) заменены на `ClipboardEvent('paste')`. ProseMirror обрабатывает paste через свой штатный pipeline — идентично реальному Ctrl+V
+- **Рандомная задержка перед Send** — 300–700мс вместо фиксированных 200мс
+
+#### Мониторинг генерации: DOM polling + Rust CDP
+- **Активный таб:** `setupGenerationMonitor()` — `setInterval` 700мс, проверяет stop button / streaming / thinking indicator через `document.querySelector`
+- **Фоновые суспендированные табы:** `start_generation_polling()` — Rust `tokio` loop каждые 800мс, CDP `Runtime.evaluate` с `GENERATION_CHECK_SCRIPT`. Работает на суспендированных WebView2 без пробуждения. Debounce 3 проверки (~2.4 сек) перед сбросом статуса
+- **Старт генерации:** сигнализируется из `sendTextToClaude` при auto-send через `set_generation_state`
+- **Подсчёт загрузок:** исключительно Rust `WebResourceRequested` — JS fallback через CDP eval убран
+
+#### Мелкие исправления
+- **Оффлайн-режим:** `offlineMode: true` → `false` по умолчанию в `DEFAULT_SETTINGS`
+- **Маркеры языка:** убран `title="${tooltip}"` с `<span class="lang-marker">` — всплывающие подсказки `lang:nom.m` больше не появляются
+
+### Документация
+- Обновлены `04-CLAUDE.md`, `01-OVERVIEW.md`, `03-BACKEND.md`, `SECURITY.md`, `STABILITY-IMPROVEMENTS.md`, `LIMITATIONS.md`, `ADR.md`, `QUICKSTART.md`
+- Секции Upload Interceptor и URL Change Detection в `STABILITY-IMPROVEMENTS.md` помечены как решённые
+- Счётчик Tauri команд 55 → 57 (`init_claude_webviews`, `set_generation_state`)
+- Добавлена константа `GENERATION_CHECK_SCRIPT` в таблицу `scripts.rs`
+
+---
+
 ## [4.3.2] - 2026-03-03 {#v432}
 
 ### Исправления

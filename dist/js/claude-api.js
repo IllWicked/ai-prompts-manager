@@ -245,14 +245,14 @@ function invalidateOrgCache() {
 /**
  * Получить organization_id из Claude
  * Кэшируется после первого получения
- * Использует eval_in_claude_with_result для получения данных напрямую
+ * Читает из cookie через CDP (без обращения к внутренним API)
  */
 async function getOrganizationId(tab) {
     if (cachedOrgId) {
         return cachedOrgId;
     }
     
-    // Скрипт который вернёт org_id из cookie (быстрая синхронная операция)
+    // Читаем org_id из cookie через CDP
     const script = `
         (function() {
             try {
@@ -264,79 +264,22 @@ async function getOrganizationId(tab) {
         })();
     `;
     
-    try {
-        // Таймаут fast — это простое чтение cookie
-        const result = await cdpEval(tab, script, { 
-            timeoutType: 'fast', maxRetries: 1, silent: true 
-        });
-        // Результат приходит как JSON string, парсим
-        const orgId = JSON.parse(result);
-        
-        // Проверяем что это строка UUID, а не объект ошибки
-        if (orgId && typeof orgId === 'string' && /^[a-f0-9-]+$/i.test(orgId)) {
-            cachedOrgId = orgId;
-            return cachedOrgId;
-        }
-    } catch (e) {
-        // Fallback если CDP не сработал
-    }
-    
-    // Fallback: если новая команда не сработала, пробуем через API запрос + searchParams
-    const apiScript = `
-        (async function() {
-            try {
-                // Сначала пробуем из cookie
-                const cookieMatch = document.cookie.match(/lastActiveOrg=([a-f0-9-]+)/i);
-                if (cookieMatch) {
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('__apm_org', cookieMatch[1]);
-                    history.replaceState(null, '', url.toString());
-                    return;
-                }
-                
-                // Если нет в cookie - запрашиваем через API
-                const response = await fetch('https://claude.ai/api/organizations', {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-                if (response.ok) {
-                    const orgs = await response.json();
-                    const orgId = orgs[0]?.uuid;
-                    if (orgId) {
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('__apm_org', orgId);
-                        history.replaceState(null, '', url.toString());
-                    }
-                }
-            } catch (e) {
-                // Failed silently
+    // Несколько попыток — CDP может быть не готов сразу после навигации
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            const result = await cdpEval(tab, script, { 
+                timeoutType: 'fast', maxRetries: 0, silent: true 
+            });
+            const orgId = JSON.parse(result);
+            
+            if (orgId && typeof orgId === 'string' && /^[a-f0-9-]+$/i.test(orgId)) {
+                cachedOrgId = orgId;
+                return cachedOrgId;
             }
-        })();
-    `;
-    
-    await evalInClaude(tab, apiScript);
-    await delay(400);
-    
-    // Читаем URL
-    try {
-        const url = await window.__TAURI__.core.invoke('get_tab_url', { tab });
-        const urlObj = new URL(url);
-        const orgId = urlObj.searchParams.get('__apm_org');
-        
-        if (orgId) {
-            cachedOrgId = orgId;
-            
-            // Очищаем URL param
-            await evalInClaude(tab, `
-                const url = new URL(window.location.href);
-                url.searchParams.delete('__apm_org');
-                history.replaceState(null, '', url.toString());
-            `);
-            
-            return cachedOrgId;
+        } catch (e) {
+            // Retry after delay
         }
-    } catch (e) {
-        // URL read failed
+        if (attempt < 2) await delay(500);
     }
     
     return null;
@@ -358,7 +301,7 @@ async function createProjectViaAPI(tab) {
     const script = `
         (async function() {
             try {
-                const response = await fetch('https://claude.ai/api/organizations/${orgId}/projects', {
+                const response = await fetch('/api/organizations/${orgId}/projects', {
                     method: 'POST',
                     credentials: 'include',
                     headers: {
@@ -384,80 +327,17 @@ async function createProjectViaAPI(tab) {
     `;
     
     try {
-        // Таймаут slow — это HTTP запрос к API Claude (может быть медленным)
         const resultStr = await cdpEval(tab, script, {
-            timeoutType: 'slow', maxRetries: 1
+            timeoutType: 'slow', maxRetries: 2
         });
         const result = JSON.parse(resultStr);
         
         if (result && result.success && result.uuid) {
-            // Навигируем на страницу проекта
             await navigateClaude(tab, `https://claude.ai/project/${result.uuid}`);
-            
             return { success: true, uuid: result.uuid, name: projectName };
         }
     } catch (e) {
-        // CDP failed, try fallback
-    }
-    
-    // Fallback через searchParams если новая команда не сработала
-    const fallbackScript = `
-        (async function() {
-            try {
-                const response = await fetch('https://claude.ai/api/organizations/${orgId}/projects', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        name: ${JSON.stringify(projectName)},
-                        description: '',
-                        is_private: true
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error('HTTP ' + response.status);
-                }
-                
-                const data = await response.json();
-                const url = new URL(window.location.href);
-                url.searchParams.set('__apm_project', data.uuid);
-                history.replaceState(null, '', url.toString());
-            } catch (e) {
-                const url = new URL(window.location.href);
-                url.searchParams.set('__apm_project', 'error');
-                history.replaceState(null, '', url.toString());
-            }
-        })();
-    `;
-    
-    await evalInClaude(tab, fallbackScript);
-    await delay(1000);
-    
-    try {
-        const url = await window.__TAURI__.core.invoke('get_tab_url', { tab });
-        const urlObj = new URL(url);
-        const result = urlObj.searchParams.get('__apm_project');
-        
-        if (result) {
-            await evalInClaude(tab, `
-                const url = new URL(window.location.href);
-                url.searchParams.delete('__apm_project');
-                history.replaceState(null, '', url.toString());
-            `);
-            
-            if (result === 'error') {
-                return { success: false, uuid: null, name: null };
-            }
-            
-            await navigateClaude(tab, `https://claude.ai/project/${result}`);
-            
-            return { success: true, uuid: result, name: projectName };
-        }
-    } catch (e) {
-        // Fallback failed
+        // CDP failed
     }
     
     return { success: false, uuid: null, name: null };
@@ -731,18 +611,8 @@ async function waitForFilesUploaded(tab, expectedCount, timeout = 10000) {
     
     while (Date.now() - startTime < timeout) {
         try {
-            // Приоритет: Tauri команда (Rust счётчик от WebResourceRequested)
-            let count = 0;
-            try {
-                count = await window.__TAURI__.core.invoke('get_upload_count', { tab });
-            } catch (_) {
-                // Fallback: JS счётчик через CDP
-                const result = await cdpEval(tab, `window.__uploadedFilesCount || 0`, {
-                    timeoutType: 'fast', maxRetries: 0, silent: true
-                });
-                count = parseInt(result) || 0;
-            }
-            
+            // Rust счётчик (WebResourceRequested — нативный перехват на уровне сети)
+            const count = await window.__TAURI__.core.invoke('get_upload_count', { tab });
             if (count >= expectedCount) {
                 return true;
             }
@@ -962,20 +832,10 @@ async function sendNodeToClaude(index, chatTab) {
             await waitForFileInput(targetTab);
             checkAborted(signal);
             
-            const uploadSessionId = Date.now().toString() + Math.random().toString(36).slice(2);
-            
-            // Сбрасываем счётчики: Rust (Tauri) + JS (CDP fallback)
+            // Сбрасываем счётчик (Rust — нативный WebResourceRequested)
             try {
                 await window.__TAURI__.core.invoke('reset_upload_count', { tab: targetTab });
             } catch (_) {}
-            try {
-                await cdpEval(targetTab, 
-                    `window.__uploadedFilesCount = 0; window.__uploadSessionId = "${uploadSessionId}";`,
-                    { timeoutSecs: 2, maxRetries: 1, silent: true }
-                );
-            } catch (e) {
-                // Сброс счётчика не критичен
-            }
             
             checkAborted(signal);
             
@@ -1092,6 +952,18 @@ async function sendTextToClaude(text, tab) {
             tab: targetTab,
             autoSend: autoSend
         });
+        
+        // Сигнализируем старт генерации при auto-send
+        // CDP polling на фоновых табах подхватит конец
+        if (autoSend) {
+            try {
+                await window.__TAURI__.core.invoke('set_generation_state', {
+                    tab: targetTab,
+                    generating: true
+                });
+            } catch (_) {}
+        }
+        
         if (text) {
             showToast(autoSend ? 'Отправлено в Claude' : 'Вставлено в Claude');
         } else if (autoSend) {

@@ -95,6 +95,7 @@ function onNodeDrag(e) {
     
     // Двигаем все выделенные элементы (блоки и заметки)
     let firstNode = null;
+    let maxCoord = 0;
     selectedNodes.forEach(id => {
         const offset = dragOffsets[id];
         if (!offset) return;
@@ -114,6 +115,12 @@ function onNodeDrag(e) {
             el.style.left = x + 'px';
             el.style.top = y + 'px';
             
+            // Трекаем максимальную координату для расширения холста
+            const right = x + (el.offsetWidth || 700);
+            const bottom = y + (el.offsetHeight || 200);
+            if (right > maxCoord) maxCoord = right;
+            if (bottom > maxCoord) maxCoord = bottom;
+            
             // Для первого элемента обновляем grid overlay
             if (!firstNode) {
                 firstNode = el;
@@ -121,6 +128,20 @@ function onNodeDrag(e) {
             }
         }
     });
+    
+    // Расширяем scrollable area если блок приближается к краю
+    const padding = WORKFLOW_CONFIG.CANVAS_PADDING;
+    const neededSize = maxCoord + padding;
+    const currentSize = getCanvasSize();
+    if (neededSize > currentSize) {
+        const wrapper = getWorkflowWrapper();
+        if (canvas && wrapper) {
+            canvas.style.minWidth = neededSize + 'px';
+            canvas.style.minHeight = neededSize + 'px';
+            wrapper.style.width = (neededSize * scale) + 'px';
+            wrapper.style.height = (neededSize * scale) + 'px';
+        }
+    }
     
     renderConnections();
 }
@@ -141,6 +162,12 @@ function onNodeDragEnd() {
         
         // Очищаем точки оверлея
         clearGridOverlay();
+        
+        // Пересчитываем размер холста (блоки могли выйти за границы)
+        if (typeof invalidateCanvasSize === 'function') {
+            invalidateCanvasSize();
+            adjustWorkflowScale();
+        }
         
         saveWorkflowState();
     }
@@ -253,6 +280,13 @@ function onNodeResizeEnd(e) {
         
         resizeNode.classList.remove('resizing');
         resizeNode.style.cursor = 'default';
+        
+        // Пересчитываем размер холста
+        if (typeof invalidateCanvasSize === 'function') {
+            invalidateCanvasSize();
+            adjustWorkflowScale();
+        }
+        
         saveWorkflowState();
     }
     // Всегда сбрасываем состояние и удаляем обработчики

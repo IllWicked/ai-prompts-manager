@@ -1114,8 +1114,16 @@ function initArchiveLogHandlers() {
         }
     });
     
-    document.getElementById('clear-archive-log-btn')?.addEventListener('click', async () => {
-        if (confirm('Очистить весь лог скачиваний?')) {
+    document.getElementById('clear-archive-log-btn')?.addEventListener('click', async function() {
+        const btn = this;
+        
+        // Второй клик — подтверждение
+        if (btn.dataset.confirming === 'true') {
+            btn.dataset.confirming = '';
+            btn.textContent = 'Очистить лог';
+            btn.style.background = '';
+            btn.style.borderColor = '';
+            btn.style.color = '';
             try {
                 await window.__TAURI__.core.invoke('clear_archive_log');
                 await showArchiveLogModal();
@@ -1123,7 +1131,26 @@ function initArchiveLogHandlers() {
             } catch (e) {
                 // Ignore
             }
+            return;
         }
+        
+        // Первый клик — запрос подтверждения
+        btn.dataset.confirming = 'true';
+        btn.textContent = 'Точно очистить?';
+        btn.style.background = 'var(--color-danger)';
+        btn.style.borderColor = 'var(--color-danger)';
+        btn.style.color = '#fff';
+        
+        // Автосброс через 3 сек
+        setTimeout(() => {
+            if (btn.dataset.confirming === 'true') {
+                btn.dataset.confirming = '';
+                btn.textContent = 'Очистить лог';
+                btn.style.background = '';
+                btn.style.borderColor = '';
+                btn.style.color = '';
+            }
+        }, 3000);
     });
     
     document.getElementById('archive-log-search')?.addEventListener('input', (e) => {

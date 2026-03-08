@@ -2570,9 +2570,8 @@ header .flex {
 }
 
 /* Edit mode - большой холст, сетка точек, без transition для плавного zoom */
+/* min-width/min-height управляется динамически из JS (getCanvasSize) */
 .workflow-container.edit-mode .workflow-canvas {
-    min-width: 5000px;
-    min-height: 5000px;
     transition: none;
     background-image: radial-gradient(circle, rgba(150,150,150,0.3) 1.5px, transparent 1.5px);
     background-size: 40px 40px;

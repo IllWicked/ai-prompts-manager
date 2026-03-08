@@ -186,6 +186,9 @@ function renderWorkflow(preserveScroll = null) {
     const container = getWorkflowContainer();
     if (!canvas || !svg || !container) return;
     
+    // Сбрасываем кэш размера холста (блоки могли измениться)
+    if (typeof invalidateCanvasSize === 'function') invalidateCanvasSize();
+    
     // По умолчанию в edit mode сохраняем скролл, если явно не указано иначе
     const shouldPreserveScroll = preserveScroll !== null ? preserveScroll : isEditMode;
     
@@ -296,7 +299,8 @@ function autoPositionNodes(promptsData) {
     if (numBlocks === 0) return;
     
     // Вычисляем оптимальное количество колонок
-    const maxCols = Math.floor((WORKFLOW_CONFIG.CANVAS_SIZE + gapX) / (nodeWidth + gapX));
+    const canvasSize = typeof getCanvasSize === 'function' ? getCanvasSize() : WORKFLOW_CONFIG.CANVAS_SIZE;
+    const maxCols = Math.floor((canvasSize + gapX) / (nodeWidth + gapX));
     
     // Выбираем количество колонок
     let cols = Math.max(1, Math.min(maxCols, numBlocks));

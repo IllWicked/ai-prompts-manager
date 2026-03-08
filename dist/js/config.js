@@ -126,8 +126,9 @@ const WORKFLOW_CONFIG = {
     NODE_GAP_Y: 40,
     
     // Canvas
-    CANVAS_SIZE: 5000,
-    CANVAS_CENTER: 2500,
+    CANVAS_SIZE: 5000,          // Используется как fallback
+    CANVAS_CENTER: 2500,        // Начальная точка автопозиционирования
+    CANVAS_PADDING: 1500,       // Отступ за пределы контента
     
     // Связи
     MAGNET_DISTANCE: 30,

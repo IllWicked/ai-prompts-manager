@@ -39,9 +39,10 @@ function adjustWorkflowScale() {
         canvas.style.transform = `scale(${workflowZoom})`;
         canvas.style.transformOrigin = 'top left';
         
-        // Edit mode - восстанавливаем большой холст и позицию
-        canvas.style.minWidth = '5000px';
-        canvas.style.minHeight = '5000px';
+        // Динамический размер холста
+        const canvasSize = getCanvasSize();
+        canvas.style.minWidth = canvasSize + 'px';
+        canvas.style.minHeight = canvasSize + 'px';
         canvas.style.width = '';
         canvas.style.height = '';
         canvas.style.left = '';
@@ -51,7 +52,6 @@ function adjustWorkflowScale() {
         canvas.style.setProperty('--zoom-inverse', 1 / workflowZoom);
         
         // Edit mode - wrapper размер = canvas * zoom (чтобы scrollable area соответствовала визуальному размеру)
-        const canvasSize = WORKFLOW_CONFIG.CANVAS_SIZE;
         wrapper.style.width = (canvasSize * workflowZoom) + 'px';
         wrapper.style.height = (canvasSize * workflowZoom) + 'px';
         
@@ -70,9 +70,10 @@ function adjustWorkflowScale() {
         // Устанавливаем CSS переменную для view mode тоже
         canvas.style.setProperty('--zoom-inverse', 1 / viewZoom);
         
-        // View mode - canvas остаётся большим (для SVG линий)
-        canvas.style.minWidth = '5000px';
-        canvas.style.minHeight = '5000px';
+        // Динамический размер холста (для SVG линий)
+        const canvasSize = getCanvasSize();
+        canvas.style.minWidth = canvasSize + 'px';
+        canvas.style.minHeight = canvasSize + 'px';
         canvas.style.width = '';
         canvas.style.height = '';
         canvas.style.left = '0';
@@ -135,6 +136,30 @@ function calculateContentBounds() {
     });
     
     return { minX, maxX, minY, maxY };
+}
+
+/**
+ * Динамический размер холста на основе контента (кэшированный).
+ * Пересчитывается при вызове invalidateCanvasSize().
+ * @returns {number} Размер стороны холста в px
+ */
+let _cachedCanvasSize = null;
+function getCanvasSize() {
+    if (_cachedCanvasSize !== null) return _cachedCanvasSize;
+    const bounds = calculateContentBounds();
+    const padding = WORKFLOW_CONFIG.CANVAS_PADDING;
+    const minSize = WORKFLOW_CONFIG.CANVAS_CENTER * 2;
+    const contentMax = Math.max(bounds.maxX, bounds.maxY) + padding;
+    _cachedCanvasSize = Math.max(minSize, contentMax);
+    return _cachedCanvasSize;
+}
+
+/**
+ * Сбрасывает кэш размера холста.
+ * Вызывать после: drag end, resize end, добавление/удаление блоков, auto-layout.
+ */
+function invalidateCanvasSize() {
+    _cachedCanvasSize = null;
 }
 
 /**
@@ -244,7 +269,7 @@ function setupWorkflowZoom() {
             
             // Обычный скролл — ограничиваем пределами холста
             // Scrollable area = canvas size * zoom (wrapper задаёт размер)
-            const canvasSize = WORKFLOW_CONFIG.CANVAS_SIZE * workflowZoom;
+            const canvasSize = getCanvasSize() * workflowZoom;
             const maxScrollX = Math.max(0, canvasSize - container.clientWidth);
             const maxScrollY = Math.max(0, canvasSize - container.clientHeight);
             
@@ -366,7 +391,7 @@ function setupWorkflowZoom() {
             const dy = e.clientY - panStartY;
             
             // Ограничения scroll - не выходить за пределы холста
-            const canvasSize = WORKFLOW_CONFIG.CANVAS_SIZE * workflowZoom;
+            const canvasSize = getCanvasSize() * workflowZoom;
             const maxScrollX = Math.max(0, canvasSize - container.clientWidth);
             const maxScrollY = Math.max(0, canvasSize - container.clientHeight);
             
@@ -448,3 +473,5 @@ function scrollToBlocks() {
 // Экспорт
 window.adjustWorkflowScale = adjustWorkflowScale;
 window.scrollToBlocks = scrollToBlocks;
+window.getCanvasSize = getCanvasSize;
+window.invalidateCanvasSize = invalidateCanvasSize;

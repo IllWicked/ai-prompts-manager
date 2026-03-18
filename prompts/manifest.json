@@ -24,8 +24,13 @@
       "name": "GAMBLE-PILLAR-MAIN",
       "version": "1.0.9",
       "order": 4
+    },
+    "gamble-mirror-nogeo": {
+      "name": "GAMBLE-MIRROR-NOGEO",
+      "version": "1.0.0",
+      "order": 6
     }
   },
   "release_notes": "ЧТО НОВОГО:",
-  "updated": "2026-03-15"
+  "updated": "2026-03-18"
 }

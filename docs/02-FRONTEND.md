@@ -20,17 +20,17 @@
 
 | Категория | Модули | Функций |
 |-----------|--------|---------|
-| Ядро | config.js, app-state.js, utils.js, toast.js, storage.js, modals.js, dropdown.js | ~46 |
-| Языки/скрипты | languages.js, language-ui.js, embedded-scripts.js, embedded-scripts-spellcheck.js | ~17 |
-| Вкладки/блоки | tabs.js, tab-selector.js, blocks.js, block-ui.js, undo.js | ~42 |
+| Ядро | config.js, app-state.js, utils.js, toast.js, storage.js, modals.js, dropdown.js | ~31 |
+| Языки/скрипты | languages.js, language-ui.js, embedded-scripts.js | ~30 |
+| Вкладки/блоки | tabs.js, tab-selector.js, blocks.js, block-ui.js, undo.js | ~57 |
 | Данные | persistence.js, export-import.js, remote-prompts.js | ~32 |
-| UI | settings.js, updates.js, context-menu.js, dynamic-input.js, edit-helpers.js, attachments.js | ~65 |
-| Workflow | workflow-state.js, workflow-grid.js, workflow-zoom.js, workflow-render.js, workflow-interactions.js, connections.js | ~51 |
-| Claude | claude-state.js, claude-ui.js, claude-api.js | ~48 (5+6+37) |
-| Инициализация | init.js | ~30 |
-| **Всего** | **35 файлов** | **~340** |
+| UI | settings.js, updates.js, context-menu.js, dynamic-input.js, edit-helpers.js, attachments.js | ~69 |
+| Workflow | workflow-state.js, workflow-grid.js, workflow-zoom.js, workflow-render.js, workflow-interactions.js, connections.js | ~71 |
+| Claude | claude-state.js, claude-ui.js, claude-api.js | ~50 (5+6+39) |
+| Инициализация | init.js | ~33 |
+| **Всего** | **34 файла** | **~373** |
 
-> **Примечание:** Число ~340 включает все функции (публичные API + внутренние helpers). Публичных API функций около 102 — см. [INDEX-HTML-API.md](frontend/INDEX-HTML-API.md).
+> **Примечание:** Число ~373 включает все функции (публичные API + внутренние helpers), считая вложенные. Публичных API функций около 102 — см. [INDEX-HTML-API.md](frontend/INDEX-HTML-API.md).
 
 ## Быстрый доступ
 
@@ -189,7 +189,6 @@ graph TD
 <script src="js/languages.js"></script>
 <script src="js/language-ui.js"></script>
 <script src="js/embedded-scripts.js"></script>
-<script src="js/embedded-scripts-spellcheck.js"></script>
 <script src="js/utils.js"></script>
 <script src="js/toast.js"></script>
 <script src="js/storage.js"></script>

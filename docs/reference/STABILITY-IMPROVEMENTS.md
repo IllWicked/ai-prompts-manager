@@ -5,6 +5,18 @@
 **Дата:** 2026-02-22  
 **Версия:** 4.3.2
 
+> **Статус:** Исторический документ. Многие рекомендации реализованы в v4.3.x–v4.4.0:
+> - ✅ Автодиагностика селекторов (`runSelectorHealthCheck()`, `__findElSmart__`)
+> - ✅ Экспорт диагностики (`export_diagnostics`, `diagnostics.json`)
+> - ✅ Upload Interceptor заменён на WebResourceRequested (зачёркнут)
+> - ✅ URL Change Detection без monkey-patching (зачёркнут)
+> - ✅ Z-Order через `raise_toolbar_zorder()` вместо recreate
+> - ✅ Гибридное хранение localStorage + файловый backup
+> - ✅ Undo/Redo: sticky notes корректно сохраняются
+> - ✅ Language System: маркерная система реализована
+>
+> Нереализованные пункты сохраняют актуальность как план на будущее.
+
 Анализ 12 наиболее хрупких подсистем приложения с конкретными рекомендациями по улучшению.
 
 ---
@@ -121,8 +133,8 @@ pub fn export_diagnostics() -> Result<String, String> {
 
 Перехват `window.fetch` заменён на:
 - **Подсчёт загрузок:** нативный `WebResourceRequested` фильтр `*upload-file*` на уровне WebView2 (Rust, `webview/manager.rs`)
-- **Мониторинг генерации:** DOM-based `setupGenerationMonitor()` — `setInterval` 700мс, проверяет stop button / streaming / thinking через `querySelector`. Для фоновых суспендированных табов — Rust CDP polling (`start_generation_polling` в `commands/claude.rs`)
-- **Вставка текста:** `ClipboardEvent('paste')` вместо `editor.commands.insertContent()`
+- **Мониторинг генерации:** URL hash — JS `setInterval(300ms)` в Claude WebView проверяет DOM → `history.replaceState("#generating")`. Rust читает `webview.url()` синхронно. Polling из main webview каждые 500мс.
+- **Вставка текста:** `editor.commands.insertContent()` — штатный метод ProseMirror, работает с любым состоянием UI (с файлами и без)
 
 Никакого monkey-patching нативных API (`window.fetch`, `history.pushState`).
 
@@ -339,10 +351,10 @@ const SendProgress = {
 Вместо пересоздания toolbar применён комплексный рефакторинг WebView coordination:
 
 - **`raise_toolbar_zorder()`** — Win32 `SetWindowPos(HWND_TOP)` через `with_webview`. Мгновенное поднятие z-order без пересоздания, без потери состояния.
-- **`webview.hide()`/`show()`** — WebView2 `put_IsVisible(FALSE)` вместо позиционирования за экран. Throttle CPU/GPU.
-- **`TrySuspend()`/`Resume()`** — ICoreWebView2_3 для паузы script timers в неактивных табах.
+- **Offscreen positioning** — `set_position(width*2, 0)` вместо `hide()`. IsVisible=TRUE, DOM живой.
+- **Suspend отключён** — `TrySuspend()` замораживал DOM, ломал querySelector/insertContent. Неактивные табы за экран с IsVisible=TRUE.
 - **Async startup** — `tauri::async_runtime::spawn` вместо `thread::spawn`, задержки 950ms → 250ms.
-- **Error logging** — ошибки создания webview пишутся в `diagnostics.json` + emit `startup-error`.
+- **Error logging** — ошибки создания webview пишутся в `diagnostics.json`.
 - **Декомпозиция** — `resize_webviews` → `layout_ui` + `layout_claude` + `layout_overlay`.
 
 Удалены: `recreate_toolbar()`, `TOOLBAR_NEEDS_RECREATE`, deferred recreate логика, все off-screen позиционирования.

@@ -117,99 +117,102 @@ pub async fn write_temp_file(
     Ok(file_path.to_string_lossy().to_string())
 }
 
-/// Прикрепляет файл к сообщению Claude через инжекцию
+/// Прикрепляет файлы к сообщению Claude через инжекцию (batch)
 ///
-/// Читает файл, кодирует в base64 и инжектит в input[type="file"]
-/// через DataTransfer API.
+/// Все файлы отправляются одним eval — последовательная обработка
+/// гарантирована внутри скрипта (await между каждым файлом).
 ///
 /// # Arguments
 /// * `app` - handle приложения
 /// * `tab` - номер таба Claude
-/// * `path` - путь к файлу
+/// * `paths` - массив путей к файлам
 #[tauri::command]
-pub async fn attach_file_to_claude(
+pub async fn attach_files_batch(
     app: AppHandle, 
     tab: u8, 
-    path: String
+    paths: Vec<String>
 ) -> Result<(), String> {
-    let file_path = std::path::Path::new(&path);
-    
-    // Проверяем существование файла
-    if !file_path.exists() {
-        return Err(format!("Файл не найден: {}", file_path.display()));
+    if paths.is_empty() {
+        return Ok(());
     }
     
-    // Читаем файл
-    let data = fs::read(file_path)
-        .map_err(|e| format!("Ошибка чтения файла: {}", e))?;
+    // Собираем данные всех файлов
+    let mut files_js = Vec::new();
+    for path_str in &paths {
+        let file_path = std::path::Path::new(path_str);
+        
+        if !file_path.exists() {
+            eprintln!("[Attach] File not found: {}", file_path.display());
+            continue;
+        }
+        
+        let data = fs::read(file_path)
+            .map_err(|e| format!("Ошибка чтения файла: {}", e))?;
+        
+        let mime_type = get_mime_type(file_path.extension().and_then(|e| e.to_str()));
+        let base64_data = base64::engine::general_purpose::STANDARD.encode(&data);
+        let file_name = file_path.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("file");
+        
+        files_js.push(format!(
+            r#"{{b:"{base64}",m:"{mime}",n:"{name}"}}"#,
+            base64 = base64_data, 
+            mime = mime_type, 
+            name = file_name
+        ));
+    }
     
-    // Определяем MIME-тип
-    let mime_type = get_mime_type(file_path.extension().and_then(|e| e.to_str()));
+    if files_js.is_empty() {
+        return Ok(());
+    }
     
-    // Кодируем в base64
-    let base64_data = base64::engine::general_purpose::STANDARD.encode(&data);
+    let files_array = files_js.join(",");
     
-    // Получаем имя файла
-    let file_name = file_path.file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("file");
-    
-    // Формируем скрипт для инжекта
+    // Один скрипт — все файлы в один DataTransfer, один change
     let script = format!(r#"
         (async function() {{
-            try {{
-                const SEL = window.__SEL__;
-                const fileInputSelector = SEL?.input?.fileInput || 'input[type="file"]';
-                
-                // Ждём готовности страницы
-                const waitForInput = async (timeout = 15000) => {{
-                    const start = Date.now();
-                    while (Date.now() - start < timeout) {{
-                        const input = document.querySelector(fileInputSelector);
-                        if (input) return input;
-                        await new Promise(r => setTimeout(r, 200));
-                    }}
-                    return null;
-                }};
-                
-                let fileInput = await waitForInput();
-                
-                if (!fileInput) {{
-                    console.warn('[Attachment] File input not found');
-                    return;
-                }}
-                
-                // Декодируем base64
-                const base64 = "{base64}";
-                const binaryString = atob(base64);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {{
-                    bytes[i] = binaryString.charCodeAt(i);
-                }}
-                
-                // Создаём File объект
-                const blob = new Blob([bytes], {{ type: "{mime}" }});
-                const file = new File([blob], "{name}", {{ type: "{mime}" }});
-                
-                // Создаём DataTransfer и устанавливаем файлы
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                fileInput.files = dt.files;
-                
-                // Триггерим событие change
-                fileInput.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                
-            }} catch (e) {{
-                console.error('[Attachment] Error:', e);
+            const files = [{files}];
+            const SEL = window._s;
+            const fileInputSelector = SEL?.input?.fileInput || 'input[type="file"]';
+            
+            // Ждём file input
+            let fileInput = null;
+            const start = Date.now();
+            while (Date.now() - start < 15000) {{
+                fileInput = document.querySelector(fileInputSelector);
+                if (fileInput) break;
+                await new Promise(r => setTimeout(r, 100));
             }}
+            
+            if (!fileInput) {{
+                console.warn('[Attach] file input not found');
+                return;
+            }}
+            
+            // Добавляем multiple чтобы input принял все файлы
+            if (!fileInput.hasAttribute('multiple')) {{
+                fileInput.setAttribute('multiple', '');
+            }}
+            
+            // Все файлы в один DataTransfer
+            const dt = new DataTransfer();
+            for (const f of files) {{
+                const binaryString = atob(f.b);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let j = 0; j < binaryString.length; j++) {{
+                    bytes[j] = binaryString.charCodeAt(j);
+                }}
+                const blob = new Blob([bytes], {{ type: f.m }});
+                dt.items.add(new File([blob], f.n, {{ type: f.m }}));
+            }}
+            
+            // Один change со всеми файлами
+            fileInput.files = dt.files;
+            fileInput.dispatchEvent(new Event('change', {{ bubbles: true }}));
         }})();
-    "#, 
-        base64 = base64_data, 
-        mime = mime_type, 
-        name = file_name
-    );
+    "#, files = files_array);
     
-    // Инжектим в webview
     let label = format!("claude_{}", tab);
     let webview = app.get_webview(&label)
         .ok_or_else(|| format!("Webview {} not found", label))?;
@@ -217,6 +220,16 @@ pub async fn attach_file_to_claude(
     webview.eval(&script).map_err(|e| e.to_string())?;
     
     Ok(())
+}
+
+/// Прикрепляет один файл к сообщению Claude (обратная совместимость)
+#[tauri::command]
+pub async fn attach_file_to_claude(
+    app: AppHandle, 
+    tab: u8, 
+    path: String
+) -> Result<(), String> {
+    attach_files_batch(app, tab, vec![path]).await
 }
 
 /// Получить текущее значение счётчика загрузок для таба
@@ -245,19 +258,5 @@ pub fn get_upload_count(tab: u8) -> u32 {
 pub fn reset_upload_count(tab: u8) {
     if tab >= 1 && tab <= 3 {
         UPLOAD_COUNTERS[(tab - 1) as usize].store(0, std::sync::atomic::Ordering::SeqCst);
-    }
-}
-
-/// Инкрементировать счётчик загрузок для таба
-///
-/// Вызывается из JS интерсептора (fallback для не-Windows платформ)
-/// или из WebResourceRequested (Windows).
-///
-/// # Arguments
-/// * `tab` - номер таба (1-3)
-#[tauri::command]
-pub fn increment_upload_count(tab: u8) {
-    if tab >= 1 && tab <= 3 {
-        UPLOAD_COUNTERS[(tab - 1) as usize].fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     }
 }

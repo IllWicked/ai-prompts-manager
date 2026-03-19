@@ -16,7 +16,7 @@ pub static CLAUDE_VISIBLE: AtomicBool = AtomicBool::new(false);
 /// Номер активного таба Claude (1-3)
 pub static ACTIVE_TAB: AtomicU8 = AtomicU8::new(1);
 
-/// Соотношение панелей в процентах (0-100, где значение = ширина UI панели)
+/// Соотношение панелей в процентах (35-65, где значение = ширина UI панели)
 /// По умолчанию 50% (равное разделение)
 pub static PANEL_RATIO: AtomicU32 = AtomicU32::new(50);
 
@@ -27,15 +27,6 @@ pub static UPLOAD_COUNTERS: [AtomicU32; 3] = [
     AtomicU32::new(0),
     AtomicU32::new(0),
     AtomicU32::new(0),
-];
-
-/// Статус генерации по табам Claude [tab1, tab2, tab3]
-/// Обновляется JS-мониторингом DOM (наличие stop button / streaming indicator)
-/// через Tauri invoke set_generation_state.
-pub static GENERATING_STATE: [AtomicBool; 3] = [
-    AtomicBool::new(false),
-    AtomicBool::new(false),
-    AtomicBool::new(false),
 ];
 
 /// Мьютекс для защиты от race condition при создании webview
@@ -54,3 +45,12 @@ pub static ARCHIVE_LOG_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
 /// Мьютекс для защиты записи в лог диагностики
 pub static DIAGNOSTICS_LOG_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+
+/// Состояние генерации по табам [tab1, tab2, tab3]
+/// Устанавливается из Claude WebView через команду set_generation_state.
+/// Читается из Main WebView через check_generation_status.
+pub static GENERATING_STATE: [AtomicBool; 3] = [
+    AtomicBool::new(false),
+    AtomicBool::new(false),
+    AtomicBool::new(false),
+];

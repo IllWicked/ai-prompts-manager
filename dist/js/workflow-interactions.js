@@ -86,12 +86,10 @@ function onNodeDrag(e) {
     const containerRect = container.getBoundingClientRect();
     const gridSize = WORKFLOW_CONFIG.GRID_SIZE;
     
-    // Получаем текущий scale canvas
-    const scale = getCanvasScale(canvas);
-    
-    // Позиция курсора в координатах canvas (с учётом scale)
-    const cursorX = (e.clientX - containerRect.left + container.scrollLeft) / scale;
-    const cursorY = (e.clientY - containerRect.top + container.scrollTop) / scale;
+    // Позиция курсора в координатах canvas
+    const canvasPos = screenToCanvas(e.clientX - containerRect.left, e.clientY - containerRect.top);
+    const cursorX = canvasPos.x;
+    const cursorY = canvasPos.y;
     
     // Двигаем все выделенные элементы (блоки и заметки)
     let firstNode = null;
@@ -106,8 +104,10 @@ function onNodeDrag(e) {
         // Snap to grid
         x = Math.round(x / gridSize) * gridSize;
         y = Math.round(y / gridSize) * gridSize;
-        // Лимит только сверху - минимум один шаг сетки
-        y = Math.max(gridSize, y);
+        
+        // Canvas renders from (0,0) — don't allow negative
+        x = Math.max(0, x);
+        y = Math.max(0, y);
         
         setItemPosition(id, x, y);
         const el = getItemElement(id);
@@ -129,18 +129,13 @@ function onNodeDrag(e) {
         }
     });
     
-    // Расширяем scrollable area если блок приближается к краю
+    // Расширяем canvas если блок приближается к краю (для SVG линий)
     const padding = WORKFLOW_CONFIG.CANVAS_PADDING;
     const neededSize = maxCoord + padding;
     const currentSize = getCanvasSize();
-    if (neededSize > currentSize) {
-        const wrapper = getWorkflowWrapper();
-        if (canvas && wrapper) {
-            canvas.style.minWidth = neededSize + 'px';
-            canvas.style.minHeight = neededSize + 'px';
-            wrapper.style.width = (neededSize * scale) + 'px';
-            wrapper.style.height = (neededSize * scale) + 'px';
-        }
+    if (neededSize > currentSize && canvas) {
+        canvas.style.minWidth = neededSize + 'px';
+        canvas.style.minHeight = neededSize + 'px';
     }
     
     renderConnections();
@@ -197,9 +192,8 @@ function onNodeResize(e) {
     const minWidth = WORKFLOW_CONFIG.NODE_MIN_WIDTH;
     const minHeight = WORKFLOW_CONFIG.NODE_MIN_HEIGHT;
     
-    // Учитываем масштаб canvas
-    const canvas = getWorkflowCanvas();
-    const scale = getCanvasScale(canvas);
+    // Учитываем масштаб камеры
+    const scale = camera.z;
     
     const deltaX = (e.clientX - resizeStartX) / scale;
     const deltaY = (e.clientY - resizeStartY) / scale;
@@ -237,6 +231,10 @@ function onNodeResize(e) {
     newLeft = Math.round(newLeft / gridSize) * gridSize;
     newTop = Math.round(newTop / gridSize) * gridSize;
     
+    // Canvas renders from (0,0) — don't allow negative
+    newLeft = Math.max(0, newLeft);
+    newTop = Math.max(0, newTop);
+    
     // Проверяем минимумы после snap
     if (newWidth < minWidth) newWidth = minWidth;
     if (newHeight < minHeight) newHeight = minHeight;
@@ -248,9 +246,6 @@ function onNodeResize(e) {
     if (resizeDirection.includes('n') && newHeight === minHeight) {
         newTop = resizeStartTop + resizeStartHeight - minHeight;
     }
-    
-    // Лимит только сверху - минимум один шаг сетки
-    newTop = Math.max(gridSize, newTop);
     
     resizeNode.style.width = newWidth + 'px';
     resizeNode.style.height = newHeight + 'px';
@@ -352,9 +347,9 @@ function startMarqueeSelection(container, e) {
     // Запоминаем что было выделено до marquee (для Ctrl+drag)
     _marqueePreSelection = new Set(selectedNodes);
     
-    // Стартовая точка в координатах контейнера (с учётом скролла)
-    _marqueeStartX = e.clientX - container.getBoundingClientRect().left + container.scrollLeft;
-    _marqueeStartY = e.clientY - container.getBoundingClientRect().top + container.scrollTop;
+    // Стартовая точка в координатах контейнера (screen)
+    _marqueeStartX = e.clientX - container.getBoundingClientRect().left;
+    _marqueeStartY = e.clientY - container.getBoundingClientRect().top;
     
     // Создаём элемент прямоугольника
     let rect = document.getElementById('marquee-selection-rect');
@@ -378,8 +373,8 @@ function startMarqueeSelection(container, e) {
 function updateMarqueeSelection(container, e) {
     if (!_marqueeActive) return;
     
-    const currentX = e.clientX - container.getBoundingClientRect().left + container.scrollLeft;
-    const currentY = e.clientY - container.getBoundingClientRect().top + container.scrollTop;
+    const currentX = e.clientX - container.getBoundingClientRect().left;
+    const currentY = e.clientY - container.getBoundingClientRect().top;
     
     // Вычисляем прямоугольник (может быть в любом направлении)
     const left = Math.min(_marqueeStartX, currentX);
@@ -398,12 +393,13 @@ function updateMarqueeSelection(container, e) {
     // Порог: не считаем за marquee если движение < 5px
     if (width < 5 && height < 5) return;
     
-    // Конвертируем marquee rect из container-scroll координат в canvas координат
-    const scale = workflowZoom;
-    const mLeft = left / scale;
-    const mTop = top / scale;
-    const mRight = (left + width) / scale;
-    const mBottom = (top + height) / scale;
+    // Конвертируем marquee rect из screen координат в canvas координаты
+    const topLeft = screenToCanvas(left, top);
+    const bottomRight = screenToCanvas(left + width, top + height);
+    const mLeft = topLeft.x;
+    const mTop = topLeft.y;
+    const mRight = bottomRight.x;
+    const mBottom = bottomRight.y;
     
     // Проверяем пересечение с каждой нодой
     document.querySelectorAll('.workflow-node').forEach(node => {

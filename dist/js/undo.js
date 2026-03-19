@@ -95,6 +95,12 @@ function hashWorkflow() {
         combined += '|' + k + ':' + (p?.x|0) + ',' + (p?.y|0);
     }
     combined += '|c' + (workflowConnections?.length || 0);
+    const colors = workflowColors || {};
+    const colorKeys = Object.keys(colors);
+    if (colorKeys.length > 0) {
+        combined += '|cl' + colorKeys.length;
+        for (const k of colorKeys) combined += '|' + k + ':' + colors[k];
+    }
     return djb2Hash(combined);
 }
 
@@ -183,7 +189,8 @@ function captureFullState() {
         workflow = {
             positions: structuredClone(workflowPositions || {}),
             connections: structuredClone(workflowConnections || []),
-            sizes: structuredClone(workflowSizes || {})
+            sizes: structuredClone(workflowSizes || {}),
+            colors: structuredClone(workflowColors || {})
         };
     }
     
@@ -273,7 +280,10 @@ function applyState(state) {
         workflowPositions = structuredClone(state.workflow.positions) || {};
         workflowConnections = structuredClone(state.workflow.connections) || [];
         workflowSizes = structuredClone(state.workflow.sizes) || {};
-        localStorage.setItem(STORAGE_KEYS.workflow(tabId), JSON.stringify(state.workflow));
+        workflowColors = structuredClone(state.workflow.colors) || {};
+        // Сохраняем текущие workflowNotes — они не участвуют в undo
+        const workflowToSave = { ...state.workflow, notes: workflowNotes };
+        localStorage.setItem(STORAGE_KEYS.workflow(tabId), JSON.stringify(workflowToSave));
     }
     
     // Данные вкладки

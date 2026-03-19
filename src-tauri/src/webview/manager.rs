@@ -45,12 +45,6 @@ pub fn ensure_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Res
     let created = create_claude_webview(app, tab, url)?;
     
     if created {
-        // Регистрируем нативный перехватчик загрузок (Windows: WebResourceRequested)
-        setup_native_upload_interceptor(app, tab);
-        
-        // Регистрируем COM-обработчик DocumentTitleChanged для мониторинга генерации
-        setup_title_change_monitor(app, tab);
-        
         // Поднимаем z-order toolbar поверх нового Claude webview
         if app.get_webview("toolbar").is_some() {
             raise_toolbar_zorder(app);
@@ -117,14 +111,18 @@ pub fn create_claude_webview(app: &AppHandle, tab: u8, url: Option<&str>) -> Res
             .on_download(move |webview, event| {
                 handle_download_event(&app_handle, &webview, event, tab)
             }),
-        LogicalPosition::new(0.0, 0.0),
+        LogicalPosition::new(width * 2.0, 0.0),
         LogicalSize::new(claude_width, height),
     ).map_err(|e| e.to_string())?;
     
-    // Скрываем сразу после создания — resize_webviews покажет активный таб
+    // Скрываем при создании — layout_claude покажет через show() + позицию
+    // Создаём за экраном (width*2) чтобы избежать мелькания до hide()
     if let Some(webview) = app.get_webview(&label) {
         let _ = webview.hide();
     }
+    
+    // Регистрируем нативный перехватчик загрузок (Windows: WebResourceRequested)
+    setup_native_upload_interceptor(app, tab);
     
     Ok(true)
 }
@@ -184,9 +182,6 @@ fn setup_native_upload_interceptor(app: &AppHandle, tab: u8) {
     }
 }
 
-/// Заглушка — мониторинг генерации теперь через JS invoke (set_generation_state).
-/// Сохранена для обратной совместимости вызовов из main.rs и ensure_claude_webview.
-pub fn setup_title_change_monitor(_app: &AppHandle, _tab: u8) {}
 fn handle_download_event(
     app: &AppHandle,
     webview: &tauri::Webview,
@@ -311,65 +306,15 @@ fn save_download_to_log(filename: &str, file_path: &str) {
     }
 }
 
-/// Приостанавливает неактивный Claude webview для экономии CPU/RAM
+/// Приостанавливает Claude webview — ОТКЛЮЧЕНО.
 ///
-/// На Windows: вызывает WebView2 TrySuspend() через ICoreWebView2_3.
-/// Suspend паузит script timers, анимации, минимизирует CPU рендерер-процесса.
-/// На не-Windows платформах — no-op.
-pub fn suspend_claude_tab(app: &AppHandle, tab: u8) {
-    let label = format!("claude_{}", tab);
-    
-    #[cfg(windows)]
-    {
-        if let Some(webview) = app.get_webview(&label) {
-            let _ = webview.with_webview(move |wv| {
-                unsafe {
-                    use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2_3;
-                    use windows_core::Interface;
-                    let core = wv.controller().CoreWebView2().unwrap();
-                    if let Ok(core3) = core.cast::<ICoreWebView2_3>() {
-                        let _ = core3.TrySuspend(None);
-                    }
-                }
-            });
-        }
-    }
-    
-    #[cfg(not(windows))]
-    {
-        let _ = (app, &label);
-    }
-}
+/// hide() уже вызывает put_IsVisible(FALSE), что throttle-ит анимации и снижает CPU.
+/// TrySuspend дополнительно замораживает DOM, что ломает querySelector/insertContent
+/// на фоновых табах. Экономия памяти не стоит проблем со стабильностью.
+pub fn suspend_claude_tab(_app: &AppHandle, _tab: u8) {}
 
-/// Возобновляет приостановленный Claude webview
-///
-/// На Windows: вызывает WebView2 Resume() через ICoreWebView2_3.
-/// Resume мгновенный — пользователь не заметит задержки.
-/// На не-Windows платформах — no-op.
-pub fn resume_claude_tab(app: &AppHandle, tab: u8) {
-    let label = format!("claude_{}", tab);
-    
-    #[cfg(windows)]
-    {
-        if let Some(webview) = app.get_webview(&label) {
-            let _ = webview.with_webview(move |wv| {
-                unsafe {
-                    use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2_3;
-                    use windows_core::Interface;
-                    let core = wv.controller().CoreWebView2().unwrap();
-                    if let Ok(core3) = core.cast::<ICoreWebView2_3>() {
-                        let _ = core3.Resume();
-                    }
-                }
-            });
-        }
-    }
-    
-    #[cfg(not(windows))]
-    {
-        let _ = (app, &label);
-    }
-}
+/// Возобновляет Claude webview — ОТКЛЮЧЕНО (suspend отключён).
+pub fn resume_claude_tab(_app: &AppHandle, _tab: u8) {}
 
 /// Поднимает z-order toolbar и downloads поверх Claude webview
 ///
@@ -478,22 +423,29 @@ fn layout_claude(app: &AppHandle, width: f64, height: f64,
         for i in 1u8..=3 {
             let label = format!("claude_{}", i);
             if let Some(webview) = app.get_webview(&label) {
+                // show() для всех — валидный HWND + IsVisible=TRUE + DOM живой
+                let _ = webview.show();
+                
                 if i == active_tab {
                     webview.set_position(LogicalPosition::new(claude_x, 0.0))
                         .map_err(|e| e.to_string())?;
                     webview.set_size(LogicalSize::new(claude_width, height))
                         .map_err(|e| e.to_string())?;
-                    let _ = webview.show();
                 } else {
-                    let _ = webview.hide();
+                    // За экран — IsVisible=TRUE, DOM живой
+                    webview.set_position(LogicalPosition::new(width * 2.0, 0.0))
+                        .map_err(|e| e.to_string())?;
                 }
             }
         }
     } else {
+        // Панель скрыта — show() + за экран (DOM живой для фоновой генерации)
         for i in 1u8..=3 {
             let label = format!("claude_{}", i);
             if let Some(webview) = app.get_webview(&label) {
-                let _ = webview.hide();
+                let _ = webview.show();
+                webview.set_position(LogicalPosition::new(width * 2.0, 0.0))
+                    .map_err(|e| e.to_string())?;
             }
         }
     }
@@ -547,4 +499,63 @@ pub fn resize_webviews(app: &AppHandle) -> Result<(), String> {
     layout_overlay(app, width, height, is_visible, ratio)?;
     
     Ok(())
+}
+
+/// Разрешает множественные загрузки с claude.ai в WebView2 профиле.
+///
+/// Проблема: WebView2 (Edge) показывает диалог "Allow multiple downloads?"
+/// при скачивании нескольких файлов. Если пользователь нажмёт "Нет" или
+/// пропустит окно — все последующие множественные загрузки блокируются
+/// до полной переустановки.
+///
+/// Решение: прописываем разрешение в Chromium Preferences до запуска WebView2.
+/// Файл: {LOCALAPPDATA}/com.ai.prompts.manager/EBWebView/Default/Preferences
+///
+/// Вызывается из main.rs setup() **до** создания окна.
+pub fn allow_claude_multiple_downloads() {
+    let Some(local_data) = dirs::data_local_dir() else { return };
+    let prefs_path = local_data
+        .join("com.ai.prompts.manager")
+        .join("EBWebView")
+        .join("Default")
+        .join("Preferences");
+    
+    // Читаем существующий файл или начинаем с пустого объекта
+    let mut root: serde_json::Value = if prefs_path.exists() {
+        match fs::read_to_string(&prefs_path) {
+            Ok(content) => serde_json::from_str(&content).unwrap_or(serde_json::json!({})),
+            Err(_) => serde_json::json!({}),
+        }
+    } else {
+        serde_json::json!({})
+    };
+    
+    // Проверяем: уже разрешено?
+    let already_set = root
+        .pointer("/profile/content_settings/exceptions/automatic_downloads/https://claude.ai,*/setting")
+        .and_then(|v| v.as_i64())
+        == Some(1);
+    
+    if already_set { return }
+    
+    // Прописываем разрешение: setting=1 = CONTENT_SETTING_ALLOW
+    let profile = root.as_object_mut().unwrap()
+        .entry("profile").or_insert(serde_json::json!({}));
+    let cs = profile.as_object_mut().unwrap()
+        .entry("content_settings").or_insert(serde_json::json!({}));
+    let exc = cs.as_object_mut().unwrap()
+        .entry("exceptions").or_insert(serde_json::json!({}));
+    let ad = exc.as_object_mut().unwrap()
+        .entry("automatic_downloads").or_insert(serde_json::json!({}));
+    
+    ad.as_object_mut().unwrap().insert(
+        "https://claude.ai,*".to_string(),
+        serde_json::json!({ "setting": 1 })
+    );
+    
+    // Создаём директории и записываем
+    if let Some(parent) = prefs_path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let _ = fs::write(&prefs_path, serde_json::to_string(&root).unwrap_or_default());
 }

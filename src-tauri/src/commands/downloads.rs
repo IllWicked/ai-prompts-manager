@@ -21,36 +21,6 @@ pub fn get_downloads_path() -> Result<String, String> {
     Ok(get_custom_downloads_path().unwrap_or_default())
 }
 
-/// Устанавливает путь для загрузок
-///
-/// # Arguments
-/// * `path` - новый путь или пустая строка для сброса на путь по умолчанию
-///
-/// # Returns
-/// * `Ok(())` - путь успешно установлен
-/// * `Err(String)` - ошибка (путь не существует, не является папкой)
-#[tauri::command]
-pub fn set_downloads_path(path: String) -> Result<(), String> {
-    if path.is_empty() {
-        // Сброс на путь по умолчанию
-        save_custom_downloads_path(None)
-    } else {
-        let p = std::path::Path::new(&path);
-        
-        // Проверяем что путь существует
-        if !p.exists() {
-            return Err("Указанная папка не существует".to_string());
-        }
-        
-        // Проверяем что это директория, а не файл
-        if !p.is_dir() {
-            return Err("Указанный путь не является папкой".to_string());
-        }
-        
-        save_custom_downloads_path(Some(path))
-    }
-}
-
 /// Открывает диалог выбора папки для загрузок
 ///
 /// После выбора автоматически сохраняет путь в настройки.

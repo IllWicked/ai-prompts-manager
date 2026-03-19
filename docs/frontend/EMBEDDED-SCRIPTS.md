@@ -12,7 +12,7 @@
 const EMBEDDED_SCRIPTS = {
     convert: {
         name: 'convert.py',             // Имя файла
-        label: 'Конвертация (unified)', // Метка в UI
+        label: 'Конвертация (HTML-merge)', // Метка в UI
         badge: 'C',                     // Буква для бейджа
         content: `...`                  // Содержимое скрипта (~690 строк)
     },
@@ -76,35 +76,6 @@ index.html: 2105 слов
 
 ---
 
-## embedded-scripts-spellcheck.js (~400 строк)
-
-Скрипт проверки орфографии и пунктуации.
-
-### spellcheck.py
-
-**Назначение:** Проверка текста на ошибки.
-
-**Возможности:**
-- Орфографическая проверка через hunspell
-- Поиск смешанных алфавитов (кириллица + латиница)
-- Баланс парной пунктуации (скобки, кавычки)
-- Поддержка множества языков
-- Поддержка `.md` и `.html` файлов (`clean_markup` убирает и HTML-теги, и MD-разметку)
-
-**Зависимости:**
-- Python 3.8+
-- hunspell (системный)
-- Словари hunspell для нужных языков
-
-**Использование:**
-```bash
-python spellcheck.py <lang> <file> [file2 ...]
-
-# Примеры:
-python spellcheck.py en article.md
-python spellcheck.py de page.html
-python spellcheck.py es *.md *.html
-```
 
 ---
 
@@ -139,7 +110,8 @@ const LANGUAGE_COUNTRIES = {
         { code: 'ca', name: 'Канада', locale: 'en-CA' },
         { code: 'au', name: 'Австралия', locale: 'en-AU' },
         { code: 'nz', name: 'Новая Зеландия', locale: 'en-NZ' },
-        { code: 'ie', name: 'Ирландия', locale: 'en-IE' }
+        { code: 'ie', name: 'Ирландия', locale: 'en-IE' },
+        { code: 'et', name: 'Эфиопия', locale: 'en-ET' }
     ],
     de: [...],  // Германия, Австрия, Швейцария, Бельгия
     fr: [...],  // Франция, Канада, Швейцария, Бельгия
@@ -153,6 +125,8 @@ const LANGUAGE_COUNTRIES = {
 | Функция | Описание |
 |---------|----------|
 | `generateAdjectiveForms(word)` | Генерирует все 24 формы (6 падежей × 4 рода) |
+| `getAdjectiveStem(word)` | Извлечение основы прилагательного |
+| `isSoftStem(stem)` | Проверка мягкой основы |
 
 ```javascript
 // Пример: генерация форм
@@ -161,11 +135,32 @@ generateAdjectiveForms('английский');
 //     'nom.f': 'английская', 'gen.f': 'английской', ... }
 ```
 
+### Функции маркерной системы (v4.3.0+)
+
+| Функция | Описание |
+|---------|----------|
+| `resolveMarker(type, form, langCode, countryCode)` | Раскрытие одного маркера в текст |
+| `resolveMarkersToText(text, langCode, countryCode)` | Раскрытие всех маркеров в тексте для отправки в Claude |
+| `renderMarkedContent(text, langCode, countryCode)` | Рендеринг маркеров в HTML с подсветкой (view mode) |
+| `hasLanguageMarkers(text)` | Проверка наличия маркеров `{{...}}` в тексте |
+| `stripFieldMarkers(text)` | Удаление служебных маркеров полей `{{FIELD:...}}` |
+| `escapeHtmlForMarkers(str)` | XSS-безопасное экранирование для рендеринга маркеров |
+
+```javascript
+// Раскрытие маркеров перед отправкой
+resolveMarkersToText('для {{native:gen.f}} аудитории', 'en', 'us');
+// → 'для англоязычной аудитории'
+
+// Проверка наличия маркеров
+hasLanguageMarkers('текст {{lang:nom.m}}');  // true
+hasLanguageMarkers('обычный текст');          // false
+```
+
 ### Поддерживаемые языки (20)
 
 | Код | Язык | Страна | Код | Язык | Страна |
 |-----|------|--------|-----|------|--------|
-| `en` | Английский | 🌍 6 стран | `hu` | Венгерский | Венгрия |
+| `en` | Английский | 🌍 7 стран | `hu` | Венгерский | Венгрия |
 | `de` | Немецкий | 🌍 4 страны | `ro` | Румынский | Румыния |
 | `es` | Испанский | Испания | `hr` | Хорватский | Хорватия |
 | `it` | Итальянский | Италия | `sl` | Словенский | Словения |
@@ -184,7 +179,7 @@ generateAdjectiveForms('английский');
 
 | Язык | Страны (по умолчанию первая) |
 |------|------------------------------|
-| EN Английский | США, Великобритания, Канада, Австралия, Новая Зеландия, Ирландия |
+| EN Английский | США, Великобритания, Канада, Австралия, Новая Зеландия, Ирландия, Эфиопия |
 | DE Немецкий | Германия, Австрия, Швейцария, Бельгия |
 | FR Французский | Франция, Канада, Швейцария, Бельгия |
 | NL Голландский | Нидерланды, Бельгия |
@@ -259,7 +254,7 @@ getCountriesForLanguage('en');
 ### UI
 
 1. ПКМ по блоку → "Добавить инструкцию"
-2. Выбрать скрипт (convert, count, spellcheck)
+2. Выбрать скрипт (convert, count)
 3. Бейдж появится на блоке
 
 ### Хранение
@@ -268,7 +263,6 @@ getCountriesForLanguage('en');
 // localStorage: block-scripts
 {
     "block-123": ["convert", "count"],
-    "block-456": ["spellcheck"]
 }
 ```
 
@@ -276,7 +270,7 @@ getCountriesForLanguage('en');
 
 ```javascript
 // claude-api.js
-await attachScriptsToMessage(tab, scripts);
+await attachAllFiles(tab, scripts, files);
 // Создаёт временные файлы и прикрепляет через attach_file_to_claude
 ```
 

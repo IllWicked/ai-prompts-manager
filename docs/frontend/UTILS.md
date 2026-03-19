@@ -15,6 +15,8 @@ const STORAGE_KEYS = {
     DATA_VERSION: 'ai-prompts-manager-version',
     APP_VERSION: 'ai-prompts-manager-app-version',
     WORKFLOW_ZOOM: 'workflowZoom',
+    // Примечание: workflowCameraX и workflowCameraY используются напрямую
+    // как hardcoded строки в workflow-zoom.js, не через STORAGE_KEYS
     COLLAPSED_BLOCKS: 'collapsed-blocks',
     BLOCK_SCRIPTS: 'block-scripts',
     BLOCK_AUTOMATION: 'block-automation',
@@ -38,8 +40,9 @@ const WORKFLOW_CONFIG = {
     NODE_GAP_Y: 40,
     CANVAS_SIZE: 5000,
     CANVAS_CENTER: 2500,
+    CANVAS_PADDING: 1500,
     MAGNET_DISTANCE: 30,
-    ZOOM_MIN: 0.4,
+    ZOOM_MIN: 0.2,
     ZOOM_MAX: 1.25
 };
 
@@ -99,7 +102,7 @@ await autoCheckPromptsUpdates();
 
 ---
 
-## utils.js (8 функций + 12 DOM getters)
+## utils.js (8 функций + 1 внутренний хелпер + 10 DOM getters)
 
 | Функция | Описание |
 |---------|----------|
@@ -111,6 +114,8 @@ await autoCheckPromptsUpdates();
 | `generateItemId()` | Уникальный ID элемента |
 | `getGeneratingAnimationDelay()` | Синхронизированная задержка для generating-indicator (1000ms) |
 | `writeDiagnostic(eventType, details)` | Запись диагностики в файл через Tauri |
+
+> **Внутренний хелпер:** `getCached(key, id)` — кэширование DOM-элементов по ID, используется всеми DOM getters ниже.
 
 ### DOM Getters (с кэшированием)
 
@@ -199,20 +204,39 @@ saveToStorage('my-key', { foo: 'bar' });
 const data = loadFromStorage('my-key', {});
 ```
 
+### StorageMonitor (объект с 5 методами)
+
+Мониторинг использования localStorage. Экспортирован как `window.StorageMonitor`.
+
+| Метод | Описание |
+|-------|----------|
+| `getUsageBytes()` | Общий размер localStorage в байтах |
+| `getUsageFormatted()` | Форматированный размер (напр. `"2.3 MB"`) |
+| `getBreakdown()` | Топ-10 тяжёлых ключей |
+| `getUsagePercent()` | Процент использования от лимита |
+| `checkAndWarn()` | Предупреждение при использовании >80% |
+
+```javascript
+// Проверить использование
+console.log(StorageMonitor.getUsageFormatted()); // "1.8 MB"
+console.log(StorageMonitor.getBreakdown());      // [{key, size}, ...]
+StorageMonitor.checkAndWarn();                    // toast при >80%
+```
+
 ---
 
-## modals.js (8 функций)
+## modals.js (5 функций + 3 алиаса)
 
 | Функция | Описание |
 |---------|----------|
 | `closeAllModals()` | Закрыть все модалки |
 | `hideModal(modalId)` | Скрыть по ID |
 | `showAlert(message, title)` | Уведомление |
-| `hideAlert()` | Закрыть alert |
+| `hideAlert()` | Закрыть alert (алиас `hideModal`) |
 | `showResetModal()` | Модалка сброса |
-| `hideResetModal()` | Закрыть модалку сброса |
+| `hideResetModal()` | Закрыть модалку сброса (алиас `hideModal`) |
 | `showEditModeConfirmModal()` | Подтверждение edit mode |
-| `hideEditModeConfirmModal()` | Закрыть подтверждение |
+| `hideEditModeConfirmModal()` | Закрыть подтверждение (алиас `hideModal`) |
 
 ### Примеры
 
@@ -225,6 +249,32 @@ closeAllModals();
 
 // Скрыть конкретную
 hideModal('settings-modal');
+```
+
+---
+
+## dropdown.js (объект с 6 методами)
+
+Унифицированная система dropdown-меню. Реализован как `const Dropdown = { ... }`.
+
+| Метод | Описание |
+|-------|----------|
+| `register(id, config)` | Зарегистрировать dropdown с конфигурацией |
+| `closeById(id)` | Закрыть конкретный dropdown |
+| `closeOthers(exceptId)` | Закрыть все кроме указанного |
+| `positionSubmenu(submenu, anchorMenu, anchorItem, container)` | Позиционирование подменю |
+| `createSeparator(className)` | Создать разделитель |
+| `createOption(options, className)` | Создать опцию меню |
+
+```javascript
+// Регистрация dropdown
+Dropdown.register('language-menu', {
+    trigger: document.getElementById('lang-btn'),
+    content: menuElement
+});
+
+// Закрыть все dropdown при клике вне
+Dropdown.closeOthers(null);
 ```
 
 ---

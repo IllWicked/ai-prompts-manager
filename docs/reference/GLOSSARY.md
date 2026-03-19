@@ -58,6 +58,41 @@
 | **Project UUID** | Уникальный идентификатор проекта Claude |
 | **Organization ID** | ID организации пользователя Claude (для API) |
 
+## Claude Counter
+
+| Термин | Описание |
+|--------|----------|
+| **Claude Counter** | Встроенный плагин: cache timer, usage bars |
+| **Cache timer** | Обратный отсчёт 5-мин окна кэширования |
+| **Session bar** | Progress bar 5-часового окна использования |
+| **Weekly bar** | Progress bar 7-дневного окна использования |
+
+## Knowledge Upload
+
+| Термин | Описание |
+|--------|----------|
+| **Knowledge Upload** | Автозагрузка скачанных MD-файлов в knowledge проекта |
+| **uploadToProjectKnowledge()** | Функция: read file → base64 → CDP fetch POST → delete file |
+
+## SERP Scraper
+
+| Термин | Описание |
+|--------|----------|
+| **SERP Scraper** | Блок на холсте: выполняет поисковые запросы в Google, собирает и очищает HTML страниц |
+| **scraper-блок** | Тип элемента `type: "scraper"` — максимум 1 на вкладку |
+| **serp_extract.js** | Инжектируемый скрипт для извлечения органических результатов из Google SERP |
+| **create_scraper_webview** | Tauri-команда: создание скрытого WebView для скрапинга |
+| **scrape_google_serp** | Tauri-команда: выполнение серии запросов и сбор результатов |
+
+## Auto-Continue
+
+| Термин | Описание |
+|--------|----------|
+| **Auto-Continue** | Автоматический клик Continue при tool-use limit в Claude WebView |
+| **claude_autocontinue.js** | Инжектируемый скрипт (~137 строк), поллинг + двухступенчатая детекция + button.click() |
+| **window._ac** | Глобал auto-continue: `_ac.enabled`, `_ac.setEnabled(bool)` |
+| **window._emit** | Кэшированный `__TAURI__.event.emit` для отправки toast из Claude WebView в Main WebView |
+
 ## Автоматизация
 
 | Термин | Описание |
@@ -74,9 +109,8 @@
 
 | Термин | Описание |
 |--------|----------|
-| **convert.py** | Скрипт конвертации Markdown → HTML |
+| **convert.py** | Скрипт HTML-merge: content.html + design.html → index.html |
 | **count.py** | Скрипт подсчёта слов в тексте |
-| **spellcheck.py** | Скрипт проверки орфографии (hunspell) |
 
 ## Хранение данных
 
@@ -150,7 +184,7 @@
 | **Auto-cleanup** | Автоматическое удаление записей для несуществующих файлов |
 | **Fallback** | Резервный вариант (например, альтернативный селектор) |
 | **InputGroup** | Группировка быстрых правок (пауза < 2 сек) в одну undo-операцию (v3) |
-| **Suspend/Resume** | Приостановка/возобновление неактивных Claude табов через WebView2 `TrySuspend()`/`Resume()` |
+| **Suspend/Resume** | ОТКЛЮЧЕНО. Неактивные табы позиционируются за экран (DOM живой). `TrySuspend()` замораживал DOM. |
 | **Hash Comparison** | djb2-хеширование для быстрой проверки изменений при undo snapshot |
 
 ## Тестирование
@@ -168,7 +202,7 @@
 |--------|----------|
 | **Canvas** | Холст 5000x5000px для размещения блоков |
 | **Grid** | Сетка 40x40px для выравнивания |
-| **Zoom** | Масштаб (0.4 - 1.25) |
+| **Zoom** | Масштаб (0.2 - 1.25) |
 | **Pan** | Перемещение холста |
 | **Magnet** | Притяжение к ближайшему порту (30px) |
 | **Bezier** | S-образная кривая для связей |
@@ -185,15 +219,17 @@
 | `ai-prompts-manager-version` | Версия формата данных |
 | `ai-prompts-manager-app-version` | Версия приложения (для миграций) |
 | `workflowZoom` | Текущий zoom |
-| `collapsed-blocks` | Массив свёрнутых блоков |
+| `workflowCameraX` | Позиция камеры X (hardcoded, не в STORAGE_KEYS) |
+| `workflowCameraY` | Позиция камеры Y (hardcoded, не в STORAGE_KEYS) |
+| `collapsed-blocks` | Объект свёрнутых блоков ({blockId: true}) |
 | `block-scripts` | Скрипты блоков |
 | `block-automation` | Флаги автоматизации |
 | `claudeSettings` | Настройки Claude панели |
 | `claude_auto_send` | Автоотправка сообщений (true/false) |
 | `active-project` | Привязка к проекту Claude |
-| `workflow-{tabId}` | Позиции и связи workflow (динамический) |
+| `workflow-{tabId}` | Позиции, связи, размеры, заметки и цвета блоков (динамический) |
 | `ai-prompts-manager-data-{tabId}` | Данные промптов вкладки (динамический) |
-| `field-value-{fieldId}` | Значение поля ввода (динамический) |
+| `field-value-{tabId}-{blockId}-{index}` | Значение поля динамического ввода |
 
 ---
 

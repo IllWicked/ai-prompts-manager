@@ -194,7 +194,7 @@ WebView2 — Windows-only компонент от Microsoft. Для macOS пот
 ### Как узнать, какой селектор сломался?
 
 1. Открой DevTools в Claude WebView (F12)
-2. В консоли проверь: `window.__SEL__` — покажет все селекторы
+2. В консоли проверь: `window._s` — покажет все селекторы
 3. Попробуй: `document.querySelector('селектор')` — вернёт null если сломан
 4. Используй Inspector (Ctrl+Shift+C) чтобы найти новый селектор
 

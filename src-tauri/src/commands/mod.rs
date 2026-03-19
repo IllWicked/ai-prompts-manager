@@ -7,6 +7,8 @@
 //! - `logs` - работа с логами
 //! - `claude` - взаимодействие с Claude (табы, навигация, eval)
 //! - `attachments` - аттачменты (чтение, запись, прикрепление)
+//! - `storage` - хранение вкладок (файловая система)
+//! - `scraper` - автосбор данных из Google (SERP Scraper)
 
 pub mod app;
 pub mod toolbar;
@@ -15,6 +17,7 @@ pub mod logs;
 pub mod claude;
 pub mod attachments;
 pub mod storage;
+pub mod scraper;
 
 // Реэкспорт команд для удобной регистрации в main.rs
 
@@ -34,14 +37,11 @@ pub use toolbar::{
     toolbar_recreate,
     show_downloads,
     hide_downloads,
-    forward_scroll,
-    forward_click,
 };
 
 // Downloads commands
 pub use downloads::{
     get_downloads_path,
-    set_downloads_path,
     pick_downloads_folder,
     open_file,
     delete_download,
@@ -54,23 +54,19 @@ pub use logs::{
     clear_archive_log,
     add_archive_log_entry,
     get_downloads_log,
-    add_download_entry,
-    write_archive_log,
+    write_archive_log, // internal fn (not #[tauri::command]), used by other Rust modules
     write_diagnostic,
     export_diagnostics,
 };
 
 // Claude commands
 pub use claude::{
-    preload_claude,
     toggle_claude,
     get_active_tab,
     switch_claude_tab,
     switch_claude_tab_with_url,
     get_tab_url,
     get_claude_state,
-    new_chat_in_tab,
-    reload_claude_tab,
     recreate_claude_tab,
     navigate_claude_tab,
     notify_url_change,
@@ -81,8 +77,8 @@ pub use claude::{
     eval_in_claude_with_result,
     inject_generation_monitor,
     check_generation_status,
-    set_generation_state,
     insert_text_to_claude,
+    init_claude_webviews,
 };
 
 // Attachments commands
@@ -90,9 +86,9 @@ pub use attachments::{
     read_file_for_attachment,
     write_temp_file,
     attach_file_to_claude,
+    attach_files_batch,
     get_upload_count,
     reset_upload_count,
-    increment_upload_count,
 };
 
 // Storage commands
@@ -100,5 +96,11 @@ pub use storage::{
     save_tabs_to_file,
     load_tabs_from_file,
     delete_tabs_file,
-    get_tabs_file_size,
+};
+
+// Scraper commands
+pub use scraper::{
+    create_scraper_webview,
+    destroy_scraper_webview,
+    scrape_google_serp,
 };

@@ -13,6 +13,21 @@
 /// - Работы с ProseMirror редактором
 pub const CLAUDE_HELPERS_JS: &str = include_str!("../../scripts/claude_helpers.js");
 
+/// Claude Counter — переработанный плагин для показа usage/tokens
+///
+/// Загружается из `scripts/claude_counter.js`
+/// Без monkey-patching: прямой fetch к API, APM-механизмы детекции
+pub const CLAUDE_COUNTER_JS: &str = include_str!("../../scripts/claude_counter.js");
+
+/// Claude Counter — стили
+pub const CLAUDE_COUNTER_CSS: &str = include_str!("../../scripts/claude_counter.css");
+
+/// Claude Auto-Continue — автоматическое продолжение при tool-use limit
+///
+/// Загружается из `scripts/claude_autocontinue.js`
+/// Без monkey-patching: поллинг DOM + button.click()
+pub const CLAUDE_AUTOCONTINUE_JS: &str = include_str!("../../scripts/claude_autocontinue.js");
+
 /// Централизованные селекторы для Claude.ai
 ///
 /// Загружается из внешнего файла `scripts/selectors.json`
@@ -25,7 +40,7 @@ pub const CLAUDE_SELECTORS_JSON: &str = include_str!("../../scripts/selectors.js
 /// Этот скрипт выполняется автоматически при каждой загрузке/перезагрузке
 /// страницы Claude.ai и обеспечивает:
 /// - Установку номера таба (`window.__CLAUDE_TAB__`)
-/// - Загрузку селекторов (`window.__SEL__`)
+/// - Загрузку селекторов (`window._s`)
 /// - Инициализацию helper функций
 /// - Настройку интерсептора загрузки файлов
 /// - Мониторинг состояния генерации
@@ -44,25 +59,34 @@ pub const CLAUDE_SELECTORS_JSON: &str = include_str!("../../scripts/selectors.js
 pub fn get_claude_init_script(tab: u8) -> String {
     format!(r##"
     (function() {{
-        // Проверяем, не инициализирован ли уже скрипт
-        if (window.__tauriInitialized) return;
-        
-        // Проверяем, что мы на главной странице Claude, а не в iframe артефакта
+        if (window._i0) return;
         if (window.self !== window.top) return;
         if (!location.hostname.includes("claude.ai")) return;
         
-        window.__tauriInitialized = true;
+        window._i0 = true;
         
-        // Номер таба для этого webview
-        window.__CLAUDE_TAB__ = {tab};
+        // Кэшируем invoke/listen/emit до очистки __TAURI__
+        const _inv = window.__TAURI__?.core?.invoke?.bind(window.__TAURI__.core);
+        const _listen = window.__TAURI__?.event?.listen?.bind(window.__TAURI__.event);
+        const _emit = window.__TAURI__?.event?.emit?.bind(window.__TAURI__.event);
         
-        // Селекторы доступны глобально для helpers
-        window.__SEL__ = {selectors};
+        // Компактные глобалы вместо __CLAUDE_TAB__, __SEL__
+        window._t = {tab};
+        window._s = {selectors};
         
-        // Загружаем общие функции
+        // Передаём invoke/emit в helpers через глобал
+        window._inv = _inv;
+        window._emit = _emit;
+        
         {helpers}
         
-        // Ждём готовности DOM
+        // Очищаем Tauri-маркеры из глобального scope
+        // (invoke уже закэширован, оригинал больше не нужен)
+        setTimeout(function() {{
+            try {{ delete window.__TAURI__; }} catch(e) {{}}
+            try {{ delete window.__TAURI_INTERNALS__; }} catch(e) {{}}
+        }}, 3000);
+        
         function onReady(fn) {{
             if (document.readyState === "loading") {{
                 document.addEventListener("DOMContentLoaded", fn);
@@ -72,13 +96,30 @@ pub fn get_claude_init_script(tab: u8) -> String {
         }}
         
         onReady(function() {{
-            // Инициализация UI
             initClaudeUI();
-            // DOM-based мониторинг генерации (запускаем после DOM ready)
-            setupGenerationMonitor();
+            
+            // Claude Counter: inject CSS
+            var _ccStyle = document.createElement('style');
+            _ccStyle.id = '_ccs';
+            _ccStyle.textContent = `{counter_css}`;
+            document.head.appendChild(_ccStyle);
+            
+            // Hide Claude disclaimer
+            var _hdStyle = document.createElement('style');
+            _hdStyle.textContent = 'a[href*="claude-is-providing-incorrect"]{{display:none!important}}';
+            document.head.appendChild(_hdStyle);
+            
+            // Claude Counter: init
+            {counter_js}
+            
+            // Auto-Continue: init (starts disabled, enabled via eval from Main WebView)
+            {autocontinue_js}
         }});
     }})();
-    "##, tab = tab, selectors = CLAUDE_SELECTORS_JSON, helpers = CLAUDE_HELPERS_JS)
+    "##, tab = tab, selectors = CLAUDE_SELECTORS_JSON, helpers = CLAUDE_HELPERS_JS,
+        counter_css = CLAUDE_COUNTER_CSS.replace('`', "\\`"),
+        counter_js = CLAUDE_COUNTER_JS,
+        autocontinue_js = CLAUDE_AUTOCONTINUE_JS)
 }
 
 /// Генерирует JavaScript код для инжекции монитора генерации
@@ -94,88 +135,21 @@ pub fn get_claude_init_script(tab: u8) -> String {
 pub fn get_generation_monitor_script() -> String {
     format!(r#"
         (function() {{
-            if (window.__generationMonitorInstalled) return;
+            if (!window._s) {{
+                window._s = {selectors};
+            }}
             
-            if (!window.__SEL__) {{
-                window.__SEL__ = {selectors};
+            if (!window._inv && window.__TAURI__?.core?.invoke) {{
+                window._inv = window.__TAURI__.core.invoke.bind(window.__TAURI__.core);
+            }}
+            
+            if (!window._emit && window.__TAURI__?.event?.emit) {{
+                window._emit = window.__TAURI__.event.emit.bind(window.__TAURI__.event);
             }}
             
             {helpers}
             
-            setupGenerationMonitor();
             initClaudeUI();
         }})()
     "#, selectors = CLAUDE_SELECTORS_JSON, helpers = CLAUDE_HELPERS_JS)
 }
-
-/// Генерирует JavaScript код для скролла в Claude webview
-///
-/// # Arguments
-/// * `delta_y` - величина скролла в пикселях
-///
-/// # Returns
-/// JavaScript код для выполнения скролла
-pub fn get_scroll_script(delta_y: f64) -> String {
-    format!(r#"
-        (function() {{
-            const delta = {delta};
-            const SEL = window.__SEL__;
-            
-            // Поиск по централизованным селекторам scroll container
-            const scrollSelectors = SEL?.navigation?.scrollContainer || [
-                '.overflow-y-scroll.flex-1',
-                '[class*="overflow-y-scroll"][class*="flex-1"]'
-            ];
-            const arr = Array.isArray(scrollSelectors) ? scrollSelectors : [scrollSelectors];
-            
-            for (const sel of arr) {{
-                try {{
-                    const el = document.querySelector(sel);
-                    if (el && el.scrollHeight > el.clientHeight) {{
-                        el.scrollTop += delta;
-                        return;
-                    }}
-                }} catch(e) {{}}
-            }}
-            
-            // Fallback - перебор всех элементов
-            const all = document.querySelectorAll('*');
-            for (const item of all) {{
-                const style = getComputedStyle(item);
-                const isScrollable = (style.overflowY === 'auto' || style.overflowY === 'scroll') 
-                                     && item.scrollHeight > item.clientHeight
-                                     && style.pointerEvents !== 'none';
-                if (isScrollable) {{
-                    item.scrollTop += delta;
-                    return;
-                }}
-            }}
-            
-            window.scrollBy(0, delta);
-        }})();
-    "#, delta = delta_y)
-}
-
-/// Генерирует JavaScript код для клика по координатам
-///
-/// # Arguments
-/// * `x` - координата X
-/// * `y` - координата Y
-///
-/// # Returns
-/// JavaScript код для выполнения клика
-pub fn get_click_script(x: f64, y: f64) -> String {
-    format!(r#"
-        (function() {{
-            const el = document.elementFromPoint({x}, {y});
-            if (el) {{
-                el.click();
-            }}
-        }})();
-    "#, x = x, y = y)
-}
-
-/// Компактный JS для проверки статуса генерации через DOM.
-/// Возвращает true если генерация идёт (stop button / streaming / thinking),
-/// false если idle. Используется Rust polling через CDP на суспендированных табах.
-pub const GENERATION_CHECK_SCRIPT: &str = r#"(function(){var S=window.__SEL__;if(!S||!S.generation)return false;var g=S.generation;if(g.stopButton){var a=Array.isArray(g.stopButton)?g.stopButton:[g.stopButton];for(var i=0;i<a.length;i++){try{if(document.querySelector(a[i]))return true}catch(e){}}}if(g.streamingIndicator){try{if(document.querySelector(g.streamingIndicator))return true}catch(e){}}if(g.thinkingIndicator){try{if(document.querySelector(g.thinkingIndicator))return true}catch(e){}}return false})()"#;

@@ -16,25 +16,30 @@
 ```
 ai-prompts-manager/
 ├── dist/                       # Frontend
-│   ├── index.html              # HTML + минимальный JS (~1080 строк)
-│   ├── toolbar.html            # Тулбар над Claude (~128 строк)
-│   ├── downloads.html          # Менеджер загрузок (~600 строк)
+│   ├── index.html              # HTML + минимальный JS (~1140 строк)
+│   ├── toolbar.html            # Тулбар над Claude (~176 строк)
+│   ├── downloads.html          # Менеджер загрузок (~594 строк)
 │   ├── css/
-│   │   └── styles.css          # Стили (~4300 строк)
-│   └── js/                     # JavaScript модули (35 файлов)
+│   │   └── styles.css          # Стили (~4700 строк)
+│   └── js/                     # JavaScript модули (34 файла)
 │
 ├── src-tauri/                  # Backend (Rust)
-│   ├── src/                    # Модульная структура (21 файл)
-│   │   ├── main.rs             # Точка входа (~174 строки)
+│   ├── src/                    # Модульная структура (22 файла)
+│   │   ├── main.rs             # Точка входа (~140 строк)
 │   │   ├── lib.rs              # Реэкспорт модулей
 │   │   ├── types.rs            # Структуры данных
 │   │   ├── state.rs            # Глобальные состояния
-│   │   ├── commands/           # Tauri команды (7 файлов, 57 команд)
+│   │   ├── commands/           # Tauri команды (9 файлов, 51 команда)
 │   │   ├── downloads/          # Логика загрузок
 │   │   ├── utils/              # Утилиты (MIME, платформа, размеры)
 │   │   └── webview/            # Управление WebView
 │   ├── scripts/
-│   │   └── claude_helpers.js   # Инжектируемый скрипт для Claude WebView (~520 строк)
+│   │   ├── claude_helpers.js   # Инжектируемый скрипт для Claude WebView (~477 строк)
+│   │   ├── claude_counter.js   # Claude Counter — usage, кэш (~27KB)
+│   │   ├── claude_counter.css  # Claude Counter — стили (~2KB)
+│   │   ├── serp_extract.js    # Извлечение результатов из Google SERP (~70 строк)
+│   │   ├── claude_autocontinue.js # Auto-Continue при tool-use limit (~137 строк)
+│   │   └── selectors.json      # Централизованные CSS-селекторы
 │   ├── tauri.conf.json         # Конфигурация Tauri
 │   ├── Cargo.toml              # Зависимости Rust
 │   └── capabilities/           # Permissions
@@ -80,6 +85,7 @@ ai-prompts-manager/
 | Claude (1-3) | claude.ai | Три независимых чата Claude |
 | Toolbar | `toolbar.html` | Переключатель табов, кнопка загрузок |
 | Downloads | `downloads.html` | Менеджер скачанных файлов |
+| Scraper | (динамический) | Скрытый WebView для автосбора данных из Google |
 
 ### Z-Order WebView
 
@@ -87,18 +93,18 @@ ai-prompts-manager/
 - Поднимает z-order toolbar и downloads через Win32 `SetWindowPos(HWND_TOP)`
 - Без пересоздания — сохраняет состояние, мгновенная операция
 
-Неактивные табы скрываются через `webview.hide()` и приостанавливаются через `TrySuspend()` для экономии CPU/GPU.
+Неактивные табы: `show()` + offscreen позиция (IsVisible=TRUE, DOM живой для фоновой генерации). При скрытой Claude панели — `hide()` для экономии CPU.
 
 ## Дополнительные WebView
 
-### toolbar.html (~128 строк)
+### toolbar.html (~176 строк)
 
 Плавающий тулбар над Claude WebView:
 - Кнопки переключения вкладок Claude (1/2/3)
 - Кнопка менеджера загрузок
 - Позиционируется внизу Claude WebView
 
-### downloads.html (~600 строк)
+### downloads.html (~594 строк)
 
 Менеджер загрузок — popup для управления скачанными файлами:
 
@@ -126,7 +132,7 @@ sequenceDiagram
     User->>UI: Клик "Отправить"
     UI->>UI: getBlockContent(blockId)
     UI->>Tauri: invoke('insert_text_to_claude')
-    Tauri->>Claude: CDP: ClipboardEvent('paste')
+    Tauri->>Claude: CDP: editor.insertContent()
     Claude-->>Tauri: success
     Tauri-->>UI: result
     UI->>LS: saveClaudeSettings()

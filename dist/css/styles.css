@@ -289,6 +289,83 @@ textarea,
     background: var(--border-light);
 }
 
+/* Строка выбора цвета в контекстном меню */
+.context-menu-color-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    flex-wrap: wrap;
+}
+
+.context-color-swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.12s ease, border-color 0.12s ease;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.context-color-swatch:hover {
+    transform: scale(1.2);
+}
+
+.context-color-swatch.active {
+    border-color: #fff;
+    box-shadow: 0 0 0 1.5px rgba(0,0,0,0.25);
+}
+
+.dark .context-color-swatch.active {
+    border-color: #fff;
+    box-shadow: 0 0 0 1.5px rgba(255,255,255,0.35);
+}
+
+.context-color-swatch.custom-color-swatch {
+    background: var(--bg-tertiary);
+    border: 2px dashed var(--border-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.context-color-swatch.custom-color-swatch:hover {
+    border-color: var(--text-secondary);
+}
+
+.context-color-swatch.custom-color-swatch input[type="color"] {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.context-color-swatch.custom-color-swatch svg {
+    width: 12px;
+    height: 12px;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.context-color-swatch.reset-color-swatch {
+    background: var(--bg-secondary);
+    border: 2px dashed var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.context-color-swatch.reset-color-swatch svg {
+    width: 12px;
+    height: 12px;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
 .context-menu-item svg {
     width: 16px;
     height: 16px;
@@ -439,17 +516,63 @@ body {
     overflow-y: auto;
 }
 
-.toast {
-    visibility: hidden;
-    opacity: 0;
-    transition: opacity 0.3s, transform 0.3s;
-    transform: translateY(20px) translateX(-50%);
-    z-index: 999999; /* Выше всех элементов включая context menu (100000) */
+.toast-container {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    z-index: 999999;
+    pointer-events: none;
+    max-width: 600px;
 }
-.toast.show {
-    visibility: visible;
-    opacity: 1;
-    transform: translateY(0) translateX(-50%);
+
+.toast-pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    background: rgba(17, 17, 17, 0.88);
+    color: white;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: system-ui, -apple-system, sans-serif;
+    border-radius: 999px;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    pointer-events: auto;
+    animation: toast-in 0.25s ease-out;
+    transition: flex 0.3s ease, opacity 0.2s ease;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.toast-pill > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+    width: 100%;
+}
+
+.toast-pill.exiting {
+    animation: toast-out 0.3s ease-in forwards;
+}
+
+@keyframes toast-in {
+    from { opacity: 0; transform: translateY(12px) scale(0.92); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toast-out {
+    from { opacity: 1; transform: translateX(0); flex: 1; }
+    to   { opacity: 0; transform: translateX(-20px); flex: 0; padding: 10px 0; gap: 0; }
+}
+
+.dark .toast-pill {
+    background: rgba(255, 255, 255, 0.13);
 }
 
 .loading-overlay {
@@ -1141,15 +1264,15 @@ body {
 .workflow-edit-modal-content {
     max-width: 900px !important;
     width: 90%;
-    max-height: 80vh;
+    max-height: 88vh;
     display: flex;
     flex-direction: column;
     padding: 24px;
 }
 
 .workflow-edit-textarea {
-    min-height: 200px;
-    max-height: 50vh;
+    flex: 1;
+    min-height: 300px;
     resize: none !important;
     font-family: inherit;
     font-size: 14px;
@@ -1157,6 +1280,15 @@ body {
     overflow-y: auto !important;
     background: var(--bg-secondary) !important;
     color: var(--text-primary) !important;
+}
+
+.workflow-edit-modal-content.view-mode {
+    max-height: 92vh;
+    max-width: 1100px !important;
+}
+
+.workflow-edit-modal-content.view-mode .workflow-edit-textarea {
+    min-height: 70vh;
 }
 
 .workflow-edit-textarea::-webkit-scrollbar-track {
@@ -1263,13 +1395,15 @@ body {
 .theme-btn,
 .auto-update-btn,
 .edit-mode-btn,
-.offline-mode-btn {
+.offline-mode-btn,
+.auto-continue-btn {
     color: var(--text-muted);
 }
 .theme-btn.active,
 .auto-update-btn.active,
 .edit-mode-btn.active,
-.offline-mode-btn.active {
+.offline-mode-btn.active,
+.auto-continue-btn.active {
     background: white;
     color: var(--claude-primary);
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -1277,7 +1411,8 @@ body {
 .theme-btn:hover:not(.active),
 .auto-update-btn:hover:not(.active),
 .edit-mode-btn:hover:not(.active),
-.offline-mode-btn:hover:not(.active) {
+.offline-mode-btn:hover:not(.active),
+.auto-continue-btn:hover:not(.active) {
     background: rgba(255,255,255,0.5);
 }
 
@@ -1404,12 +1539,14 @@ body {
     border-color: var(--border-light);
 }
 .dark .modal-content .constructor-field input[type="text"],
+.dark .modal-content .constructor-field input[type="number"],
 .dark .modal-content .constructor-field .field-prefix {
     background-color: var(--bg-secondary);
     border-color: var(--border-light) !important;
     color: var(--text-primary);
 }
 .dark .modal-content .constructor-field input[type="text"]::placeholder,
+.dark .modal-content .constructor-field input[type="number"]::placeholder,
 .dark .modal-content .constructor-field .field-prefix::placeholder {
     color: var(--text-muted);
 }
@@ -1996,12 +2133,6 @@ body {
     color: var(--text-secondary);
 }
 
-/* Toast */
-.dark .toast {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-light);
-}
-
 /* Разделители */
 .dark .border-gray-200,
 .dark .border-gray-100 {
@@ -2011,7 +2142,8 @@ body {
 /* Переключатель темы и автообновлений в тёмном режиме */
 .dark .theme-btn,
 .dark .auto-update-btn,
-.dark .offline-mode-btn {
+.dark .offline-mode-btn,
+.dark .auto-continue-btn {
     color: var(--text-muted);
 }
 .dark .theme-btn span,
@@ -2021,7 +2153,8 @@ body {
 .dark .theme-btn.active,
 .dark .auto-update-btn.active,
 .dark .edit-mode-btn.active,
-.dark .offline-mode-btn.active {
+.dark .offline-mode-btn.active,
+.dark .auto-continue-btn.active {
     background: var(--bg-elevated);
     color: var(--claude-primary);
 }
@@ -2032,7 +2165,8 @@ body {
 .dark .theme-btn:hover:not(.active),
 .dark .auto-update-btn:hover:not(.active),
 .dark .edit-mode-btn:hover:not(.active),
-.dark .offline-mode-btn:hover:not(.active) {
+.dark .offline-mode-btn:hover:not(.active),
+.dark .auto-continue-btn:hover:not(.active) {
     background: rgba(255,255,255,0.1);
 }
 
@@ -2494,8 +2628,10 @@ header .flex {
     background-color: var(--bg-primary);
 }
 
-/* Edit mode - скроллбар скрыт (panning через drag) */
-/* Используется класс scrollbar-hidden в HTML */
+/* Edit mode - overflow hidden, навигация через camera model */
+.workflow-container.edit-mode {
+    overflow: hidden;
+}
 
 /* View mode - кастомный овальный скроллбар */
 .workflow-container:not(.edit-mode) {
@@ -2547,7 +2683,7 @@ header .flex {
     font-size: 13px;
     font-weight: 600;
     border-radius: var(--radius-md);
-    pointer-events: none;
+    cursor: pointer;
     z-index: 9999;
     font-family: system-ui, -apple-system, sans-serif;
     backdrop-filter: blur(8px);
@@ -2560,6 +2696,187 @@ header .flex {
 
 .dark .zoom-indicator {
     background: rgba(255, 255, 255, 0.15);
+}
+
+/* Scraper node — только отличия от обычного блока */
+.scraper-node {
+    min-height: auto !important;
+    cursor: grab;
+}
+
+.scraper-node:active {
+    cursor: grabbing;
+}
+
+.scraper-node input {
+    cursor: text;
+}
+
+.scraper-node .workflow-node-header {
+    display: none !important;
+}
+
+.scraper-node .workflow-node-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-radius: 10px 10px 0 0;
+}
+
+.scraper-node .workflow-node-body label {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-top: 8px;
+}
+
+.scraper-node .workflow-node-body label:first-child {
+    margin-top: 0;
+}
+
+.dark .scraper-node .workflow-node-body label {
+    color: var(--text-secondary);
+}
+
+.scraper-node .workflow-node-body input[type="text"] {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 24px;
+    font-family: inherit;
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    outline: none;
+    box-sizing: border-box;
+}
+
+.scraper-node .workflow-node-body input[type="text"]:focus {
+    border-color: var(--claude-primary);
+}
+
+.scraper-node .workflow-node-body input[type="text"]::placeholder {
+    color: var(--text-muted);
+}
+
+.dark .scraper-node .workflow-node-body input[type="text"] {
+    background: var(--bg-tertiary);
+    border-color: var(--btn-border);
+    color: var(--text-primary);
+}
+
+.dark .scraper-node .workflow-node-body input[type="text"]::placeholder {
+    color: var(--text-muted);
+}
+
+.scraper-node .workflow-node-body .scraper-geo-input {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.scraper-node .workflow-node-footer-buttons {
+    justify-content: center;
+}
+
+.scraper-node .workflow-node-footer-buttons .workflow-node-btn {
+    flex: none;
+}
+
+.scraper-node .confirm-rescrape {
+    background: #dc2626 !important;
+    border-color: #dc2626 !important;
+    color: white !important;
+}
+
+.scraper-delete-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-muted);
+    opacity: 0;
+    transition: var(--transition-fast);
+}
+
+.scraper-delete-btn svg {
+    width: var(--node-header-icon-size);
+    height: var(--node-header-icon-size);
+}
+
+.scraper-node:hover .scraper-delete-btn {
+    opacity: 1;
+}
+
+.scraper-delete-btn:hover {
+    color: #ef4444;
+}
+
+.scraper-delete-btn .delete-icon-check {
+    display: none;
+}
+
+.scraper-delete-btn.confirm-mode .delete-icon-cross {
+    display: none;
+}
+
+.scraper-delete-btn.confirm-mode .delete-icon-check {
+    display: block;
+    color: #ef4444;
+}
+
+.scraper-gear-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: rgba(255,255,255,0.8);
+    transition: var(--transition-fast);
+}
+
+.scraper-gear-btn svg {
+    width: var(--node-header-icon-size);
+    height: var(--node-header-icon-size);
+}
+
+.scraper-gear-btn:hover {
+    color: white;
+}
+
+.scraper-result {
+    padding: 0 22px 10px;
+    font-size: 22px;
+    color: #22c55e;
+    font-weight: 500;
+    text-align: center;
+}
+
+.scraper-progress {
+    height: 0;
+    border-radius: 3px;
+    background: var(--border-light);
+    overflow: hidden;
+    transition: height 0.2s;
+    margin: 0 22px 10px;
+}
+
+.scraper-progress.active {
+    height: 4px;
+}
+
+.scraper-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--claude-primary);
+    border-radius: 3px;
+    transition: width 0.3s ease;
 }
 
 /* Canvas для блоков */
@@ -3221,8 +3538,8 @@ header .flex {
 
 /* Drag handle — полоска сверху */
 .workflow-note-handle {
-    height: 20px;
-    min-height: 20px;
+    height: 32px;
+    min-height: 32px;
     background: rgba(var(--accent-rgb), 0.15);
     cursor: grab;
     position: relative;
@@ -3288,6 +3605,7 @@ header .flex {
     border: none;
     border-radius: 4px;
     color: var(--claude-primary);
+    z-index: 21;
     cursor: pointer;
     opacity: 0;
     transition: opacity 0.15s ease;
@@ -3440,9 +3758,6 @@ header .flex {
     background: rgba(59, 130, 246, 0.7); /* Синий */
 }
 
-.script-badge[data-script="spellcheck"] {
-    background: rgba(236, 72, 153, 0.7); /* Розовый */
-}
 
 /* Automation badges (P, N) */
 .automation-badge {

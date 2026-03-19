@@ -27,7 +27,8 @@ function saveWorkflowState() {
         positions: workflowPositions,
         connections: workflowConnections,
         sizes: workflowSizes,
-        notes: workflowNotes
+        notes: workflowNotes,
+        colors: workflowColors
     };
     
     localStorage.setItem(STORAGE_KEYS.workflow(tabId), JSON.stringify(workflowData));
@@ -45,6 +46,7 @@ function loadWorkflowState() {
     workflowConnections = [];
     workflowSizes = {};
     workflowNotes = [];
+    workflowColors = {};
     
     try {
         const saved = localStorage.getItem(STORAGE_KEYS.workflow(tabId));
@@ -54,6 +56,7 @@ function loadWorkflowState() {
             workflowConnections = data.connections || [];
             workflowSizes = data.sizes || {};
             workflowNotes = data.notes || [];
+            workflowColors = data.colors || {};
         }
     } catch (e) {
         

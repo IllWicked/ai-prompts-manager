@@ -105,10 +105,31 @@ Runtime.evaluate({ expression: "..." })
 | Скрипт | Назначение |
 |--------|------------|
 | `initClaudeUI()` | Скрытие sidebar, ghost button |
-| `setupGenerationMonitor()` | DOM-мониторинг генерации (без monkey-patching) |
+| Мониторинг генерации | URL hash (`#generating`) + `history.replaceState` (без monkey-patching) |
 | `setupUrlChangeDetection()` | Отслеживание навигации (polling + popstate) |
+| Claude Counter | Прямой `fetch` к usage/conversation API (без патчинга `window.fetch`) |
+| Knowledge Upload | `POST .../projects/{uuid}/docs` через CDP eval |
 
-**Код скриптов:** `src-tauri/scripts/claude_helpers.js`
+**Код скриптов:** `src-tauri/scripts/claude_helpers.js`, `claude_counter.js`, `claude_counter.css`
+
+---
+
+## Scraper WebView Security
+
+### Поверхность атаки
+
+- Скрапер создаёт скрытый WebView2, посещающий Google и страницы из выдачи
+- Загруженные страницы парсятся через `serp_extract.js` (только `document.querySelectorAll` — без `eval`)
+- HTML очищается перед сохранением (скрипты, стили, iframes удаляются)
+
+### Защитные меры
+
+| Мера | Описание |
+|------|----------|
+| Мьютекс | `SCRAPER_LOCK` — только одна операция скрапинга одновременно |
+| Невидимость | WebView нулевого размера, без декораций |
+| Эфемерность | Создаётся на время операции, уничтожается после |
+| Изоляция | Нет доступа к localStorage приложения, нет IPC |
 
 ---
 

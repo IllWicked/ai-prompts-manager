@@ -8,7 +8,110 @@
 
 ---
 
-## [4.3.5] - 2026-03-08 {#v435}
+## [4.4.0] - 2026-03-15 {#v440}
+
+### Новые функции
+
+#### Claude Counter — usage и кэш в Claude WebView
+- **Интеграция плагина Claude Counter v0.4.2** (MIT License) — переписан для WebView2 без monkey-patching
+- **Cache timer** — обратный отсчёт 5-минутного окна кэширования после ответа Claude
+- **Usage bars** — прогресс-бары session (5h) и weekly (7d) с обратным отсчётом до сброса, отображаются под toolbar чата
+- **Без monkey-patching:** `window.fetch` и `history.pushState/replaceState` не патчатся — данные получаются через прямой `fetch` к `/api/organizations/{orgId}/usage` и `/chat_conversations/{id}?tree=true`
+- **Generation detection** — через существующий APM-механизм URL hash `#generating`, без перехвата SSE
+- **URL change detection** — через `popstate` + polling (1.5 сек), без патчинга history
+- **Инжекция:** CSS через style element (`_ccs`), JS через `get_claude_init_script()` в `scripts.rs`
+- **Новые файлы:** `src-tauri/scripts/claude_counter.js`, `claude_counter.css`
+
+#### Claude WebView: toolbar auto-hide
+- **Toolbar скрыт по умолчанию** — вместо него видна тонкая полоска-индикатор (36×4px)
+- **Hover на индикатор** показывает toolbar с анимацией 0.2s, hover на toolbar держит его видимым
+- **Auto-hide** через 1 сек после ухода мыши (задерживается, если открыт менеджер загрузок)
+
+#### Claude WebView: скрытие дисклеймера
+- **Скрыт элемент** "Claude is AI and can make mistakes" через CSS `a[href*="claude-is-providing-incorrect"]{display:none}`
+
+#### Knowledge Upload — автозагрузка MD в проект
+- **Автоматическая загрузка** скачанных `.md` файлов в knowledge активного проекта Claude
+- **Поток:** `download-finished` → проверка `.md` + `isProjectActive()` → `uploadToProjectKnowledge()` → toast → удаление файла с диска
+- **API:** `POST /api/organizations/{orgId}/projects/{uuid}/docs` через CDP eval с JSON body (`file_name` + `content`)
+- **Чтение файла** через существующую команду `read_file_for_attachment`, удаление через `delete_download`
+- **Новая функция:** `uploadToProjectKnowledge(filePath, filename)` в `claude-api.js`
+
+#### Автосбор данных из Google (SERP Scraper)
+- **Новый тип блока на холсте** — скрапер с настраиваемыми поисковыми запросами
+- **Скрытый WebView2:** создаётся невидимый Chromium-инстанс, выполняет серию запросов в Google, фетчит и очищает HTML каждой страницы
+- **Извлечение:** `serp_extract.js` парсит органические результаты из Google SERP
+- **Интеграция с workflow:** скрапер-блок подключается к другим блокам через порты, результаты загружаются в knowledge проекта
+- **3 новые Tauri-команды:** `create_scraper_webview`, `destroy_scraper_webview`, `scrape_google_serp`
+- **Новые файлы:** `src-tauri/src/commands/scraper.rs`, `src-tauri/scripts/serp_extract.js`
+
+#### Auto-Continue — автоматическое продолжение при tool-use limit
+- **Адаптация плагина claude-autocontinue** (MIT License) — переписан для WebView2 без extension API
+- **Двухступенчатая детекция:** видимая кнопка Continue + фраза о tool-use limit в последнем сообщении ассистента — исключает ложные срабатывания при обычном завершении задачи
+- **Антибот:** рандомная задержка 1.5-3 сек перед кликом, поллинг с jitter 2-4 сек, повторная проверка перед кликом
+- **button.click()** — тот же механизм, что APM использует для sendButton (claude.rs строка 620)
+- **Toast через Tauri emit** → Main WebView `showToast()` — без самодельных DOM-элементов в Claude WebView
+- **Настройка:** тогл в Настройки → Дополнительно, по умолчанию включён, синхронизируется во все Claude табы
+- **Глобал:** `window._ac` (setEnabled/enabled), `window._emit` (кэшированный Tauri emit)
+- **Новый файл:** `src-tauri/scripts/claude_autocontinue.js`
+
+### Улучшения
+
+#### Покраска блоков
+- **Цветовая маркировка** блоков в пайплайнах через контекстное меню — 8 пресетов + произвольный цвет через color picker
+- Цвет сохраняется в `workflowColors[blockId]` и применяется к заголовку блока при рендере
+
+#### View mode: zoom и pan
+- **Масштабирование колёсиком мыши** в view mode — zoom с ограничением от `viewModeBaseZoom` до `ZOOM_MAX`
+- **Навигация кликом средней кнопки** — pan по холсту без переключения в edit mode
+
+#### Новый гео: Эфиопия (ET)
+- Добавлена Эфиопия (`code: 'et'`, `locale: 'en-ET'`) в список поддерживаемых стран
+
+#### Sticky notes: увеличенная зона захвата
+- **`.workflow-note-handle`** height: 20px → 32px — зона перетаскивания заметок на 60% больше
+
+#### Workflow canvas: симметричное расширение
+- **Убрано ограничение** `y = Math.max(gridSize, y)` в `onNodeDrag` и `onNodeResize` — блоки и заметки перемещаются вплоть до координат (0,0), используя полные 2500px запаса до CANVAS_CENTER
+- Координаты клэмпятся в `Math.max(0, ...)` — отрицательные значения запрещены, т.к. canvas рендерится от (0,0)
+
+### Исправления
+
+#### Множественные загрузки: автоматическое разрешение
+- **Проблема:** WebView2 (Edge) показывал диалог «Allow multiple downloads?» при скачивании нескольких файлов из Claude. Если пользователь нажимал «Нет» или пропускал окно — все множественные загрузки блокировались до переустановки
+- **Решение:** `allow_claude_multiple_downloads()` в `webview/manager.rs` — прописывает разрешение `automatic_downloads` для `claude.ai` в Chromium Preferences (`EBWebView/Default/Preferences`) до создания WebView2. Запускается в `main.rs` setup. Если ранее было отказано — исправляется при следующем запуске
+- **Формат:** `profile.content_settings.exceptions.automatic_downloads["https://claude.ai,*"].setting = 1` (CONTENT_SETTING_ALLOW)
+
+#### Undo/Redo: sticky notes не удаляются
+- **Проблема:** при undo/redo заметки исчезали — `applyState()` записывала workflow snapshot без `notes` в localStorage, затирая их
+- **Решение:** при записи workflow в localStorage во время undo/redo сохраняются текущие `workflowNotes`: `{ ...state.workflow, notes: workflowNotes }`
+
+#### Мелькание чёрного прямоугольника при запуске
+- **Проблема:** при создании Claude WebView на `(0,0)` + `hide()` в микрозазор между `add_child` и `hide()` вебвью успевала отрисоваться поверх UI
+- **Решение:** начальная позиция `(0,0)` → `(width*2, 0)` — создание за экраном, мелькание невозможно
+
+### Улучшения UX
+
+#### Модалка редактирования промпта (view mode)
+- **Увеличена площадь:** `max-width` 900→1100px, `max-height` 88→92vh, textarea `min-height: 70vh`
+- **Класс `view-mode`** на `.workflow-edit-modal-content` — отдельные стили для view mode
+- **Edit mode** не затронут
+
+### Удаление мёртвого кода
+
+#### 9 неиспользуемых Tauri-команд (60 → 51)
+- **Удалены команды:** `forward_click`, `forward_scroll` (toolbar.rs), `add_download_entry` (logs.rs), `get_tabs_file_size` (storage.rs), `increment_upload_count` (attachments.rs), `set_downloads_path` (downloads.rs), `preload_claude`, `new_chat_in_tab`, `reload_claude_tab` (claude.rs)
+- **Удалены helper-функции:** `get_scroll_script()`, `get_click_script()` из scripts.rs (вызывались только из удалённых команд)
+- **Удалена заглушка:** `setup_title_change_monitor()` — no-op с v4.3.4, мониторинг через JS CDP
+- **Удалён файл:** `src-tauri/scripts/page_clean.js` — не подключён через `include_str!`, 0 ссылок
+
+### Файлы
+
+`dist/css/styles.css`, `dist/js/workflow-interactions.js`, `dist/js/workflow-render.js`, `dist/js/workflow-zoom.js`, `dist/js/context-menu.js`, `dist/js/undo.js`, `dist/js/claude-api.js`, `dist/js/init.js`, `dist/js/tabs.js`, `dist/js/languages.js`, `dist/index.html`, `dist/toolbar.html`, `src-tauri/src/webview/scripts.rs`, `src-tauri/src/webview/manager.rs`, `src-tauri/src/utils/dimensions.rs`, `src-tauri/src/commands/scraper.rs` (новый), `src-tauri/scripts/claude_counter.js` (новый), `src-tauri/scripts/claude_counter.css` (новый), `src-tauri/scripts/serp_extract.js` (новый)
+
+---
+
+## [4.3.7] - 2026-03-08 {#v437}
 
 ### Улучшения
 
@@ -27,6 +130,18 @@
 #### Undo/Redo: объединение действий + удаление заметок
 - **Группировка ввода ослаблена:** `SNAPSHOT_DEBOUNCE_MS` 1000 → 300мс, `INPUT_GROUP_MS` 2000 → 800мс. Дискретные действия (удаление блока, перемещение) больше не схлопываются в одну операцию undo
 - **Notes исключены из undo:** `captureFullState()` удаляет `tabData.notes` из snapshot. `applyState()` сохраняет текущие notes при восстановлении. Заметки больше не исчезают при Ctrl+Z
+
+#### Вставка текста с файлами
+- **`insertContent` как единственный метод:** `ClipboardEvent('paste')` убран — не работал надёжно при наличии прикреплённых файлов. `editor.commands.insertContent()` — штатный метод ProseMirror, который Claude.ai вызывает сам при любом пользовательском вводе. Работает с любым состоянием UI
+
+#### Индикатор генерации при навигации
+- **Сброс генерации при навигации:** URL hash `#generating` сбрасывается при переходе на другую страницу. Предотвращает залипание индикатора
+
+#### Маскировка Tauri-артефактов в Claude WebView
+- **Глобальные переменные замаскированы:** `window.__SEL__` → `_s`, `window.__CLAUDE_TAB__` → `_t`, `window.__generationMonitorInstalled` → `_g0`, и все остальные `__xxx__` → короткие `_xx`. Нечитаемые имена неотличимы от минифицированного кода любого extension
+- **`window.__TAURI__` удаляется** из Claude WebView через 3 сек после инициализации (invoke закэширован в `window._inv`). Datadog RUM и другие скрипты больше не видят маркер Tauri
+- **`tauri-custom-styles`** → `_cs` — id инжектированного style элемента замаскирован
+- **Не затронуто:** main webview (dist/js/*.js) — невидим для Claude.ai, маскировка не нужна
 
 ---
 
@@ -131,6 +246,8 @@
 - **`ensure_claude_webview`** — при создании нового Claude webview вызывает `raise_toolbar_zorder()` вместо установки флага
 
 #### Нативное скрытие webview: hide()/show() (Refactoring Phase 0)
+> **Примечание:** В v4.4.0 создание webview изменено на гибридный подход: offscreen `(width*2, 0)` + `hide()` для устранения мелькания. Неактивные табы при открытой панели используют offscreen (IsVisible=TRUE), при закрытой панели — `hide()`.
+
 - **`webview.hide()`/`show()`** — вместо позиционирования за экран (`set_position(width*2, 0)`). WebView2 `put_IsVisible(FALSE)` throttle-ит анимации, снижает CPU, очищает GPU кэши
 - **`create_claude_webview`** — создание на `(0,0)` + `hide()` вместо `(width*2, 0)`
 - **`ensure_toolbar`** — создание на `(0,0)` + `hide()` вместо `(-500, 0)`
@@ -149,6 +266,8 @@
 - **`eprintln!`** — дублирование в stderr для отладки
 
 #### Suspend/Resume неактивных табов (Refactoring Phase 1)
+> **Примечание:** Впоследствии отключено в v4.3.4 — `TrySuspend()` замораживал DOM и ломал querySelector/insertContent на фоновых табах. Неактивные табы остаются живыми (offscreen-позиционирование + hide).
+
 - **`suspend_claude_tab()`** — вызывает WebView2 `ICoreWebView2_3::TrySuspend()` для паузы script timers, анимаций, минимизации CPU
 - **`resume_claude_tab()`** — вызывает `ICoreWebView2_3::Resume()` для мгновенного возобновления
 - **Startup** — табы 2 и 3 suspended сразу после создания
@@ -775,9 +894,9 @@ src-tauri/src/
 ### Исправлено
 - Исправлена команда сборки в SETUP_GITHUB.md (`cargo tauri build` вместо `npm run`)
 - Уточнена информация о CDP и cookies в SECURITY.md
-- Перепроверен подсчёт функций claude-api.js в 02-FRONTEND.md (подтверждено: 45 функций)
+- Перепроверен подсчёт функций claude-api.js в 02-FRONTEND.md (подтверждено: 45 функций) *(после рефакторинга v4.3+ стало 39)*
 - Унифицирована версия Rust в LIMITATIONS.md (минимум 1.75+, рекомендуется 1.80+)
-- Исправлено количество языков в 05-FEATURES.md (было 21, стало 26 — добавлены региональные варианты: at, ca-en, ca-fr, ch-de, ch-fr, nz)
+- Исправлено количество языков в 05-FEATURES.md (было 21, стало 26 — добавлены региональные варианты: at, ca-en, ca-fr, ch-de, ch-fr, nz) *(региональные варианты удалены в v4.2.0, текущее число — 20 базовых языков с мультигео через подменю)*
 - Исправлена фраза в QUICKSTART.md ("скачает и скомпилирует" вместо "скачает")
 - Унифицированы даты в ADR.md (добавлены месяцы: Ноябрь 2025, Декабрь 2025, Январь 2026)
 
@@ -833,14 +952,14 @@ src-tauri/src/
 - Визуальный редактор промптов на canvas
 - Drag and drop перемещение блоков
 - Соединения между блоками (DAG)
-- Zoom (0.4-1.25) и pan навигация
+- Zoom (0.2-1.25) и pan навигация
 - Snap to grid (40px)
 - Сохранение позиций и связей
 
 #### Скрипты автоматизации
 - Встроенный convert.py (конвертация MD в HTML)
 - Встроенный count.py (подсчёт слов)
-- Встроенный spellcheck.py (проверка орфографии)
+- Встроенный spellcheck.py (проверка орфографии) — *удалён в более поздних версиях*
 - Запуск скриптов через интерфейс
 
 ### Изменено

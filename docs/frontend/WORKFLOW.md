@@ -81,7 +81,7 @@ loadWorkflowState();
 
 ---
 
-## workflow-zoom.js (5 функций)
+## workflow-zoom.js (14 функций)
 
 | Функция | Описание |
 |---------|----------|
@@ -142,11 +142,12 @@ scrollToBlocks();
 | `Ctrl+Click` | Multi-select |
 | `Ctrl+A` | Select all |
 | `Delete` | Delete selected |
-| `F2` | Rename block |
+| `Middle+Drag` | Pan (edit и view mode) |
+| `Scroll` (view mode) | Zoom |
 
 ---
 
-## workflow-render.js (20 функций)
+## workflow-render.js (31 функций)
 
 | Функция | Описание |
 |---------|----------|
@@ -158,10 +159,20 @@ scrollToBlocks();
 | `autoPositionNodes(promptsData)` | Автоматическое размещение |
 | `generateExpandedFooterHtml(index, chatTabs, opts)` | HTML footer блока |
 | `createWorkflowNode(block, index)` | Создание DOM ноды |
+| `createScraperNode(scraper)` | Создание DOM ноды скрапера |
+| `deleteScraperBlock(scraperId)` | Удаление скрапер-блока |
+| `scheduleScraperDestroy()` | Отложенное уничтожение скрапер-WebView |
+| `runScraper(scraperId)` | Запуск скрапинга (Google SERP) |
+| `showScraperQueriesModal(scraperId)` | Модалка настройки поисковых запросов |
+| `hideScraperQueriesModal()` | Закрыть модалку запросов |
+| `addScraperQueryField(data, index)` | Добавить поле запроса в модалку |
+| `reindexScraperQueryFields()` | Переиндексировать поля запросов |
+| `updateScraperAddBtn()` | Обновить кнопку добавления запроса |
+| `saveScraperQueries()` | Сохранить запросы скрапера |
 | `createWorkflowInstruction(block, index)` | Создание инструкции |
-| `createWorkflowNote(note)` | Создание заметки на canvas |
-| `setupNoteDrag(noteEl, note)` | Настройка перетаскивания заметки |
-| `setupNoteResize(noteEl, note)` | Настройка resize заметки |
+| `createWorkflowNote(note, index)` | Создание заметки на canvas |
+| `setupNoteDrag(handle, el, note)` | Настройка перетаскивания заметки |
+| `setupNoteResize(zone, dir, el, note)` | Настройка resize заметки |
 | `setupNodeEvents(node, index)` | Настройка событий ноды |
 | `editWorkflowNode(index)` | Открытие редактирования |
 | `showBlockEditModal(block, index)` | Показать модалку |
@@ -169,7 +180,8 @@ scrollToBlocks();
 | `hideWorkflowEditModal()` | Скрыть модалку |
 | `saveWorkflowEdit()` | Сохранить изменения |
 | `deleteWorkflowBlock(index)` | Удалить блок |
-| `saveBlockContent(blockId, content)` | Сохранить контент |
+| `saveBlockContent(blockId, content, isBlur)` | Сохранить контент |
+| `copyNodeContent(index)` | Копирование контента блока в буфер обмена |
 
 ### Примеры
 

@@ -8,6 +8,7 @@
 erDiagram
     TAB ||--o{ BLOCK : contains
     TAB ||--o{ SEPARATOR : contains
+    TAB ||--o{ SCRAPER : contains
     TAB ||--|| WORKFLOW_STATE : has
     
     BLOCK ||--o| INSTRUCTION : may_have
@@ -19,6 +20,13 @@ erDiagram
     
     CONNECTION }o--|| BLOCK : from
     CONNECTION }o--|| BLOCK : to
+    
+    SCRAPER {
+        string id PK
+        string type
+        string title
+        string keyword
+    }
     
     BLOCK ||--o| BLOCK_SCRIPTS : may_have
     BLOCK ||--o| BLOCK_AUTOMATION : may_have
@@ -61,7 +69,8 @@ erDiagram
     version: "1.0.0",       // Версия (для remote prompts)
     items: [                // Массив элементов
         { type: "block", ... },
-        { type: "separator", id: "sep-123" }
+        { type: "separator", id: "sep-123" },
+        { type: "scraper", ... }
     ]
 }
 ```
@@ -107,6 +116,19 @@ erDiagram
 }
 ```
 
+## Scraper (скрапер)
+
+```javascript
+{
+    id: "scraper-123",       // Уникальный ID
+    type: "scraper",         // Тип элемента
+    title: "SERP SCRAPER",   // Заголовок
+    keyword: "my keyword"    // Ключевое слово для поиска
+}
+```
+
+Максимум 1 скрапер на вкладку. Запросы настраиваются через модалку (кнопка ⚙). Результаты загружаются в knowledge проекта Claude.
+
 ## Workflow State
 
 ```javascript
@@ -135,7 +157,10 @@ erDiagram
             height: 150,
             text: "Текст заметки"
         }
-    ]
+    ],
+    colors: {               // Цвета блоков
+        "block-123": "#ec7441"
+    }
 }
 ```
 
@@ -177,7 +202,8 @@ erDiagram
     theme: "auto",          // "light" | "dark" | "auto"
     adminMode: false,       // Режим администратора
     accentColor: "#6366f1", // Акцентный цвет (hex)
-    canvasPattern: "none"   // Паттерн фона ("none" | "grid" | "diagonal" | "waves" | "squares" | "grid3d" | "custom")
+    canvasPattern: "none",  // Паттерн фона ("none" | "grid" | "diagonal" | "waves" | "squares" | "grid3d" | "custom")
+    autoContinue: true     // Авто-продолжение при tool-use limit в Claude
 }
 ```
 
@@ -194,7 +220,6 @@ erDiagram
 // localStorage: block-scripts
 {
     "block-123": ["convert", "count"],
-    "block-456": ["spellcheck"]
 }
 ```
 

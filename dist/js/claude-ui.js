@@ -230,7 +230,7 @@ function updateWorkflowChatButtons() {
             if (showChatButtons) {
                 const arrowSvgSmall = SVG_ICONS.arrowSmall;
                 const collapsedHtml = chatTabs.slice(0, 3).map(tab => {
-                    const isGen = generatingTabs[tab] || false;
+                    const isGen = (typeof isTabBusy === 'function' ? isTabBusy(tab) : generatingTabs[tab]) || false;
                     return chatTabs.length === 1
                         ? `<button class="collapsed-send-btn" onclick="event.stopPropagation(); sendNodeToClaude(${index}, ${tab})" title="Отправить в чат"${isGen ? ' disabled' : ''}>${arrowSvgSmall}</button>`
                         : `<button class="collapsed-send-btn" onclick="event.stopPropagation(); sendNodeToClaude(${index}, ${tab})" title="${isGen ? 'Claude генерирует...' : 'Отправить в Чат ' + tab}"${isGen ? ' disabled' : ''}>${arrowSvgSmall}<span>${tab}</span></button>`;

@@ -13,17 +13,15 @@ pub use scripts::{
     CLAUDE_SELECTORS_JSON,
     get_claude_init_script,
     get_generation_monitor_script,
-    get_scroll_script,
-    get_click_script,
 };
 
 pub use manager::{
     ensure_claude_webview,
     create_claude_webview,
-    setup_title_change_monitor,
     ensure_toolbar,
     raise_toolbar_zorder,
     suspend_claude_tab,
     resume_claude_tab,
     resize_webviews,
+    allow_claude_multiple_downloads,
 };

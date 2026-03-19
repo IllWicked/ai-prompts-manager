@@ -31,7 +31,7 @@ npm run test:export-import
 | Метрика | Значение |
 |---------|----------|
 | Test Suites | 7 passed |
-| Tests | 257 passed, 5 skipped |
+| Tests | 262 total (257 passed, 5 skipped) |
 | Время | ~3.6s |
 
 ### Покрытие по модулям

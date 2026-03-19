@@ -46,11 +46,11 @@ pub mod sizes {
     /// Ширина тулбара в пикселях
     pub const TOOLBAR_WIDTH: f64 = 152.0;
     
-    /// Высота тулбара в пикселях
-    pub const TOOLBAR_HEIGHT: f64 = 44.0;
+    /// Высота тулбара в пикселях (toolbar 42px + indicator 4px + gaps)
+    pub const TOOLBAR_HEIGHT: f64 = 56.0;
     
     /// Отступ тулбара от нижнего края в пикселях
-    pub const TOOLBAR_BOTTOM_OFFSET: f64 = 10.0;
+    pub const TOOLBAR_BOTTOM_OFFSET: f64 = 5.0;
     
     /// Ширина popup загрузок в пикселях
     pub const DOWNLOADS_WIDTH: f64 = 320.0;

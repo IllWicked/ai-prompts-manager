@@ -1,6 +1,6 @@
 {
   "name": "ai-prompts-manager",
-  "version": "4.3.6",
+  "version": "4.4.0",
   "description": "AI Prompts Manager - Unit tests configuration",
   "private": true,
   "scripts": {
@@ -14,10 +14,7 @@
     "test:undo": "jest tests/unit/undo",
     "test:workflow": "jest tests/unit/workflow",
     "test:utils": "jest tests/unit/utils",
-    "test:blocks": "jest tests/unit/blocks",
-    "test:export-import": "jest tests/unit/export-import",
-    "test:persistence": "jest tests/unit/persistence",
-    "test:remote-prompts": "jest tests/unit/remote-prompts"
+    "test:export-import": "jest tests/unit/export-import"
   },
   "devDependencies": {
     "jest": "^29.7.0",

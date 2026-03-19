@@ -57,7 +57,8 @@ async function exportConfig() {
                 updatedItem.content = content;
             }
             if (scripts.length > 0) {
-                updatedItem.scripts = scripts;
+                const validScripts = scripts.filter(s => EMBEDDED_SCRIPTS[s]);
+                if (validScripts.length > 0) updatedItem.scripts = validScripts;
             }
             if (collapsed) {
                 updatedItem.collapsed = true;
@@ -70,6 +71,12 @@ async function exportConfig() {
             }
             return updatedItem;
         }
+        if (item.type === 'scraper') {
+            // При экспорте: сохраняем keyword, обнуляем result (файлы локальные)
+            const exported = { ...item };
+            delete exported.result;
+            return exported;
+        }
         return item;
     });
     
@@ -81,7 +88,8 @@ async function exportConfig() {
             positions: workflowPositions,
             sizes: workflowSizes,
             connections: workflowConnections,
-            notes: workflowNotes
+            notes: workflowNotes,
+            colors: workflowColors
         }
     };
     
@@ -234,7 +242,8 @@ async function handleImportFile(event) {
             positions: workflow.positions || {},
             sizes: workflow.sizes || {},
             connections: workflow.connections || [],
-            notes: workflow.notes || []
+            notes: workflow.notes || [],
+            colors: workflow.colors || {}
         };
         localStorage.setItem(STORAGE_KEYS.workflow(tabId), JSON.stringify(workflowData));
     });

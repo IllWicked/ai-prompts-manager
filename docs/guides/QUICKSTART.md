@@ -40,16 +40,21 @@ ai-prompts-manager/
 │   ├── toolbar.html         # Тулбар над Claude
 │   ├── downloads.html       # Менеджер загрузок
 │   ├── css/styles.css       # Стили
-│   └── js/                  # 35 JavaScript модулей
+│   └── js/                  # 34 JavaScript модулей
 │
 ├── src-tauri/               # ⚙️ Backend (Rust)
-│   ├── src/                 # Модульная структура (21 файл)
-│   │   ├── main.rs          # Точка входа (~157 строк)
-│   │   ├── commands/        # Tauri команды (57 команд)
+│   ├── src/                 # Модульная структура (22 файла)
+│   │   ├── main.rs          # Точка входа (~140 строк)
+│   │   ├── commands/        # Tauri команды (51 команда)
 │   │   ├── webview/         # Управление WebView
 │   │   └── utils/           # Утилиты
 │   ├── scripts/
-│   │   └── claude_helpers.js # Инжектируется в Claude WebView
+│   │   ├── claude_helpers.js   # Инжектируемый скрипт для Claude WebView
+│   │   ├── claude_counter.js   # Claude Counter — usage bars, cache timer
+│   │   ├── claude_counter.css  # Claude Counter — стили
+│   │   ├── serp_extract.js     # Извлечение результатов из Google SERP
+│   │   ├── claude_autocontinue.js # Auto-Continue при tool-use limit
+│   │   └── selectors.json      # Централизованные CSS-селекторы Claude.ai
 │   └── tauri.conf.json      # Конфигурация Tauri
 │
 ├── prompts/                 # 📝 Вкладки с промптами (создаётся при первом push)
@@ -72,14 +77,14 @@ ai-prompts-manager/
 
 ### Добавить UI-функцию
 ```
-dist/js/*.js          — 35 JavaScript модулей (~330 функций)
+dist/js/*.js          — 34 JavaScript модулей (~373 функций)
 dist/index.html       — HTML разметка + подключение модулей
 dist/css/styles.css   — стили (TailwindCSS)
 ```
 
 ### Добавить Tauri command
 ```
-src-tauri/src/commands/   — Tauri команды (7 модулей, 57 команд)
+src-tauri/src/commands/   — Tauri команды (9 файлов, 51 команда)
 src-tauri/src/main.rs     — регистрация команд в invoke_handler
 ```
 
@@ -90,7 +95,10 @@ src-tauri/scripts/selectors.json   ← Единственный файл для 
 
 ### Изменить поведение в Claude WebView
 ```
-src-tauri/scripts/claude_helpers.js
+src-tauri/scripts/claude_helpers.js    ← UI хелперы (sidebar, ghost button, генерация)
+src-tauri/scripts/claude_counter.js    ← Usage bars, cache timer
+src-tauri/scripts/claude_counter.css   ← Стили Claude Counter
+src-tauri/scripts/claude_autocontinue.js ← Auto-Continue при tool-use limit
 ```
 
 ---
@@ -101,7 +109,7 @@ src-tauri/scripts/claude_helpers.js
 |------|------------|
 | `dist/index.html` | UI + подключение JS модулей (основной файл frontend) |
 | `src-tauri/src/main.rs` | Точка входа Rust, регистрация команд |
-| `src-tauri/src/commands/` | Tauri команды (57 команд в 7 модулях) |
+| `src-tauri/src/commands/` | Tauri команды (9 файлов, 51 команда) |
 | `dist/js/claude-api.js` | Claude интеграция |
 | `dist/js/workflow-render.js` | Рендеринг workflow |
 | `dist/js/remote-prompts.js` | Обновление промптов |

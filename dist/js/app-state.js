@@ -31,6 +31,7 @@ window.AppState = {
         positions: {},
         sizes: {},
         notes: [],
+        colors: {},
         zoom: parseFloat(localStorage.getItem(STORAGE_KEYS.WORKFLOW_ZOOM)) || 0.6
     },
     // Состояние взаимодействия (drag, resize, select)
@@ -120,6 +121,10 @@ Object.defineProperty(window, 'workflowSizes', {
 Object.defineProperty(window, 'workflowNotes', {
     get() { return window.AppState.workflow.notes; },
     set(v) { window.AppState.workflow.notes = v; }
+});
+Object.defineProperty(window, 'workflowColors', {
+    get() { return window.AppState.workflow.colors; },
+    set(v) { window.AppState.workflow.colors = v; }
 });
 Object.defineProperty(window, 'workflowZoom', {
     get() { return window.AppState.workflow.zoom; },

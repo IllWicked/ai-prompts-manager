@@ -28,6 +28,9 @@ function showSettingsModal() {
     // Устанавливаем состояние оффлайн-режима
     updateOfflineModeButtons(settings.offlineMode);
     
+    // Устанавливаем состояние auto-continue
+    updateAutoContinueButtons(settings.autoContinue);
+    
     // Устанавливаем активную тему
     updateThemeButtons(settings.theme);
     
@@ -800,6 +803,41 @@ function applyOfflineMode(enabled) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// AUTO-CONTINUE
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Обновить состояние кнопок auto-continue
+ * @param {boolean} enabled
+ */
+function updateAutoContinueButtons(enabled) {
+    updateToggleButtons('auto-continue-btn', enabled ? 'auto-continue-on' : 'auto-continue-off');
+}
+
+/**
+ * Переключить auto-continue и синхронизировать с Claude WebView
+ * @param {boolean} enabled
+ */
+function setAutoContinue(enabled) {
+    const settings = getSettings();
+    settings.autoContinue = enabled;
+    saveSettings(settings);
+    syncAutoContinueToWebViews(enabled);
+    showToast(enabled ? 'Auto-continue включён' : 'Auto-continue выключён');
+}
+
+/**
+ * Синхронизировать auto-continue во все Claude WebView
+ * @param {boolean} enabled
+ */
+function syncAutoContinueToWebViews(enabled) {
+    const script = `if(window._ac)window._ac.setEnabled(${!!enabled})`;
+    for (let tab = 1; tab <= 3; tab++) {
+        try { evalInClaude(tab, script); } catch(e) {}
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ЭКСПОРТ
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -822,6 +860,9 @@ window.toggleAutoUpdate = toggleAutoUpdate;
 window.isOfflineMode = isOfflineMode;
 window.setOfflineMode = setOfflineMode;
 window.applyOfflineMode = applyOfflineMode;
+window.updateAutoContinueButtons = updateAutoContinueButtons;
+window.setAutoContinue = setAutoContinue;
+window.syncAutoContinueToWebViews = syncAutoContinueToWebViews;
 window.applyAccentColor = applyAccentColor;
 window.setAccentColor = setAccentColor;
 window.applyCanvasPattern = applyCanvasPattern;

@@ -1,6 +1,6 @@
 # AI Prompts Manager — Документация
 
-> **Версия:** 4.3.6 | [CHANGELOG](reference/CHANGELOG.md)
+> **Версия:** 4.4.0 | [CHANGELOG](reference/CHANGELOG.md)
 
 ## Быстрый старт
 
@@ -21,7 +21,7 @@ cd src-tauri && cargo tauri dev
 │   Main WebView    │   Claude WebView (Tab 1-3) │
 │   (UI приложения) │   (claude.ai)              │
 │   - index.html    ├─────────────────────────────┤
-│   - 35 JS модулей │   Toolbar + Downloads       │
+│   - 34 JS модулей │   Toolbar + Downloads       │
 └───────────────────┴─────────────────────────────┘
 ```
 
@@ -113,7 +113,8 @@ cd src-tauri && cargo tauri dev
 | `Ctrl+Click` | Multi-select |
 | `Ctrl+A/C/V` | Select all / Copy / Paste |
 | `Delete` | Delete selected |
-| `F2` | Rename block |
+| `Middle+Drag` | Pan (edit и view mode) |
+| `Scroll` (view mode) | Zoom |
 
 ### localStorage Keys
 
@@ -125,13 +126,20 @@ cd src-tauri && cargo tauri dev
 | `ai-prompts-manager-language` | Текущий язык |
 | `ai-prompts-manager-version` | Версия формата данных |
 | `ai-prompts-manager-app-version` | Версия приложения |
-| `workflow-{tabId}` | Позиции и связи workflow |
+| `workflow-{tabId}` | Позиции, связи, размеры, заметки и цвета блоков |
 | `workflowZoom` | Текущий zoom |
+| `workflowCameraX` | Позиция камеры X |
+| `workflowCameraY` | Позиция камеры Y |
 | `claudeSettings` | Состояние Claude панели |
 | `claude_auto_send` | Автоотправка |
 | `active-project` | Привязка к проекту |
 | `collapsed-blocks` | Свёрнутые блоки |
+| `block-scripts` | Прикреплённые скрипты блоков |
+| `block-automation` | Флаги автоматизации блоков (P, N) |
 | `currentCountry` | Страна для мультигео |
+| `custom-canvas-image` | Base64 пользовательского фона холста (fallback; primary — IndexedDB `apm-images`) |
+| `ai-prompts-manager-data-{tabId}` | Данные промптов вкладки |
+| `field-value-{tabId}-{blockId}-{index}` | Значения полей динамического ввода |
 
 > **Полный список:** [frontend/UTILS.md](frontend/UTILS.md) → `STORAGE_KEYS`, [reference/GLOSSARY.md](reference/GLOSSARY.md) → `STORAGE_KEYS`
 
@@ -143,7 +151,7 @@ cd src-tauri && cargo tauri dev
 ai-prompts-manager/
 ├── dist/                    # Frontend
 │   ├── index.html           # UI + подключение JS модулей
-│   ├── js/                  # 35 JS модулей
+│   ├── js/                  # 34 JS модулей
 │   └── css/                 # Стили
 │
 ├── src-tauri/               # Backend
@@ -162,10 +170,12 @@ ai-prompts-manager/
 | Термин | Документ |
 |--------|----------|
 | Active Project | [04-CLAUDE](04-CLAUDE.md) |
+| Auto-Continue | [04-CLAUDE](04-CLAUDE.md) |
 | AppState | [frontend/APPSTATE](frontend/APPSTATE.md) |
 | Block | [frontend/DATA-STRUCTURES](frontend/DATA-STRUCTURES.md) |
 | Block Automation | [frontend/TABS-BLOCKS](frontend/TABS-BLOCKS.md) |
 | CDP | [03-BACKEND](03-BACKEND.md) |
+| Claude Counter | [04-CLAUDE](04-CLAUDE.md) |
 | Claude WebView | [01-OVERVIEW](01-OVERVIEW.md) |
 | Connection | [frontend/WORKFLOW](frontend/WORKFLOW.md) |
 | Downloads Manager | [06-ADDITIONAL-WEBVIEWS](06-ADDITIONAL-WEBVIEWS.md) |
@@ -173,12 +183,15 @@ ai-prompts-manager/
 | eval_in_claude | [03-BACKEND](03-BACKEND.md) |
 | Export/Import | [frontend/INDEX-HTML](frontend/INDEX-HTML.md) |
 | File Attachments | [05-FEATURES](05-FEATURES.md) |
+| Knowledge Upload | [04-CLAUDE](04-CLAUDE.md) |
 | Language System | [05-FEATURES](05-FEATURES.md) |
 | localStorage | [reference/LIMITATIONS](reference/LIMITATIONS.md) |
 | ProseMirror | [04-CLAUDE](04-CLAUDE.md) |
 | Project Binding | [04-CLAUDE](04-CLAUDE.md) |
 | Remote Prompts | [frontend/UTILS](frontend/UTILS.md) |
+| SERP Scraper | [03-BACKEND](03-BACKEND.md) |
 | Selectors | [04-CLAUDE](04-CLAUDE.md) |
+| Stability Improvements | [reference/STABILITY-IMPROVEMENTS](reference/STABILITY-IMPROVEMENTS.md) |
 | STORAGE_KEYS | [frontend/UTILS](frontend/UTILS.md) |
 | Tab | [frontend/DATA-STRUCTURES](frontend/DATA-STRUCTURES.md) |
 | Tauri command | [03-BACKEND](03-BACKEND.md) |

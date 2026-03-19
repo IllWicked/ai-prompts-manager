@@ -133,7 +133,13 @@ function setupDownloadListeners() {
     
     window.__TAURI__.event.listen('download-finished', async (event) => {
         const { filename, tab, url, file_path } = event.payload;
-        showToast(`✅ Скачан: ${filename}`, 3000);
+        
+        // MD файлы в активном проекте → в knowledge (без промежуточного тоста "Скачан")
+        const isKnowledgeUpload = filename.toLowerCase().endsWith('.md') && file_path && isProjectActive();
+        
+        if (!isKnowledgeUpload) {
+            showToast(`✅ Скачан: ${filename}`, 3000);
+        }
         
         // Извлекаем префикс из названия текущей вкладки
         const tabs = getAllTabs();
@@ -152,6 +158,21 @@ function setupDownloadListeners() {
             }
         } catch (e) {
             console.error('Auto-finish project error:', e);
+        }
+        
+        // Автозагрузка MD в knowledge проекта
+        if (isKnowledgeUpload) {
+            try {
+                const result = await uploadToProjectKnowledge(file_path, filename);
+                if (result.success) {
+                    showToast(`📎 ${filename} → knowledge ✓`, 3500);
+                } else {
+                    showToast(`⚠️ ${filename}: knowledge upload failed`, 4000);
+                }
+            } catch (e) {
+                console.error('Knowledge upload error:', e);
+                showToast(`⚠️ ${filename}: knowledge upload error`, 4000);
+            }
         }
         
         // Если файл не начинается с префикса — не логируем в archive log
@@ -204,8 +225,38 @@ function initContextMenuHandlers() {
         
         // 1.5. ПКМ на заметке в edit mode
         if (workflowMode && isEditMode && isOnNote) {
+            const noteId = isOnNote.dataset.noteId;
             const noteIndex = parseInt(isOnNote.dataset.noteIndex);
+            
+            // Если заметка в мульти-выделении — показываем общее меню
+            if (selectedNodes.size > 1 && selectedNodes.has(noteId)) {
+                const ids = [...selectedNodes];
+                showContextMenu(e.clientX, e.clientY, [
+                    {
+                        label: `Копировать (${selectedNodes.size})`,
+                        icon: CONTEXT_ICONS.copy,
+                        action: () => copyBlocksToClipboard(ids)
+                    },
+                    { separator: true },
+                    buildColorRow(ids)
+                ]);
+                return;
+            }
+            
+            // Одиночная заметка
+            if (!selectedNodes.has(noteId)) {
+                clearNodeSelection();
+                isOnNote.classList.add('selected');
+                selectedNodes.add(noteId);
+            }
+            
             showContextMenu(e.clientX, e.clientY, [
+                {
+                    label: 'Копировать',
+                    icon: CONTEXT_ICONS.copy,
+                    action: () => copyBlocksToClipboard([noteId])
+                },
+                { separator: true },
                 {
                     label: 'Удалить заметку',
                     icon: CONTEXT_ICONS.delete,
@@ -219,11 +270,12 @@ function initContextMenuHandlers() {
             return;
         }
         
-        // 2. ПКМ на заголовке блока в edit mode
+        // 2. ПКМ на заголовке блока или на скрапер-ноде в edit mode
         const nodeHeader = target.closest('.workflow-node-header');
         const node = target.closest('.workflow-node');
         
-        if (workflowMode && isEditMode && nodeHeader && node) {
+        if (workflowMode && isEditMode && node && (nodeHeader || node.classList.contains('scraper-node'))) {
+            if (target.closest('input, button')) return;
             showNodeContextMenu(e, node);
             return;
         }
@@ -251,6 +303,7 @@ function initContextMenuHandlers() {
  * Контекстное меню для пустого холста
  */
 function showCanvasContextMenu(e) {
+    const hasScraperAlready = (getTabScrapers(currentTab) || []).length > 0;
     showContextMenu(e.clientX, e.clientY, [
         {
             label: 'Создать блок',
@@ -263,12 +316,54 @@ function showCanvasContextMenu(e) {
             action: () => createNoteAtPosition(e)
         },
         {
+            label: 'Создать скрапер',
+            icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>',
+            disabled: hasScraperAlready,
+            action: () => { document.getElementById('add-scraper-btn')?.click(); }
+        },
+        {
             label: 'Вставить',
             icon: CONTEXT_ICONS.paste,
-            disabled: clipboard.length === 0,
+            disabled: clipboard.length === 0 && (!window.clipboardNotes || window.clipboardNotes.length === 0),
             action: () => pasteBlocksAtPosition(e)
         }
     ]);
+}
+
+/**
+ * Строка выбора цвета для контекстного меню
+ * @param {string[]} blockIds - ID блоков для раскрашивания
+ */
+function buildColorRow(blockIds) {
+    // Фильтруем заметки — цвет только для блоков
+    const colorableIds = blockIds.filter(id => !id.startsWith('note_'));
+    if (colorableIds.length === 0) return { separator: true };
+    
+    const currentColor = colorableIds.length === 1 ? workflowColors[colorableIds[0]] : null;
+    return {
+        colorRow: true,
+        colors: ACCENT_PRESETS.slice(0, 4).map(p => ({
+            name: p.name,
+            color: p.color,
+            active: currentColor === p.color,
+            action: () => {
+                colorableIds.forEach(id => { workflowColors[id] = p.color; });
+                saveWorkflowState();
+                renderWorkflow(true);
+            }
+        })),
+        customColor: (hex) => {
+            colorableIds.forEach(id => { workflowColors[id] = hex; });
+            saveWorkflowState();
+            renderWorkflow(true);
+        },
+        currentColor: currentColor || '#ec7441',
+        onReset: () => {
+            colorableIds.forEach(id => { delete workflowColors[id]; });
+            saveWorkflowState();
+            renderWorkflow(true);
+        }
+    };
 }
 
 /**
@@ -278,14 +373,40 @@ function showNodeContextMenu(e, node) {
     const blockId = node.dataset.blockId;
     const index = parseInt(node.dataset.index);
     
+    // Скрапер — сокращённое меню
+    if (node.classList.contains('scraper-node')) {
+        if (!selectedNodes.has(blockId)) {
+            clearNodeSelection();
+            node.classList.add('selected');
+            selectedNodes.add(blockId);
+        }
+        showContextMenu(e.clientX, e.clientY, [
+            {
+                label: 'Копировать',
+                icon: CONTEXT_ICONS.copy,
+                action: () => copyBlocksToClipboard([blockId])
+            },
+            { separator: true },
+            {
+                label: 'Удалить',
+                icon: CONTEXT_ICONS.delete,
+                action: () => deleteScraperBlock(blockId)
+            }
+        ]);
+        return;
+    }
+    
     // Если несколько блоков выделено
     if (selectedNodes.size > 1 && selectedNodes.has(blockId)) {
+        const ids = [...selectedNodes];
         showContextMenu(e.clientX, e.clientY, [
             {
                 label: `Копировать (${selectedNodes.size})`,
                 icon: CONTEXT_ICONS.copy,
-                action: () => copyBlocksToClipboard([...selectedNodes])
-            }
+                action: () => copyBlocksToClipboard(ids)
+            },
+            { separator: true },
+            buildColorRow(ids)
         ]);
     } else {
         // Один блок - выделяем если не выделен
@@ -368,7 +489,9 @@ function showNodeContextMenu(e, node) {
                 label: 'Удалить',
                 icon: CONTEXT_ICONS.delete,
                 action: () => deleteWorkflowBlock(index)
-            }
+            },
+            { separator: true },
+            buildColorRow([blockId])
         ]);
     }
 }
@@ -402,15 +525,13 @@ function showTextContextMenu(e, editableField) {
  */
 function createBlockAtPosition(e) {
     const container = getWorkflowContainer();
-    const scale = workflowZoom || 1;
     
     const containerRect = container.getBoundingClientRect();
-    const clickX = (e.clientX - containerRect.left + container.scrollLeft) / scale;
-    const clickY = (e.clientY - containerRect.top + container.scrollTop) / scale;
+    const canvasPos = screenToCanvas(e.clientX - containerRect.left, e.clientY - containerRect.top);
     
     const gridSize = 40;
-    const newX = Math.round(clickX / gridSize) * gridSize;
-    const newY = Math.round(clickY / gridSize) * gridSize;
+    const newX = Math.round(canvasPos.x / gridSize) * gridSize;
+    const newY = Math.round(canvasPos.y / gridSize) * gridSize;
     
     const newId = generateItemId();
     const blocks = getTabBlocks(currentTab);
@@ -437,15 +558,13 @@ function createBlockAtPosition(e) {
  */
 function createNoteAtPosition(e) {
     const container = getWorkflowContainer();
-    const scale = workflowZoom || 1;
     
     const containerRect = container.getBoundingClientRect();
-    const clickX = (e.clientX - containerRect.left + container.scrollLeft) / scale;
-    const clickY = (e.clientY - containerRect.top + container.scrollTop) / scale;
+    const canvasPos = screenToCanvas(e.clientX - containerRect.left, e.clientY - containerRect.top);
     
     const gridSize = 40;
-    const newX = Math.round(clickX / gridSize) * gridSize;
-    const newY = Math.round(clickY / gridSize) * gridSize;
+    const newX = Math.round(canvasPos.x / gridSize) * gridSize;
+    const newY = Math.round(canvasPos.y / gridSize) * gridSize;
     
     workflowNotes.push({
         id: 'note_' + Date.now(),
@@ -491,14 +610,14 @@ function addWorkflowNote() {
  * Вставить блоки в позицию клика
  */
 function pasteBlocksAtPosition(e) {
-    if (clipboard.length === 0) return;
+    if (clipboard.length === 0 && (!window.clipboardNotes || window.clipboardNotes.length === 0)) return;
     
     const container = getWorkflowContainer();
-    const scale = workflowZoom || 1;
     
     const containerRect = container.getBoundingClientRect();
-    const baseX = Math.round(((e.clientX - containerRect.left + container.scrollLeft) / scale) / 40) * 40;
-    const baseY = Math.round(((e.clientY - containerRect.top + container.scrollTop) / scale) / 40) * 40;
+    const canvasPos = screenToCanvas(e.clientX - containerRect.left, e.clientY - containerRect.top);
+    const baseX = Math.round(canvasPos.x / 40) * 40;
+    const baseY = Math.round(canvasPos.y / 40) * 40;
     
     pasteBlocksAtCoords(baseX, baseY);
 }
@@ -523,15 +642,21 @@ function pasteBlocksAtCoords(baseX, baseY) {
         }
         
         if (tabs[currentTab]) {
-            const newBlock = {
+            const itemType = item.type || 'block';
+            const newItem = {
                 id: newId,
-                type: 'block',
+                type: itemType,
                 title: item.title,
-                content: item.content,
-                instruction: item.instruction
             };
-            if (item.hasAttachments) newBlock.hasAttachments = true;
-            tabs[currentTab].items.push(newBlock);
+            if (itemType === 'block') {
+                newItem.content = item.content;
+                newItem.instruction = item.instruction;
+                if (item.hasAttachments) newItem.hasAttachments = true;
+            } else if (itemType === 'scraper') {
+                newItem.keyword = item.keyword || '';
+                if (item.queries) newItem.queries = structuredClone(item.queries);
+            }
+            tabs[currentTab].items.push(newItem);
         }
         
         // Записываем в отдельные хранилища
@@ -559,6 +684,10 @@ function pasteBlocksAtCoords(baseX, baseY) {
             };
         }
         
+        if (item.color) {
+            workflowColors[newId] = item.color;
+        }
+        
         newBlockIds.push(newId);
     });
     
@@ -583,6 +712,23 @@ function pasteBlocksAtCoords(baseX, baseY) {
         });
     }
     
+    // Вставляем заметки
+    const newNoteIds = [];
+    if (window.clipboardNotes && window.clipboardNotes.length > 0) {
+        window.clipboardNotes.forEach(noteData => {
+            const newNote = {
+                id: 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                text: noteData.text,
+                x: baseX + noteData.relX,
+                y: baseY + noteData.relY,
+                width: noteData.width,
+                height: noteData.height
+            };
+            workflowNotes.push(newNote);
+            newNoteIds.push(newNote.id);
+        });
+    }
+    
     saveWorkflowState();
     saveAllTabs(tabs);
     renderWorkflow(true);
@@ -591,6 +737,11 @@ function pasteBlocksAtCoords(baseX, baseY) {
         selectedNodes.add(id);
         const node = document.querySelector(`.workflow-node[data-block-id="${id}"]`);
         node?.classList.add('selected');
+    });
+    newNoteIds.forEach(id => {
+        selectedNodes.add(id);
+        const noteEl = document.querySelector(`.workflow-note[data-note-id="${id}"]`);
+        noteEl?.classList.add('selected');
     });
 }
 
@@ -668,7 +819,7 @@ function handleWorkflowShortcuts(e) {
     }
     
     // Ctrl+V - вставить
-    if (e.ctrlKey && e.code === 'KeyV' && clipboard.length > 0) {
+    if (e.ctrlKey && e.code === 'KeyV' && (clipboard.length > 0 || (window.clipboardNotes && window.clipboardNotes.length > 0))) {
         e.preventDefault();
         pasteBlocksWithOffset();
         return;
@@ -701,6 +852,7 @@ function deleteSelectedNodes() {
             );
             delete workflowPositions[id];
             delete workflowSizes[id];
+            delete workflowColors[id];
             removeItemFromTab(currentTab, id);
         }
     });
@@ -731,12 +883,18 @@ function selectAllNodes() {
  * Вставить блоки со смещением
  */
 function pasteBlocksWithOffset() {
-    // Находим базовую точку группы
+    // Находим базовую точку группы (блоки + заметки)
     let minOrigX = Infinity, minOrigY = Infinity;
     clipboard.forEach(item => {
         if (item.origX !== undefined) minOrigX = Math.min(minOrigX, item.origX);
         if (item.origY !== undefined) minOrigY = Math.min(minOrigY, item.origY);
     });
+    if (window.clipboardNotes) {
+        window.clipboardNotes.forEach(item => {
+            if (item.origX !== undefined) minOrigX = Math.min(minOrigX, item.origX);
+            if (item.origY !== undefined) minOrigY = Math.min(minOrigY, item.origY);
+        });
+    }
     
     if (minOrigX === Infinity) minOrigX = 120;
     if (minOrigY === Infinity) minOrigY = 80;
@@ -841,6 +999,51 @@ function initAddNoteButton() {
 }
 
 /**
+ * Обработчик кнопки добавления скрапера
+ */
+function initAddScraperButton() {
+    const btn = document.getElementById('add-scraper-btn');
+    if (!btn) return;
+    
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        
+        // Максимум 1 скрапер на вкладку
+        if ((getTabScrapers(currentTab) || []).length > 0) {
+            showToast('⚠️ Только один скрапер на пайплайн');
+            return;
+        }
+        
+        UndoManager.snapshot(true);
+        
+        const newId = 'scraper-' + generateItemId();
+        const blocks = getTabBlocks(currentTab);
+        
+        let newX = 40, newY = 40;
+        if (blocks.length > 0) {
+            const position = findNewBlockPosition(blocks);
+            newX = position.x;
+            newY = position.y;
+        }
+        
+        const tabs = getAllTabs();
+        if (tabs[currentTab]) {
+            tabs[currentTab].items.push({
+                id: newId,
+                type: 'scraper',
+                title: 'SERP SCRAPER',
+                keyword: ''
+            });
+            saveAllTabs(tabs);
+        }
+        
+        workflowPositions[newId] = { x: newX, y: newY };
+        renderWorkflow(true);
+        saveWorkflowState();
+    });
+}
+
+/**
  * Найти позицию для нового блока
  */
 function findNewBlockPosition(blocks) {
@@ -913,6 +1116,16 @@ function initSettingsHandlers() {
     document.getElementById('offline-mode-on')?.addEventListener('click', () => {
         setOfflineMode(true);
         updateOfflineModeButtons(true);
+    });
+    
+    // Auto-continue
+    document.getElementById('auto-continue-off')?.addEventListener('click', () => {
+        setAutoContinue(false);
+        updateAutoContinueButtons(false);
+    });
+    document.getElementById('auto-continue-on')?.addEventListener('click', () => {
+        setAutoContinue(true);
+        updateAutoContinueButtons(true);
     });
     
     // Ручная проверка обновлений
@@ -1262,6 +1475,17 @@ function initToolbarHandlers() {
     
     // Закрытие меню вставки форм языка обрабатывается в showLanguageFormMenu
     
+    // SERP переменная — вставка {{SERP:id}} в активный textarea
+    const serpBtn = document.getElementById('insert-serp-btn');
+    if (serpBtn) {
+        serpBtn.addEventListener('mousedown', (e) => e.preventDefault());
+        serpBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            
+            insertTextAtCursor('{{SERP}}');
+        });
+    }
+    
     // Конструктор полей
     document.getElementById('add-constructor-field-btn')?.addEventListener('click', addConstructorFieldElement);
     document.getElementById('save-constructor-btn')?.addEventListener('click', saveConstructorFields);
@@ -1306,7 +1530,11 @@ function initToolbarHandlers() {
     // Кнопки навигации
     document.getElementById('scroll-top-btn')?.addEventListener('click', () => {
         if (workflowMode) {
-            getWorkflowContainer().scrollTo({top: 0, behavior: 'smooth'});
+            if (isEditMode && typeof centerOnContent === 'function') {
+                centerOnContent();
+            } else {
+                getWorkflowContainer().scrollTo({top: 0, behavior: 'smooth'});
+            }
         } else {
             document.getElementById('scroll-container').scrollTo({top: 0, behavior: 'smooth'});
         }
@@ -1339,6 +1567,13 @@ function initApp() {
     
     // 2. Настраиваем download listeners
     setupDownloadListeners();
+    
+    // 2.1. Auto-continue toast listener
+    if (window.__TAURI__?.event?.listen) {
+        window.__TAURI__.event.listen('auto-continue-toast', (event) => {
+            if (event.payload) showToast(event.payload, 3000);
+        });
+    }
     
     // 2.5. Инициализируем гибридное хранение (file + localStorage)
     if (typeof initHybridStorage === 'function') {
@@ -1380,6 +1615,7 @@ function initApp() {
     initKeyboardShortcuts();
     initAddBlockButton();
     initAddNoteButton();
+    initAddScraperButton();
     initToolbarHandlers();
     initSettingsHandlers();
     initModalHandlers();

@@ -3,74 +3,105 @@
  * WORKFLOW ZOOM MODULE
  * ═══════════════════════════════════════════════════════════════════════════
  * 
- * Функции масштабирования и навигации по workflow canvas.
+ * Edit mode: Camera model (camera.x, camera.y, camera.z)
+ *   - Один CSS transform: scale(z) translate(x, y)
+ *   - Нет scroll — камера управляет позицией
+ *   - screenToCanvas / canvasToScreen конвертеры
  * 
- * Зависимости:
- *   - window.AppState (shared state)
- *   - workflowZoom, isEditMode (алиасы)
- *   - getWorkflowContainer(), getWorkflowCanvas(), getWorkflowWrapper(), getZoomIndicator() (DOM getters)
- *   - selectedNodes, clearNodeSelection() (из index.html)
- * 
- * @requires config.js (STORAGE_KEYS)
- * 
- * Экспортирует (глобально):
- *   - adjustWorkflowScale(resetScroll)
- *   - calculateContentBounds()
- *   - calculateViewModeZoom()
- *   - setupWorkflowZoom()
- *   - scrollToBlocks()
+ * View mode: Авто-zoom с опциональным zoom in (scroll-based, без изменений)
  */
 
-/**
- * Масштабирование workflow под размер контейнера
- */
+// ═══════════════════════════════════════════════════════════════════════════
+// CAMERA MODEL (edit mode)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const camera = { x: 0, y: 0, z: 0.6 };
+
+function screenToCanvas(sx, sy) {
+    return { x: sx / camera.z - camera.x, y: sy / camera.z - camera.y };
+}
+
+function canvasToScreen(cx, cy) {
+    return { x: (cx + camera.x) * camera.z, y: (cy + camera.y) * camera.z };
+}
+
+function applyCamera() {
+    const canvas = getWorkflowCanvas();
+    const wrapper = getWorkflowWrapper();
+    if (!canvas || !wrapper) return;
+    
+    canvas.style.transform = `scale(${camera.z}) translate(${camera.x}px, ${camera.y}px)`;
+    canvas.style.transformOrigin = 'top left';
+    canvas.style.setProperty('--zoom-inverse', 1 / camera.z);
+    
+    const canvasSize = getCanvasSize();
+    canvas.style.minWidth = canvasSize + 'px';
+    canvas.style.minHeight = canvasSize + 'px';
+    canvas.style.width = '';
+    canvas.style.height = '';
+    
+    wrapper.style.width = '100%';
+    wrapper.style.height = '100%';
+    
+    workflowZoom = camera.z;
+    
+    const indicator = getZoomIndicator();
+    if (indicator) {
+        indicator.textContent = Math.round(camera.z * 100) + '%';
+        indicator.classList.add('visible');
+    }
+}
+
+function zoomCameraToPoint(screenX, screenY, newZ) {
+    const oldZ = camera.z;
+    camera.z = newZ;
+    camera.x += screenX / newZ - screenX / oldZ;
+    camera.y += screenY / newZ - screenY / oldZ;
+    applyCamera();
+}
+
+function centerOnContent() {
+    const container = getWorkflowContainer();
+    if (!container) return;
+    
+    const bounds = calculateContentBounds();
+    const cx = (bounds.minX + bounds.maxX) / 2;
+    const cy = (bounds.minY + bounds.maxY) / 2;
+    const vw = container.clientWidth;
+    const vh = container.clientHeight;
+    
+    camera.x = vw / (2 * camera.z) - cx;
+    camera.y = vh / (2 * camera.z) - cy;
+    applyCamera();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VIEW MODE STATE
+// ═══════════════════════════════════════════════════════════════════════════
+
+let viewModeZoom = null;
+let viewModeBaseZoom = 0.5;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN SCALE FUNCTION
+// ═══════════════════════════════════════════════════════════════════════════
+
 function adjustWorkflowScale() {
     const container = getWorkflowContainer();
     const canvas = getWorkflowCanvas();
     const wrapper = getWorkflowWrapper();
     if (!container || !canvas || !wrapper) return;
     
-    const nodes = document.querySelectorAll('.workflow-node');
-    
-    const indicator = getZoomIndicator();
-    
     if (isEditMode) {
-        // Edit mode - применяем текущий zoom
-        canvas.style.transform = `scale(${workflowZoom})`;
-        canvas.style.transformOrigin = 'top left';
-        
-        // Динамический размер холста
-        const canvasSize = getCanvasSize();
-        canvas.style.minWidth = canvasSize + 'px';
-        canvas.style.minHeight = canvasSize + 'px';
-        canvas.style.width = '';
-        canvas.style.height = '';
-        canvas.style.left = '';
-        canvas.style.top = '';
-        
-        // Устанавливаем CSS переменную для обратного зума (для масштабирования кликабельных зон)
-        canvas.style.setProperty('--zoom-inverse', 1 / workflowZoom);
-        
-        // Edit mode - wrapper размер = canvas * zoom (чтобы scrollable area соответствовала визуальному размеру)
-        wrapper.style.width = (canvasSize * workflowZoom) + 'px';
-        wrapper.style.height = (canvasSize * workflowZoom) + 'px';
-        
-        // Показываем и обновляем индикатор зума
-        if (indicator) {
-            indicator.textContent = Math.round(workflowZoom * 100) + '%';
-            indicator.classList.add('visible');
-        }
-        
-        // В edit mode НЕ скроллим автоматически - камера остаётся где пользователь её оставил
-        // scrollToBlocks() вызывается только явно при переключении в edit mode
+        applyCamera();
+        viewModeZoom = null;
     } else {
-        // View mode - автоматический zoom чтобы все блоки были видны
-        const viewZoom = calculateViewModeZoom();
+        // View mode — scroll-based, без изменений
+        viewModeBaseZoom = calculateViewModeZoom();
+        const currentZoom = viewModeZoom !== null ? viewModeZoom : viewModeBaseZoom;
         
-        // Устанавливаем CSS переменную для view mode тоже
-        canvas.style.setProperty('--zoom-inverse', 1 / viewZoom);
+        canvas.style.setProperty('--zoom-inverse', 1 / currentZoom);
         
-        // Динамический размер холста (для SVG линий)
         const canvasSize = getCanvasSize();
         canvas.style.minWidth = canvasSize + 'px';
         canvas.style.minHeight = canvasSize + 'px';
@@ -79,399 +110,287 @@ function adjustWorkflowScale() {
         canvas.style.left = '0';
         canvas.style.top = '0';
         
-        // Вычисляем bounds контента
         const bounds = calculateContentBounds();
-        
-        // Сдвигаем canvas через translate (применяется до scale)
-        // чтобы контент начинался с начала wrapper
         const offsetX = -bounds.minX + 25;
         const offsetY = -bounds.minY + 25;
-        canvas.style.transform = `scale(${viewZoom}) translate(${offsetX}px, ${offsetY}px)`;
+        canvas.style.transform = `scale(${currentZoom}) translate(${offsetX}px, ${offsetY}px)`;
         canvas.style.transformOrigin = 'top left';
         
-        // Wrapper = размер контента * zoom
         const contentWidth = bounds.maxX - bounds.minX + 50;
         const contentHeight = bounds.maxY - bounds.minY + 50;
-        wrapper.style.width = (contentWidth * viewZoom) + 'px';
+        wrapper.style.width = (contentWidth * currentZoom) + 'px';
         
-        // Добавляем отступ только если видна кнопка завершения/продолжения проекта
         const finishBtn = document.getElementById('finish-project-btn');
         const continueBtn = document.getElementById('continue-project-btn');
         const buttonVisible = finishBtn?.classList.contains('visible') || continueBtn?.classList.contains('visible');
         const buttonOffset = buttonVisible ? 75 : 0;
-        wrapper.style.height = (contentHeight * viewZoom) + buttonOffset + 'px';
+        wrapper.style.height = (contentHeight * currentZoom) + buttonOffset + 'px';
         
-        // Скрываем индикатор
+        const indicator = getZoomIndicator();
         if (indicator) {
-            indicator.classList.remove('visible');
+            if (viewModeZoom !== null) {
+                indicator.textContent = Math.round(currentZoom * 100) + '%';
+                indicator.classList.add('visible');
+            } else {
+                indicator.classList.remove('visible');
+            }
         }
-        
-        // В view mode тоже НЕ скроллим автоматически - камера остаётся где пользователь её оставил
     }
 }
 
-/**
- * Вычисление границ контента (для view mode wrapper)
- * @returns {{minX: number, maxX: number, minY: number, maxY: number}}
- */
+// ═══════════════════════════════════════════════════════════════════════════
+// CONTENT BOUNDS & CANVAS SIZE
+// ═══════════════════════════════════════════════════════════════════════════
+
 function calculateContentBounds() {
     const nodes = document.querySelectorAll('.workflow-node, .workflow-note');
-    if (nodes.length === 0) {
-        return { minX: 0, maxX: 800, minY: 0, maxY: 600 };
-    }
-    
-    let minX = Infinity, maxX = 0;
-    let minY = Infinity, maxY = 0;
-    
+    if (nodes.length === 0) return { minX: 0, maxX: 800, minY: 0, maxY: 600 };
+    let minX = Infinity, maxX = 0, minY = Infinity, maxY = 0;
     nodes.forEach(node => {
         const x = parseInt(node.style.left) || 0;
         const y = parseInt(node.style.top) || 0;
-        const width = node.offsetWidth || 700;
-        const height = node.offsetHeight || 200;
-        
+        const w = node.offsetWidth || 700;
+        const h = node.offsetHeight || 200;
         if (x < minX) minX = x;
-        if (x + width > maxX) maxX = x + width;
+        if (x + w > maxX) maxX = x + w;
         if (y < minY) minY = y;
-        if (y + height > maxY) maxY = y + height;
+        if (y + h > maxY) maxY = y + h;
     });
-    
     return { minX, maxX, minY, maxY };
 }
 
-/**
- * Динамический размер холста на основе контента (кэшированный).
- * Пересчитывается при вызове invalidateCanvasSize().
- * @returns {number} Размер стороны холста в px
- */
 let _cachedCanvasSize = null;
 function getCanvasSize() {
     if (_cachedCanvasSize !== null) return _cachedCanvasSize;
     const bounds = calculateContentBounds();
     const padding = WORKFLOW_CONFIG.CANVAS_PADDING;
     const minSize = WORKFLOW_CONFIG.CANVAS_CENTER * 2;
-    const contentMax = Math.max(bounds.maxX, bounds.maxY) + padding;
-    _cachedCanvasSize = Math.max(minSize, contentMax);
+    _cachedCanvasSize = Math.max(minSize, Math.max(bounds.maxX, bounds.maxY) + padding);
     return _cachedCanvasSize;
 }
 
-/**
- * Сбрасывает кэш размера холста.
- * Вызывать после: drag end, resize end, добавление/удаление блоков, auto-layout.
- */
-function invalidateCanvasSize() {
-    _cachedCanvasSize = null;
-}
+function invalidateCanvasSize() { _cachedCanvasSize = null; }
 
-/**
- * Вычисление оптимального zoom для view mode
- * @returns {number} Zoom level (0.1 - 0.5)
- */
 function calculateViewModeZoom() {
     const container = getWorkflowContainer();
     const nodes = document.querySelectorAll('.workflow-node, .workflow-note');
     if (!container || nodes.length === 0) return 0.6;
-    
-    let minX = Infinity;
-    let maxX = 0;
-    
+    let minX = Infinity, maxX = 0;
     nodes.forEach(node => {
         const x = parseInt(node.style.left) || 0;
-        const width = node.offsetWidth || 700;
-        
+        const w = node.offsetWidth || 700;
         if (x < minX) minX = x;
-        if (x + width > maxX) maxX = x + width;
+        if (x + w > maxX) maxX = x + w;
     });
-    
-    const contentWidth = maxX - minX + 80; // padding
-    const containerWidth = container.clientWidth;
-    
-    // Вычисляем zoom только по ширине
-    let zoom = containerWidth / contentWidth;
-    
-    // Минимум 0.1, максимум 0.5 (чтобы не было слишком крупно)
-    return Math.max(0.1, Math.min(0.5, zoom));
+    return Math.max(0.1, Math.min(0.5, container.clientWidth / (maxX - minX + 80)));
 }
 
-/**
- * Настройка zoom и panning для workflow canvas
- * Включает: Ctrl+wheel zoom, panning средней кнопкой/левой на пустом месте
- */
+// ═══════════════════════════════════════════════════════════════════════════
+// SETUP: ZOOM + PAN + MARQUEE
+// ═══════════════════════════════════════════════════════════════════════════
+
 function setupWorkflowZoom() {
     const container = getWorkflowContainer();
     if (!container) return;
     
+    // Загружаем камеру
+    loadCameraState();
+    
+    // ── Zoom indicator click to reset ──
+    const zoomIndicator = getZoomIndicator();
+    if (zoomIndicator) {
+        zoomIndicator.addEventListener('click', () => {
+            if (isEditMode) {
+                camera.z = 0.6;
+                centerOnContent();
+                saveCameraState();
+            } else if (viewModeZoom !== null) {
+                viewModeZoom = null;
+                adjustWorkflowScale();
+                const container = getWorkflowContainer();
+                if (container) { container.scrollTop = 0; container.scrollLeft = 0; }
+            }
+        });
+    }
+    
+    // ── Wheel ──
     container.addEventListener('wheel', (e) => {
-        if (!isEditMode) return;
-        
-        // Ctrl + scroll = zoom
         if (e.ctrlKey) {
             e.preventDefault();
-            
-            const canvas = getWorkflowCanvas();
-            if (!canvas) return;
-            
-            // Скорость zoom - 5% за шаг
+            if (!getWorkflowCanvas()) return;
             const zoomSpeed = 0.05;
             const delta = e.deltaY > 0 ? -zoomSpeed : zoomSpeed;
-            const newZoom = Math.max(WORKFLOW_CONFIG.ZOOM_MIN, Math.min(WORKFLOW_CONFIG.ZOOM_MAX, workflowZoom + delta));
             
-            // Округляем для избежания дробных погрешностей
-            const roundedZoom = Math.round(newZoom * 100) / 100;
-            
-            if (roundedZoom !== workflowZoom) {
-                // Позиция курсора относительно контейнера
-                const rect = container.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left + container.scrollLeft;
-                const mouseY = e.clientY - rect.top + container.scrollTop;
-                
-                // Позиция в координатах canvas
-                const canvasX = mouseX / workflowZoom;
-                const canvasY = mouseY / workflowZoom;
-                
-                // Обновляем zoom
-                workflowZoom = roundedZoom;
-                localStorage.setItem(STORAGE_KEYS.WORKFLOW_ZOOM, workflowZoom);
-                canvas.style.transform = `scale(${workflowZoom})`;
-                
-                // Обновляем индикатор
-                const indicator = getZoomIndicator();
-                if (indicator) {
-                    indicator.textContent = Math.round(workflowZoom * 100) + '%';
+            if (isEditMode) {
+                const newZ = Math.round(Math.max(WORKFLOW_CONFIG.ZOOM_MIN, Math.min(WORKFLOW_CONFIG.ZOOM_MAX, camera.z + delta)) * 100) / 100;
+                if (newZ !== camera.z) {
+                    const rect = container.getBoundingClientRect();
+                    zoomCameraToPoint(e.clientX - rect.left, e.clientY - rect.top, newZ);
+                    saveCameraState();
                 }
+            } else {
+                // View mode zoom
+                const cur = viewModeZoom !== null ? viewModeZoom : viewModeBaseZoom;
+                const nz = Math.round(Math.max(viewModeBaseZoom, Math.min(WORKFLOW_CONFIG.ZOOM_MAX, cur + delta)) * 100) / 100;
                 
-                // Корректируем scroll чтобы zoom был к точке курсора
-                const newMouseX = canvasX * workflowZoom;
-                const newMouseY = canvasY * workflowZoom;
-                
-                container.scrollTo({
-                    left: Math.round(newMouseX - (e.clientX - rect.left)),
-                    top: Math.round(newMouseY - (e.clientY - rect.top)),
-                    behavior: 'instant'
-                });
+                // Zoom out ниже минимума — сброс (как клик по индикатору)
+                if (delta < 0 && viewModeZoom !== null && nz <= viewModeBaseZoom) {
+                    viewModeZoom = null;
+                    adjustWorkflowScale();
+                    container.scrollTop = 0;
+                    container.scrollLeft = 0;
+                } else if (nz !== cur) {
+                    const rect = container.getBoundingClientRect();
+                    const mx = e.clientX - rect.left + container.scrollLeft;
+                    const my = e.clientY - rect.top + container.scrollTop;
+                    const cx = mx / cur, cy = my / cur;
+                    viewModeZoom = nz <= viewModeBaseZoom ? null : nz;
+                    adjustWorkflowScale();
+                    const ez = viewModeZoom !== null ? viewModeZoom : viewModeBaseZoom;
+                    container.scrollTo({ left: Math.round(cx * ez - (e.clientX - rect.left)), top: Math.round(cy * ez - (e.clientY - rect.top)), behavior: 'instant' });
+                }
             }
-        } else {
-            // Проверяем, не скроллим ли мы внутри textarea или другого scrollable элемента
+        } else if (isEditMode) {
+            // Скролл внутри textarea
             const scrollableEl = e.target.closest('textarea, .workflow-node-body');
             if (scrollableEl && scrollableEl.scrollHeight > scrollableEl.clientHeight) {
                 const atTop = scrollableEl.scrollTop <= 0;
                 const atBottom = scrollableEl.scrollTop + scrollableEl.clientHeight >= scrollableEl.scrollHeight - 1;
-                const scrollingUp = e.deltaY < 0;
-                const scrollingDown = e.deltaY > 0;
-                
-                // Если можно скроллить в нужном направлении — даём браузеру обработать
-                if ((scrollingUp && !atTop) || (scrollingDown && !atBottom)) {
-                    return; // Позволяем нативный скролл внутри элемента
-                }
-                // Если достигли края — блокируем чтобы не "проваливался" скролл на контейнер
+                if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBottom)) return;
                 e.preventDefault();
                 return;
             }
-            
-            // Обычный скролл — ограничиваем пределами холста
-            // Scrollable area = canvas size * zoom (wrapper задаёт размер)
-            const canvasSize = getCanvasSize() * workflowZoom;
-            const maxScrollX = Math.max(0, canvasSize - container.clientWidth);
-            const maxScrollY = Math.max(0, canvasSize - container.clientHeight);
-            
-            // Вычисляем новую позицию
-            let newScrollX = container.scrollLeft + (e.shiftKey ? e.deltaY : e.deltaX);
-            let newScrollY = container.scrollTop + (e.shiftKey ? 0 : e.deltaY);
-            
-            // Ограничиваем
-            newScrollX = Math.max(0, Math.min(maxScrollX, newScrollX));
-            newScrollY = Math.max(0, Math.min(maxScrollY, newScrollY));
-            
-            // Если выходим за границы — превентим и скроллим вручную
-            if (newScrollX !== container.scrollLeft + (e.shiftKey ? e.deltaY : e.deltaX) ||
-                newScrollY !== container.scrollTop + (e.shiftKey ? 0 : e.deltaY)) {
-                e.preventDefault();
-                container.scrollLeft = newScrollX;
-                container.scrollTop = newScrollY;
-            }
+            // Camera pan
+            e.preventDefault();
+            camera.x += (e.shiftKey ? -e.deltaY : -(e.deltaX || 0)) / camera.z;
+            camera.y += (e.shiftKey ? 0 : -e.deltaY) / camera.z;
+            applyCamera();
         }
-        // Shift + scroll = горизонтальный скролл (обрабатывается выше через shiftKey)
     }, { passive: false });
     
-    // ── Space key tracking (Space + drag = panning) ──
+    // ── Space ──
     let isSpacePressed = false;
-    
     window.addEventListener('keydown', (e) => {
         if (e.code === 'Space' && !e.target.matches('input, textarea, [contenteditable]')) {
-            if (!isSpacePressed) {
-                isSpacePressed = true;
-                if (isEditMode) container.style.cursor = 'grab';
-            }
-            // Предотвращаем скролл страницы по Space
+            if (!isSpacePressed) { isSpacePressed = true; if (isEditMode) container.style.cursor = 'grab'; }
             e.preventDefault();
         }
     });
-    
     window.addEventListener('keyup', (e) => {
-        if (e.code === 'Space') {
-            isSpacePressed = false;
-            if (!isPanning) container.style.cursor = '';
-        }
+        if (e.code === 'Space') { isSpacePressed = false; if (!isPanning) container.style.cursor = ''; }
     });
     
-    // ── Panning + Marquee selection ──
+    // ── Panning + Marquee ──
     let isPanning = false;
-    let panStartX = 0;
-    let panStartY = 0;
-    let panScrollLeft = 0;
-    let panScrollTop = 0;
+    let panLastX = 0, panLastY = 0;
     
     container.addEventListener('mousedown', (e) => {
-        // Снимаем выделение текста при клике на пустое место (в любом режиме)
-        const isEmptyCanvas = e.target.id === 'workflow-canvas' || 
-                              e.target.id === 'workflow-container' ||
-                              e.target.classList.contains('workflow-svg') ||
-                              e.target.classList.contains('workflow-wrapper') ||
-                              e.target.classList.contains('grid-overlay') ||
-                              e.target.tagName === 'path'; // SVG paths
+        const isEmptyCanvas = e.target.id === 'workflow-canvas' || e.target.id === 'workflow-container' ||
+            e.target.classList.contains('workflow-svg') || e.target.classList.contains('workflow-wrapper') ||
+            e.target.classList.contains('grid-overlay') || e.target.tagName === 'path';
         
         if (e.button === 0 && isEmptyCanvas && !window.isTextSelecting) {
-            // Снимаем выделение текста
-            const selection = window.getSelection();
-            if (selection && selection.rangeCount > 0) {
-                selection.removeAllRanges();
-            }
-            // Убираем фокус с textarea
-            if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') {
-                document.activeElement.blur();
-            }
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount > 0) sel.removeAllRanges();
+            if (document.activeElement?.tagName === 'TEXTAREA') document.activeElement.blur();
         }
         
-        if (!isEditMode) return;
+        if (!isEditMode) {
+            if (e.button === 1) {
+                e.preventDefault(); isPanning = true; panLastX = e.clientX; panLastY = e.clientY;
+                container.style.cursor = 'grabbing';
+            }
+            return;
+        }
         
-        const isMiddleButton = e.button === 1;
-        
-        if (isMiddleButton || (e.button === 0 && isEmptyCanvas)) {
+        if (e.button === 1 || (e.button === 0 && isEmptyCanvas)) {
             e.preventDefault();
-            
-            // Средняя кнопка или Space+левая = panning
-            if (isMiddleButton || isSpacePressed) {
-                isPanning = true;
-                panStartX = e.clientX;
-                panStartY = e.clientY;
-                panScrollLeft = container.scrollLeft;
-                panScrollTop = container.scrollTop;
+            if (e.button === 1 || isSpacePressed) {
+                isPanning = true; panLastX = e.clientX; panLastY = e.clientY;
                 container.style.cursor = 'grabbing';
             } else {
-                // Левая кнопка на пустом месте без Space = marquee selection
-                // Ctrl — добавляем к текущему выделению, иначе сбрасываем
-                if (!e.ctrlKey && selectedNodes.size > 0) {
-                    clearNodeSelection();
-                }
+                if (!e.ctrlKey && selectedNodes.size > 0) clearNodeSelection();
                 startMarqueeSelection(container, e);
             }
         }
     });
     
-    // Дополнительный обработчик click для надёжного снятия выделения
     container.addEventListener('click', (e) => {
-        const isEmptyCanvas = e.target.id === 'workflow-canvas' || 
-                              e.target.id === 'workflow-container' ||
-                              e.target.classList.contains('workflow-svg') ||
-                              e.target.classList.contains('workflow-wrapper') ||
-                              e.target.classList.contains('grid-overlay') ||
-                              e.target.tagName === 'path';
-        
-        if (isEmptyCanvas && !window.isTextSelecting) {
-            const selection = window.getSelection();
-            if (selection) {
-                selection.removeAllRanges();
-            }
-        }
+        const isEmptyCanvas = e.target.id === 'workflow-canvas' || e.target.id === 'workflow-container' ||
+            e.target.classList.contains('workflow-svg') || e.target.classList.contains('workflow-wrapper') ||
+            e.target.classList.contains('grid-overlay') || e.target.tagName === 'path';
+        if (isEmptyCanvas && !window.isTextSelecting) { const sel = window.getSelection(); if (sel) sel.removeAllRanges(); }
     });
     
     container.addEventListener('mousemove', (e) => {
         if (isPanning) {
             e.preventDefault();
-            const dx = e.clientX - panStartX;
-            const dy = e.clientY - panStartY;
-            
-            // Ограничения scroll - не выходить за пределы холста
-            const canvasSize = getCanvasSize() * workflowZoom;
-            const maxScrollX = Math.max(0, canvasSize - container.clientWidth);
-            const maxScrollY = Math.max(0, canvasSize - container.clientHeight);
-            
-            container.scrollLeft = Math.max(0, Math.min(maxScrollX, panScrollLeft - dx));
-            container.scrollTop = Math.max(0, Math.min(maxScrollY, panScrollTop - dy));
+            const dx = e.clientX - panLastX, dy = e.clientY - panLastY;
+            panLastX = e.clientX; panLastY = e.clientY;
+            if (isEditMode) {
+                camera.x += dx / camera.z; camera.y += dy / camera.z;
+                applyCamera();
+            } else {
+                container.scrollLeft -= dx; container.scrollTop -= dy;
+            }
         } else {
             updateMarqueeSelection(container, e);
         }
     });
     
     container.addEventListener('mouseup', () => {
-        if (isPanning) {
-            isPanning = false;
-            container.style.cursor = isSpacePressed ? 'grab' : '';
-        } else {
-            endMarqueeSelection(container);
-        }
+        if (isPanning) { isPanning = false; container.style.cursor = isSpacePressed ? 'grab' : ''; saveCameraState(); }
+        else endMarqueeSelection(container);
     });
     
     container.addEventListener('mouseleave', () => {
-        if (isPanning) {
-            isPanning = false;
-            container.style.cursor = '';
-        } else {
-            endMarqueeSelection(container);
-        }
+        if (isPanning) { isPanning = false; container.style.cursor = ''; saveCameraState(); }
+        else endMarqueeSelection(container);
     });
 }
 
-/**
- * Прокрутка к блокам (в центр холста) - только для edit mode
- */
+// ═══════════════════════════════════════════════════════════════════════════
+// SCROLL TO BLOCKS
+// ═══════════════════════════════════════════════════════════════════════════
+
 function scrollToBlocks() {
     const container = getWorkflowContainer();
     if (!container) return;
-    
-    // В view mode просто сбрасываем скролл - контент уже позиционирован через transform
-    if (!isEditMode) {
-        container.scrollTop = 0;
-        return;
-    }
-    
-    // Находим все блоки и определяем самый верхний
-    const nodes = document.querySelectorAll('.workflow-node');
-    if (nodes.length === 0) return;
-    
-    let minY = Infinity;
-    let minX = Infinity;
-    let maxX = 0;
-    
-    nodes.forEach(node => {
-        const x = parseInt(node.style.left) || 0;
-        const y = parseInt(node.style.top) || 0;
-        const width = node.offsetWidth || 700;
-        
-        if (y < minY) minY = y;
-        if (x < minX) minX = x;
-        if (x + width > maxX) maxX = x + width;
-    });
-    
-    // Центр блоков по горизонтали
-    const blocksCenterX = (minX + maxX) / 2;
-    
-    // С учётом zoom
-    const scaledCenterX = blocksCenterX * workflowZoom;
-    const scaledMinY = minY * workflowZoom;
-    
-    const containerWidth = container.clientWidth;
-    
-    // Прокручиваем так, чтобы центр блоков был по центру экрана
-    const scrollX = scaledCenterX - containerWidth / 2;
-    // Немного отступа сверху (20px)
-    const scrollY = Math.max(0, scaledMinY - 20);
-    
-    container.scrollLeft = Math.max(0, scrollX);
-    container.scrollTop = scrollY;
+    if (!isEditMode) { container.scrollTop = 0; return; }
+    centerOnContent();
 }
 
-// Экспорт
+// ═══════════════════════════════════════════════════════════════════════════
+// CAMERA PERSISTENCE
+// ═══════════════════════════════════════════════════════════════════════════
+
+function saveCameraState() {
+    localStorage.setItem(STORAGE_KEYS.WORKFLOW_ZOOM, camera.z);
+    try { localStorage.setItem('workflowCameraX', camera.x); localStorage.setItem('workflowCameraY', camera.y); } catch (_) {}
+}
+
+function loadCameraState() {
+    const z = parseFloat(localStorage.getItem(STORAGE_KEYS.WORKFLOW_ZOOM));
+    const x = parseFloat(localStorage.getItem('workflowCameraX'));
+    const y = parseFloat(localStorage.getItem('workflowCameraY'));
+    if (!isNaN(z) && z > 0) camera.z = z;
+    if (!isNaN(x)) camera.x = x;
+    if (!isNaN(y)) camera.y = y;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPORTS
+// ═══════════════════════════════════════════════════════════════════════════
+
 window.adjustWorkflowScale = adjustWorkflowScale;
 window.scrollToBlocks = scrollToBlocks;
 window.getCanvasSize = getCanvasSize;
 window.invalidateCanvasSize = invalidateCanvasSize;
+window.resetViewModeZoom = function() { viewModeZoom = null; };
+window.screenToCanvas = screenToCanvas;
+window.canvasToScreen = canvasToScreen;
+window.applyCamera = applyCamera;
+window.centerOnContent = centerOnContent;
+window.saveCameraState = saveCameraState;
+window.loadCameraState = loadCameraState;
+window.camera = camera;

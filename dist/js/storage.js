@@ -13,7 +13,8 @@ const DEFAULT_SETTINGS = {
     adminMode: false, // Режим редактирования
     accentColor: '#ec7441', // Акцентный цвет
     canvasPattern: 'none', // Паттерн фона: 'none','grid','diagonal','waves','squares','grid3d','custom'
-    offlineMode: false // Оффлайн-режим: без Claude WebView, копирование вместо отправки
+    offlineMode: false, // Оффлайн-режим: без Claude WebView, копирование вместо отправки
+    autoContinue: true // Авто-продолжение: автоматический клик Continue при tool-use limit
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -195,6 +196,15 @@ function repairTab(tabId, tab) {
                     number: item.number || (idx + 1),
                     title: item.title || `Block ${idx + 1}`,
                     content: item.content || ''
+                });
+            } else if (item && typeof item === 'object' && item.type === 'scraper') {
+                repaired.items.push({
+                    type: 'scraper',
+                    id: item.id || `scraper-repaired_${Date.now()}_${idx}`,
+                    title: item.title || 'SERP Scraper',
+                    keyword: item.keyword || '',
+                    queries: item.queries || undefined,
+                    result: item.result || null
                 });
             }
         });

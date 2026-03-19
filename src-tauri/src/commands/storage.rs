@@ -112,16 +112,3 @@ pub fn delete_tabs_file() -> Result<(), String> {
     }
     Ok(())
 }
-
-/// Получить размер файла данных вкладок в байтах
-#[tauri::command]
-pub fn get_tabs_file_size() -> Result<u64, String> {
-    if let Some(path) = get_tabs_data_path() {
-        if path.exists() {
-            let metadata = fs::metadata(&path)
-                .map_err(|e| format!("Cannot get metadata: {}", e))?;
-            return Ok(metadata.len());
-        }
-    }
-    Ok(0)
-}

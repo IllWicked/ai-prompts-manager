@@ -574,12 +574,6 @@
             }
         };
         
-        // Listen for close command from toolbar
-        listen('close-downloads', () => {
-            selectedPaths.clear();
-            invoke('hide_downloads');
-        });
-        
         deleteAllBtn.onclick = handleDeleteClick;
         sendSelectedBtn.onclick = sendSelected;
         

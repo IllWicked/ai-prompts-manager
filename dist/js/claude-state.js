@@ -114,6 +114,7 @@ const ProjectFSM = {
         };
         this._state = 'bound';
         
+        
         // Сохраняем в localStorage
         this._save();
         
@@ -172,6 +173,7 @@ const ProjectFSM = {
     async finish() {
         if (this._state !== 'bound' && this._state !== 'detached') return;
         
+        
         this._state = 'finishing';
         this._clearDetachTimer();
         this._clearTTL();
@@ -229,18 +231,17 @@ const ProjectFSM = {
         // /chat/{id} — нормальный URL для чата внутри проекта, НЕ считаем уходом
         const isInChat = /\/chat\/[a-f0-9-]+/i.test(cleanUrl);
         
-        // Определяем явный уход: /new без контекста проекта, другой /project/, главная
+        // Определяем явный уход: другой /project/ или главная страница.
+        // /new НЕ считается уходом — это дефолтный URL табов при старте
+        // и URL нового чата внутри проекта.
         const isDifferentProject = /\/project\/[a-f0-9-]+/i.test(cleanUrl) && !isOnProject;
         const isHomePage = cleanUrl === 'https://claude.ai/' || cleanUrl === 'https://claude.ai';
-        const isNewChatNoProject = cleanUrl.includes('/new');
         
-        const isDefinitelyAway = isDifferentProject || isHomePage || isNewChatNoProject;
+        const isDefinitelyAway = isDifferentProject || isHomePage;
         
         if (this._state === 'bound' && !isOnProject && !isInChat && isDefinitelyAway) {
-            // Явный уход со страницы проекта (не в чат)
             this.detach();
         } else if (this._state === 'detached' && isOnProject) {
-            // Вернулся на страницу проекта
             this.reattach();
         }
     },
@@ -310,6 +311,7 @@ const ProjectFSM = {
             
             // Проверяем TTL
             if (data.boundAt && (Date.now() - data.boundAt) > this.TTL_MS) {
+                const elapsed = Math.round((Date.now() - data.boundAt) / 3600000 * 10) / 10;
                 localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROJECT);
                 return;
             }
@@ -331,6 +333,7 @@ const ProjectFSM = {
             
             // Обратная совместимость
             activeProject = { uuid: data.uuid, name: data.name, ownerTab: data.ownerTab };
+            
             
             // Показываем кнопку
             const btn = document.getElementById('finish-project-btn');

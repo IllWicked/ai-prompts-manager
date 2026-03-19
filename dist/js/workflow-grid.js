@@ -49,7 +49,7 @@ function updateGridOverlay(blockX, blockY, blockWidth, blockHeight) {
     for (let x = startX; x <= endX; x += gridSize) {
         for (let y = startY; y <= endY; y += gridSize) {
             // Пропускаем за пределами холста
-            const canvasLimit = typeof getCanvasSize === 'function' ? getCanvasSize() : 5000;
+            const canvasLimit = 50000; // Бесконечный холст — лимит только для безопасности
             if (x < 0 || x > canvasLimit || y < 0 || y > canvasLimit) continue;
             
             // Расстояние от точки до ближайшей границы блока

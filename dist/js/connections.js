@@ -307,16 +307,13 @@ function renderConnections() {
 function onConnectionDrag(e) {
     if (!isCreatingConnection || !tempLineEl) return;
     
-    const canvas = getWorkflowCanvas();
     const container = getWorkflowContainer();
     const containerRect = container.getBoundingClientRect();
     
-    // Получаем текущий scale canvas
-    const scale = getCanvasScale(canvas);
-    
-    // Координаты курсора в координатах canvas (с учётом scale)
-    let x = (e.clientX - containerRect.left + container.scrollLeft) / scale;
-    let y = (e.clientY - containerRect.top + container.scrollTop) / scale;
+    // Координаты курсора в координатах canvas
+    const canvasPos = screenToCanvas(e.clientX - containerRect.left, e.clientY - containerRect.top);
+    let x = canvasPos.x;
+    let y = canvasPos.y;
     
     // Убираем подсветку со всех портов
     document.querySelectorAll('.workflow-port.magnet-target').forEach(p => {
@@ -350,15 +347,12 @@ function onConnectionDrag(e) {
 function onConnectionEnd(e) {
     if (isCreatingConnection && connectionStart) {
         // Проверяем магнит - может быть связь нужно создать
-        const canvas = getWorkflowCanvas();
         const container = getWorkflowContainer();
         const containerRect = container.getBoundingClientRect();
         
-        // Получаем текущий scale canvas
-        const scale = getCanvasScale(canvas);
-        
-        const x = (e.clientX - containerRect.left + container.scrollLeft) / scale;
-        const y = (e.clientY - containerRect.top + container.scrollTop) / scale;
+        const canvasPos = screenToCanvas(e.clientX - containerRect.left, e.clientY - containerRect.top);
+        const x = canvasPos.x;
+        const y = canvasPos.y;
         
         const nearest = findNearestPort(x, y, connectionStart.blockId);
         if (nearest && nearest.blockId !== connectionStart.blockId) {

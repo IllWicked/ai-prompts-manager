@@ -94,10 +94,14 @@ function initWorkflow() {
  */
 function scrollToCanvasCenter(container) {
     if (!container) return;
-    const center = WORKFLOW_CONFIG.CANVAS_CENTER;
-    const scaledCenter = center * workflowZoom;
-    container.scrollLeft = Math.max(0, scaledCenter - container.clientWidth / 2);
-    container.scrollTop = Math.max(0, scaledCenter - container.clientHeight / 2);
+    if (isEditMode && typeof centerOnContent === 'function') {
+        centerOnContent();
+    } else {
+        const center = WORKFLOW_CONFIG.CANVAS_CENTER;
+        const scaledCenter = center * workflowZoom;
+        container.scrollLeft = Math.max(0, scaledCenter - container.clientWidth / 2);
+        container.scrollTop = Math.max(0, scaledCenter - container.clientHeight / 2);
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -189,12 +193,12 @@ function renderWorkflow(preserveScroll = null) {
     // Сбрасываем кэш размера холста (блоки могли измениться)
     if (typeof invalidateCanvasSize === 'function') invalidateCanvasSize();
     
-    // По умолчанию в edit mode сохраняем скролл, если явно не указано иначе
+    // По умолчанию в edit mode сохраняем камеру, в view mode — скролл
     const shouldPreserveScroll = preserveScroll !== null ? preserveScroll : isEditMode;
     
-    // Сохраняем позицию скролла если нужно
-    const savedScrollLeft = shouldPreserveScroll ? container.scrollLeft : null;
-    const savedScrollTop = shouldPreserveScroll ? container.scrollTop : null;
+    // В view mode сохраняем позицию скролла
+    const savedScrollLeft = (!isEditMode && shouldPreserveScroll) ? container.scrollLeft : null;
+    const savedScrollTop = (!isEditMode && shouldPreserveScroll) ? container.scrollTop : null;
     
     // Устанавливаем флаг для подавления автоскролла
     if (shouldPreserveScroll) {
@@ -213,16 +217,15 @@ function renderWorkflow(preserveScroll = null) {
     // Очищаем ноды и заметки
     canvas.querySelectorAll('.workflow-node, .workflow-note').forEach(n => n.remove());
     
-    // Получаем текущие блоки
+    // Получаем текущие блоки и скраперы
     const blocks = getTabBlocks(currentTab);
+    const scrapers = getTabScrapers(currentTab);
+    const allNodes = [...blocks, ...scrapers];
     
-    if (!blocks || blocks.length === 0) {
-        // Очищаем SVG от старых соединений даже на пустой вкладке
+    if (allNodes.length === 0) {
         renderConnections();
-        // Применяем масштабирование даже для пустой вкладки
         adjustWorkflowScale(false);
         
-        // Центрируем камеру на пустом холсте
         if (isEditMode) {
             scrollToCanvasCenter(container);
         }
@@ -232,11 +235,17 @@ function renderWorkflow(preserveScroll = null) {
     }
     
     // Автоматическое позиционирование если нет сохранённых позиций
-    autoPositionNodes(blocks);
+    autoPositionNodes(allNodes);
     
-    // Создаём ноды
+    // Создаём ноды блоков
     blocks.forEach((block, index) => {
         const node = createWorkflowNode(block, index);
+        canvas.appendChild(node);
+    });
+    
+    // Создаём ноды скраперов
+    scrapers.forEach((scraper) => {
+        const node = createScraperNode(scraper);
         canvas.appendChild(node);
     });
     
@@ -263,11 +272,10 @@ function renderWorkflow(preserveScroll = null) {
         renderConnections();
         
         // Применяем масштабирование ПОСЛЕ того как DOM обновился
-        // Это важно для view mode, где нужны корректные размеры нод
         adjustWorkflowScale(!shouldPreserveScroll);
         
-        // Восстанавливаем позицию скролла если сохраняли
-        if (shouldPreserveScroll && savedScrollLeft !== null) {
+        // В view mode восстанавливаем скролл, в edit mode камера уже применена
+        if (!isEditMode && shouldPreserveScroll && savedScrollLeft !== null) {
             container.scrollLeft = savedScrollLeft;
             container.scrollTop = savedScrollTop;
         }
@@ -299,8 +307,7 @@ function autoPositionNodes(promptsData) {
     if (numBlocks === 0) return;
     
     // Вычисляем оптимальное количество колонок
-    const canvasSize = typeof getCanvasSize === 'function' ? getCanvasSize() : WORKFLOW_CONFIG.CANVAS_SIZE;
-    const maxCols = Math.floor((canvasSize + gapX) / (nodeWidth + gapX));
+    const maxCols = 10; // Разумный лимит колонок (холст бесконечный)
     
     // Выбираем количество колонок
     let cols = Math.max(1, Math.min(maxCols, numBlocks));
@@ -358,11 +365,11 @@ function generateExpandedFooterHtml(index, chatTabs, options = {}) {
     } else if (showChatButtons) {
         // Кнопки отправки в чаты (если разрешено)
         if (chatTabs.length === 1) {
-            const isGen = generatingTabs[chatTabs[0]] || false;
+            const isGen = (typeof isTabBusy === 'function' ? isTabBusy(chatTabs[0]) : generatingTabs[chatTabs[0]]) || false;
             html += `<button class="workflow-node-btn primary chat-btn" onclick="sendNodeToClaude(${index}, ${chatTabs[0]})" title="Отправить в чат"${isGen ? ' disabled' : ''}>${arrowSvg}<span class="btn-label-chat">Чат</span></button>`;
         } else {
             chatTabs.forEach(tab => {
-                const isGen = generatingTabs[tab] || false;
+                const isGen = (typeof isTabBusy === 'function' ? isTabBusy(tab) : generatingTabs[tab]) || false;
                 html += `<button class="workflow-node-btn primary chat-btn" onclick="sendNodeToClaude(${index}, ${tab})" title="${isGen ? 'Claude генерирует...' : 'Отправить в Чат ' + tab}"${isGen ? ' disabled' : ''}>${arrowSvg}<span class="btn-label-chat">Чат\u00A0</span><span class="btn-label-num">${tab}</span></button>`;
             });
         }
@@ -431,11 +438,17 @@ function createWorkflowNode(block, index) {
     const header = document.createElement('div');
     header.className = 'workflow-node-header';
     
+    // Кастомный цвет блока
+    const blockColor = workflowColors[blockId];
+    if (blockColor) {
+        header.style.background = blockColor;
+    }
+    
     // Получаем метки скриптов и автоматизации для этого блока
     const scripts = getBlockScripts(block.id);
     const automation = getBlockAutomationFlags(block.id);
     
-    let badgesHtml = scripts.map(s => 
+    let badgesHtml = scripts.filter(s => EMBEDDED_SCRIPTS[s]).map(s => 
         `<span class="script-badge" data-script="${s}" title="${EMBEDDED_SCRIPTS[s]?.label || s}">${EMBEDDED_SCRIPTS[s]?.badge || s[0].toUpperCase()}</span>`
     ).join('');
     
@@ -778,8 +791,497 @@ function createWorkflowNode(block, index) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// INSTRUCTION CREATION
+// SCRAPER NODE CREATION
 // ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Создание DOM элемента scraper-ноды
+ */
+function createScraperNode(scraper) {
+    const scraperId = scraper.id;
+    const pos = workflowPositions[scraperId] || {x: 120, y: 120};
+    const size = workflowSizes[scraperId] || {};
+    
+    const node = document.createElement('div');
+    node.className = 'workflow-node scraper-node';
+    node.dataset.blockId = scraperId;
+    node.style.left = pos.x + 'px';
+    node.style.top = pos.y + 'px';
+    if (size.width) node.style.width = size.width + 'px';
+    
+    // 4 порта — как у обычных блоков
+    const sides = ['top', 'right', 'bottom', 'left'];
+    sides.forEach(side => {
+        const port = document.createElement('div');
+        port.className = `workflow-port workflow-port-${side}`;
+        port.dataset.side = side;
+        port.dataset.blockId = scraperId;
+        node.appendChild(port);
+        setupPortEvents(port);
+    });
+    
+    // Resize zones — как у обычных блоков
+    const resizeDirections = ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'];
+    resizeDirections.forEach(dir => {
+        const zone = document.createElement('div');
+        zone.className = `resize-zone resize-zone-${dir}`;
+        zone.dataset.resizeDir = dir;
+        node.appendChild(zone);
+    });
+    
+    const geoLabel = (typeof currentCountry === 'string' && currentCountry)
+        ? currentCountry.toUpperCase()
+        : (typeof currentLanguage === 'string' && currentLanguage) ? currentLanguage.toUpperCase() : '—';
+    
+    // Header — скрыт через CSS, но нужен для стандартного поведения
+    const header = document.createElement('div');
+    header.className = 'workflow-node-header';
+    node.appendChild(header);
+    
+    // Delete button — абсолютное позиционирование, edit mode only
+    if (isEditMode) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'scraper-delete-btn';
+        deleteBtn.title = 'Удалить скрапер';
+        deleteBtn.innerHTML = `
+            <svg class="delete-icon-cross" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <svg class="delete-icon-check" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+        `;
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (deleteBtn.classList.contains('confirm-mode')) {
+                deleteScraperBlock(scraperId);
+            } else {
+                document.querySelectorAll('.scraper-delete-btn.confirm-mode').forEach(btn => btn.classList.remove('confirm-mode'));
+                deleteBtn.classList.add('confirm-mode');
+                const resetConfirm = (evt) => {
+                    if (!deleteBtn.contains(evt.target)) {
+                        deleteBtn.classList.remove('confirm-mode');
+                        document.removeEventListener('click', resetConfirm, true);
+                    }
+                };
+                setTimeout(() => document.addEventListener('click', resetConfirm, true), 0);
+            }
+        });
+        deleteBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+        node.appendChild(deleteBtn);
+        
+        // Drag — на всей ноде кроме inputs/buttons/ports
+        node.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            if (e.target.closest('input, button, .workflow-port')) return;
+            if (!isEditMode) return;
+            
+            e.preventDefault();
+            
+            if (isDraggingNode) {
+                document.removeEventListener('mousemove', onNodeDrag);
+                document.removeEventListener('mouseup', onNodeDragEnd);
+                document.querySelectorAll('.workflow-node.dragging').forEach(n => n.classList.remove('dragging'));
+                clearGridOverlay();
+            }
+            
+            isDraggingNode = true;
+            UndoManager.snapshot(true);
+            node.classList.add('dragging');
+            
+            document.querySelectorAll('.workflow-node.collapsed').forEach(n => n.classList.add('hide-buttons'));
+            
+            if (e.ctrlKey) {
+                if (selectedNodes.has(scraperId)) { selectedNodes.delete(scraperId); node.classList.remove('selected'); }
+                else { selectedNodes.add(scraperId); node.classList.add('selected'); }
+            } else {
+                if (!selectedNodes.has(scraperId)) { clearNodeSelection(); node.classList.add('selected'); selectedNodes.add(scraperId); }
+            }
+            
+            const container = getWorkflowContainer();
+            container?.classList.add('dragging');
+            
+            const containerRect = container.getBoundingClientRect();
+            const canvasPos = screenToCanvas(e.clientX - containerRect.left, e.clientY - containerRect.top);
+            
+            dragOffsets = {};
+            selectedNodes.forEach(id => {
+                const p = getItemPosition(id) || {x: 0, y: 0};
+                dragOffsets[id] = { x: canvasPos.x - p.x, y: canvasPos.y - p.y };
+            });
+            
+            document.addEventListener('mousemove', onNodeDrag);
+            document.addEventListener('mouseup', onNodeDragEnd);
+        });
+    }
+    
+    // === BODY — workflow-node-body ===
+    const body = document.createElement('div');
+    body.className = 'workflow-node-body';
+    
+    const kwLabel = document.createElement('label');
+    kwLabel.textContent = 'Ключевое слово';
+    body.appendChild(kwLabel);
+    
+    const kwInput = document.createElement('input');
+    kwInput.type = 'text';
+    kwInput.placeholder = 'Введите ключевое слово или фразу...';
+    kwInput.value = scraper.keyword || '';
+    kwInput.addEventListener('change', () => {
+        const tabs = getAllTabs();
+        const item = tabs[currentTab]?.items?.find(i => i.id === scraperId);
+        if (item) {
+            item.keyword = kwInput.value;
+            saveAllTabs(tabs);
+            renderWorkflow(true); // Обновить {{SERP:id}} в блоках
+        }
+    });
+    body.appendChild(kwInput);
+    
+    const geoLabelEl = document.createElement('label');
+    geoLabelEl.textContent = 'GEO';
+    body.appendChild(geoLabelEl);
+    
+    const geoInput = document.createElement('input');
+    geoInput.type = 'text';
+    geoInput.className = 'scraper-geo-input';
+    geoInput.value = geoLabel;
+    geoInput.readOnly = true;
+    geoInput.tabIndex = -1;
+    body.appendChild(geoInput);
+    
+    node.appendChild(body);
+    
+    // Result
+    if (scraper.result) {
+        const resultDiv = document.createElement('div');
+        resultDiv.className = 'scraper-result';
+        resultDiv.textContent = `✓ ${scraper.result.serpCount || 0} pages · GEO: ${(scraper.result.geo || '').toUpperCase()}`;
+        node.appendChild(resultDiv);
+    }
+    
+    // Progress bar
+    const progressWrap = document.createElement('div');
+    progressWrap.className = 'scraper-progress';
+    progressWrap.id = `scraper-progress-${scraperId}`;
+    const progressBar = document.createElement('div');
+    progressBar.className = 'scraper-progress-bar';
+    progressWrap.appendChild(progressBar);
+    node.appendChild(progressWrap);
+    
+    // === FOOTER — workflow-node-footer ===
+    const footer = document.createElement('div');
+    footer.className = 'workflow-node-footer';
+    
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.className = 'workflow-node-footer-buttons';
+    
+    const startBtn = document.createElement('button');
+    startBtn.className = 'workflow-node-btn primary scraper-start-btn';
+    startBtn.dataset.scraperId = scraperId;
+    startBtn.innerHTML = '<span>Start</span>';
+    if (!scraper.keyword) startBtn.disabled = true;
+    
+    kwInput.addEventListener('input', () => { startBtn.disabled = !kwInput.value.trim(); });
+    startBtn.addEventListener('click', (e) => { e.stopPropagation(); runScraper(scraperId); });
+    
+    buttonsContainer.appendChild(startBtn);
+    
+    // Gear button — в footer, только edit mode
+    if (isEditMode) {
+        const gearBtn = document.createElement('button');
+        gearBtn.className = 'scraper-gear-btn';
+        gearBtn.title = 'Настроить запросы';
+        gearBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>`;
+        gearBtn.addEventListener('click', (e) => { e.stopPropagation(); showScraperQueriesModal(scraperId); });
+        buttonsContainer.appendChild(gearBtn);
+    }
+    
+    footer.appendChild(buttonsContainer);
+    node.appendChild(footer);
+    
+    return node;
+}
+
+/**
+ * Удалить scraper-блок
+ */
+function deleteScraperBlock(scraperId) {
+    UndoManager.snapshot(true);
+    const tabs = getAllTabs();
+    if (tabs[currentTab]) {
+        tabs[currentTab].items = tabs[currentTab].items.filter(i => i.id !== scraperId);
+        saveAllTabs(tabs);
+    }
+    delete workflowPositions[scraperId];
+    delete workflowSizes[scraperId];
+    delete workflowColors[scraperId];
+    // Remove connections
+    if (typeof workflowConnections !== 'undefined') {
+        const before = workflowConnections.length;
+        workflowConnections = workflowConnections.filter(c => c.from !== scraperId && c.to !== scraperId);
+        if (workflowConnections.length !== before) saveWorkflowState();
+    }
+    renderWorkflow(true);
+    saveWorkflowState();
+}
+window.deleteScraperBlock = deleteScraperBlock;
+
+/**
+ * Запуск скрапинга
+ */
+// Таймер для уничтожения scraper WebView после завершения
+let _scraperDestroyTimer = null;
+
+function scheduleScraperDestroy() {
+    clearTimeout(_scraperDestroyTimer);
+    _scraperDestroyTimer = setTimeout(async () => {
+        try {
+            await window.__TAURI__.core.invoke('destroy_scraper_webview');
+        } catch (_) {}
+    }, 30000); // 30 сек
+}
+
+async function runScraper(scraperId) {
+    const tabs = getAllTabs();
+    const items = tabs[currentTab]?.items;
+    if (!items) return;
+    const scraper = items.find(i => i.id === scraperId);
+    if (!scraper || !scraper.keyword) {
+        showToast('⚠️ Введите ключевое слово');
+        return;
+    }
+    
+    // Confirm при повторном скрапе
+    if (scraper.result) {
+        const btn = document.querySelector(`.scraper-start-btn[data-scraper-id="${scraperId}"]`);
+        if (btn && !btn.classList.contains('confirm-rescrape')) {
+            btn.classList.add('confirm-rescrape');
+            btn.innerHTML = '<span>Повторить?</span>';
+            setTimeout(() => {
+                btn.classList.remove('confirm-rescrape');
+                btn.innerHTML = '<span>Start</span>';
+            }, 3000);
+            return;
+        }
+        if (btn) btn.classList.remove('confirm-rescrape');
+    }
+    
+    // Отменить destroy timer если был запланирован
+    clearTimeout(_scraperDestroyTimer);
+    
+    // Resolve markers in keyword
+    const keyword = resolveMarkersToText(scraper.keyword, currentLanguage, currentCountry);
+    const geo = currentCountry || currentLanguage || 'us';
+    const lang = currentLanguage || 'en';
+    
+    // Если запросы не настроены — скрапим просто по ключу
+    const queries = (scraper.queries && scraper.queries.length > 0)
+        ? scraper.queries
+        : [{ suffix: '', prefix: 'serp', num: 10 }];
+    
+    // Update button UI
+    const btn = document.querySelector(`.scraper-start-btn[data-scraper-id="${scraperId}"]`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span>Scraping...</span>'; }
+    
+    const progressEl = document.getElementById(`scraper-progress-${scraperId}`);
+    
+    // Listen for progress
+    let unlisten;
+    try {
+        unlisten = await window.__TAURI__.event.listen('scraper-progress', (event) => {
+            const p = event.payload;
+            if (progressEl) {
+                progressEl.classList.add('active');
+                const bar = progressEl.querySelector('.scraper-progress-bar');
+                if (bar && p.total > 0) {
+                    const pct = Math.max(2, Math.round((p.current / p.total) * 100));
+                    bar.style.width = Math.min(100, pct) + '%';
+                }
+            }
+        });
+    } catch (_) {}
+    
+    try {
+        const resultStr = await window.__TAURI__.core.invoke('scrape_google_serp', {
+            keyword, geo, numResults: 10, lang,
+            queries: JSON.stringify(queries)
+        });
+        
+        const result = JSON.parse(resultStr);
+        
+        // Save result to scraper item
+        scraper.result = {
+            serpCount: result.page_files?.length || 0,
+            pageFiles: result.page_files || [],
+            geo: result.geo,
+            lang,
+            keyword
+        };
+        saveAllTabs(tabs);
+        
+        showToast(`✅ SERP: ${scraper.result.serpCount} pages saved`);
+        
+        renderWorkflow(true);
+        
+        // Auto-chain: trigger next block if connected
+        if (typeof onScrapeComplete === 'function') {
+            await onScrapeComplete(scraper);
+        }
+        
+    } catch (e) {
+        const errorMsg = String(e);
+        if (errorMsg.includes('0 organic results') || errorMsg.includes('captcha')) {
+            showToast(`⚠️ SERP: ${errorMsg}`);
+        } else {
+            showToast(`❌ SERP: ${errorMsg.slice(0, 80)}`);
+        }
+    } finally {
+        if (unlisten) unlisten();
+        if (progressEl) {
+            progressEl.classList.remove('active');
+            const bar = progressEl.querySelector('.scraper-progress-bar');
+            if (bar) bar.style.width = '0%';
+        }
+        if (btn) { btn.disabled = false; btn.innerHTML = '<span>Start</span>'; }
+        scheduleScraperDestroy();
+    }
+}
+window.runScraper = runScraper;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SCRAPER QUERY CONSTRUCTOR
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _scraperQueriesTarget = null;
+
+let _scraperModalInitialized = false;
+
+function showScraperQueriesModal(scraperId) {
+    _scraperQueriesTarget = scraperId;
+    
+    // Lazy init listeners при первом вызове
+    if (!_scraperModalInitialized) {
+        _scraperModalInitialized = true;
+        const addBtn = document.getElementById('add-scraper-query-btn');
+        const saveBtn = document.getElementById('save-scraper-queries-btn');
+        const cancelBtn = document.getElementById('cancel-scraper-queries-btn');
+        const modal = document.getElementById('scraper-queries-modal');
+        if (addBtn) addBtn.addEventListener('click', () => addScraperQueryField());
+        if (saveBtn) saveBtn.addEventListener('click', saveScraperQueries);
+        if (cancelBtn) cancelBtn.addEventListener('click', hideScraperQueriesModal);
+        if (modal) modal.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) hideScraperQueriesModal();
+        });
+    }
+    
+    const tabs = getAllTabs();
+    const scraper = tabs[currentTab]?.items?.find(i => i.id === scraperId);
+    const queries = scraper?.queries || [];
+    
+    const container = document.getElementById('scraper-query-fields');
+    container.innerHTML = '';
+    
+    if (queries.length > 0) {
+        queries.forEach((q, i) => addScraperQueryField(q, i));
+    } else {
+        addScraperQueryField({}, 0);
+    }
+    updateScraperAddBtn();
+    
+    document.getElementById('scraper-queries-modal').classList.add('open');
+}
+
+function hideScraperQueriesModal() {
+    document.getElementById('scraper-queries-modal').classList.remove('open');
+    _scraperQueriesTarget = null;
+}
+
+function addScraperQueryField(data = {}, index = null) {
+    const container = document.getElementById('scraper-query-fields');
+    if (index === null) index = container.children.length;
+    if (index >= 10) return;
+    
+    const div = document.createElement('div');
+    div.className = 'constructor-field bg-gray-50 rounded-lg p-3 border border-gray-200';
+    div.dataset.queryIndex = index;
+    
+    div.innerHTML = `
+        <div class="flex justify-between items-start mb-2">
+            <span class="text-xs font-medium text-gray-500">Запрос ${index + 1}</span>
+            <button type="button" class="remove-query-btn text-gray-400 hover:text-red-500 transition-colors" title="Удалить">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="space-y-2">
+            <input type="text" class="query-suffix w-full px-3 py-1.5 text-sm border border-gray-200 rounded focus:outline-none" 
+                   placeholder="Введите запрос" value="${escapeHtml(data.suffix || '')}">
+            <div class="flex gap-2">
+                <input type="text" class="query-prefix flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded focus:outline-none" 
+                       placeholder="Префикс файла" value="${escapeHtml(data.prefix || '')}" maxlength="10">
+                <input type="number" class="query-num w-16 px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none text-center" 
+                       placeholder="N" value="${data.num || 5}" min="1" max="10">
+            </div>
+        </div>
+    `;
+    
+    const removeBtn = div.querySelector('.remove-query-btn');
+    if (removeBtn) {
+        removeBtn.addEventListener('click', () => {
+            div.remove();
+            reindexScraperQueryFields();
+            updateScraperAddBtn();
+        });
+    }
+    
+    container.appendChild(div);
+    updateScraperAddBtn();
+}
+
+function reindexScraperQueryFields() {
+    const container = document.getElementById('scraper-query-fields');
+    container.querySelectorAll('[data-query-index]').forEach((div, i) => {
+        div.dataset.queryIndex = i;
+        div.querySelector('.text-xs.font-medium').textContent = `Запрос ${i + 1}`;
+    });
+}
+
+function updateScraperAddBtn() {
+    const container = document.getElementById('scraper-query-fields');
+    const btn = document.getElementById('add-scraper-query-btn');
+    if (btn) btn.classList.toggle('hidden', container.children.length >= 10);
+}
+
+function saveScraperQueries() {
+    const container = document.getElementById('scraper-query-fields');
+    const queries = [];
+    
+    container.querySelectorAll('[data-query-index]').forEach(div => {
+        queries.push({
+            suffix: div.querySelector('.query-suffix')?.value || '',
+            prefix: div.querySelector('.query-prefix')?.value || 'page',
+            num: parseInt(div.querySelector('.query-num')?.value) || 5,
+        });
+    });
+    
+    if (_scraperQueriesTarget) {
+        const tabs = getAllTabs();
+        const scraper = tabs[currentTab]?.items?.find(i => i.id === _scraperQueriesTarget);
+        if (scraper) {
+            scraper.queries = queries;
+            saveAllTabs(tabs);
+        }
+    }
+    
+    hideScraperQueriesModal();
+}
+
+window.showScraperQueriesModal = showScraperQueriesModal;
 
 /**
  * Создание элемента инструкции для workflow блока
@@ -949,22 +1451,6 @@ function createWorkflowNote(note, index) {
         handle.className = 'workflow-note-handle';
         el.appendChild(handle);
         
-        // Кнопка удаления
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'workflow-note-delete';
-        deleteBtn.title = 'Удалить заметку';
-        deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>`;
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            workflowNotes.splice(index, 1);
-            saveWorkflowState();
-            renderWorkflow(true);
-        });
-        deleteBtn.addEventListener('mousedown', (e) => e.stopPropagation());
-        el.appendChild(deleteBtn);
-        
         // Textarea
         const textarea = document.createElement('textarea');
         textarea.className = 'workflow-note-text';
@@ -977,16 +1463,17 @@ function createWorkflowNote(note, index) {
         textarea.addEventListener('mousedown', (e) => e.stopPropagation());
         el.appendChild(textarea);
         
-        // Resize handle
-        const resizeHandle = document.createElement('div');
-        resizeHandle.className = 'workflow-note-resize';
-        el.appendChild(resizeHandle);
+        // Resize zones — 8 направлений (как у блоков)
+        ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se'].forEach(dir => {
+            const zone = document.createElement('div');
+            zone.className = `resize-zone resize-zone-${dir}`;
+            zone.dataset.resizeDir = dir;
+            el.appendChild(zone);
+            setupNoteResize(zone, dir, el, note);
+        });
         
         // Drag по handle
         setupNoteDrag(handle, el, note);
-        
-        // Resize
-        setupNoteResize(resizeHandle, el, note);
     } else {
         // View mode — просто текст
         const textDiv = document.createElement('div');
@@ -1042,11 +1529,10 @@ function setupNoteDrag(handle, el, note) {
         const container = getWorkflowContainer();
         container?.classList.add('dragging');
         
-        const canvas = getWorkflowCanvas();
-        const scale = getCanvasScale(canvas);
         const containerRect = container.getBoundingClientRect();
-        const cursorCanvasX = (e.clientX - containerRect.left + container.scrollLeft) / scale;
-        const cursorCanvasY = (e.clientY - containerRect.top + container.scrollTop) / scale;
+        const canvasPos = screenToCanvas(e.clientX - containerRect.left, e.clientY - containerRect.top);
+        const cursorCanvasX = canvasPos.x;
+        const cursorCanvasY = canvasPos.y;
         
         // dragOffsets для всех выделенных
         dragOffsets = {};
@@ -1066,41 +1552,52 @@ function setupNoteDrag(handle, el, note) {
 /**
  * Resize handler для заметки (нижний правый угол)
  */
-function setupNoteResize(handle, el, note) {
-    handle.addEventListener('mousedown', (e) => {
+function setupNoteResize(zone, dir, el, note) {
+    zone.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
         e.preventDefault();
         e.stopPropagation();
         
         const container = getWorkflowContainer();
-        const canvas = getWorkflowCanvas();
-        const scale = getCanvasScale(canvas);
         const containerRect = container.getBoundingClientRect();
         const gridSize = WORKFLOW_CONFIG.GRID_SIZE;
         
         const startW = note.width || 280;
         const startH = note.height || 160;
-        const startMouseX = (e.clientX - containerRect.left + container.scrollLeft) / scale;
-        const startMouseY = (e.clientY - containerRect.top + container.scrollTop) / scale;
+        const startX = note.x || 0;
+        const startY = note.y || 0;
+        const startPos = screenToCanvas(e.clientX - containerRect.left, e.clientY - containerRect.top);
         
         const onMove = (ev) => {
-            const curX = (ev.clientX - containerRect.left + container.scrollLeft) / scale;
-            const curY = (ev.clientY - containerRect.top + container.scrollTop) / scale;
-            let newW = startW + curX - startMouseX;
-            let newH = startH + curY - startMouseY;
+            const curPos = screenToCanvas(ev.clientX - containerRect.left, ev.clientY - containerRect.top);
+            const dx = curPos.x - startPos.x;
+            const dy = curPos.y - startPos.y;
+            
+            let newW = startW, newH = startH, newX = startX, newY = startY;
+            
+            if (dir.includes('e')) newW = startW + dx;
+            if (dir.includes('w')) { newW = startW - dx; newX = startX + dx; }
+            if (dir.includes('s')) newH = startH + dy;
+            if (dir.includes('n')) { newH = startH - dy; newY = startY + dy; }
             
             // Snap to grid
             newW = Math.round(newW / gridSize) * gridSize;
             newH = Math.round(newH / gridSize) * gridSize;
+            newX = Math.round(newX / gridSize) * gridSize;
+            newY = Math.round(newY / gridSize) * gridSize;
             
-            // Минимальные размеры
-            newW = Math.max(160, newW);
-            newH = Math.max(80, newH);
+            // Минимальные размеры — не двигать позицию если упёрлись
+            if (newW < 160) { newW = 160; if (dir.includes('w')) newX = startX + startW - 160; }
+            if (newH < 80) { newH = 80; if (dir.includes('n')) newY = startY + startH - 80; }
             
             note.width = newW;
             note.height = newH;
+            note.x = newX;
+            note.y = newY;
             el.style.width = newW + 'px';
             el.style.height = newH + 'px';
+            el.style.left = newX + 'px';
+            el.style.top = newY + 'px';
         };
         
         const onUp = () => {
@@ -1213,14 +1710,11 @@ function setupNodeEvents(node, index) {
         const container = getWorkflowContainer();
         container?.classList.add('dragging');
         
-        // Получаем текущий scale canvas
-        const canvas = getWorkflowCanvas();
-        const scale = getCanvasScale(canvas);
-        
         // Вычисляем offset для всех выделенных нод
         const containerRect = container.getBoundingClientRect();
-        const cursorCanvasX = (e.clientX - containerRect.left + container.scrollLeft) / scale;
-        const cursorCanvasY = (e.clientY - containerRect.top + container.scrollTop) / scale;
+        const canvasPos = screenToCanvas(e.clientX - containerRect.left, e.clientY - containerRect.top);
+        const cursorCanvasX = canvasPos.x;
+        const cursorCanvasY = canvasPos.y;
         
         dragOffsets = {};
         selectedNodes.forEach(id => {
@@ -1408,6 +1902,12 @@ function showBlockEditModal(block, index) {
                                 </svg>
                                 <span>Язык</span>
                             </button>
+                            <button id="modal-serp-btn" class="edit-toolbar-btn" title="Вставить ключ скрапера">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                </svg>
+                                <span>Ключ</span>
+                            </button>
                         </div>
                     </div>
                     <textarea id="workflow-edit-content"
@@ -1516,6 +2016,16 @@ function showBlockEditModal(block, index) {
             });
         }
         
+        // Обработчик кнопки SERP в модальном окне
+        const modalSerpBtn = modal.querySelector('#modal-serp-btn');
+        if (modalSerpBtn && modalTextarea) {
+            modalSerpBtn.addEventListener('mousedown', (e) => e.preventDefault());
+            modalSerpBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                insertTextIntoTextarea(modalTextarea, '{{SERP}}');
+            });
+        }
+        
         // Обработчик Ctrl+Z/Y для textarea модалки - собственный undo стек
         if (modalTextarea) {
             // Сохранение состояния при вводе
@@ -1575,12 +2085,14 @@ function showBlockEditModal(block, index) {
     const titleInput = modal.querySelector('#workflow-edit-title');
     const titleContainer = titleInput.closest('.mb-3');
     const contentTextarea = modal.querySelector('#workflow-edit-content');
+    const modalContent = modal.querySelector('.workflow-edit-modal-content');
     
     const instructionSection = modal.querySelector('#modal-instruction-section');
     
     if (isEditMode) {
         // Режим редактирования - полный функционал
         header.textContent = 'Редактировать блок';
+        modalContent.classList.remove('view-mode');
         toolbarBtns.style.display = 'flex';
         contentHeader.style.display = 'flex';
         titleContainer.style.display = 'block';
@@ -1596,6 +2108,7 @@ function showBlockEditModal(block, index) {
     } else {
         // View mode - только редактирование текста промпта
         header.textContent = 'Редактировать промпт';
+        modalContent.classList.add('view-mode');
         toolbarBtns.style.display = 'none';
         contentHeader.style.display = 'none';
         titleContainer.style.display = 'none';
@@ -1758,6 +2271,7 @@ function deleteWorkflowBlock(index) {
         // Удаляем позицию и размер
         delete workflowPositions[blockId];
         delete workflowSizes[blockId];
+        delete workflowColors[blockId];
         
         // Удаляем из collapsedBlocks и blockScripts
         if (collapsedBlocks[blockId]) {

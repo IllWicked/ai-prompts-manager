@@ -2,7 +2,7 @@
 
 [← Назад к Frontend](../02-FRONTEND.md)
 
-> **Примечание:** Три модуля Claude содержат в сумме **43 функции**: claude-state.js (5) + claude-ui.js (5) + claude-api.js (33).
+> **Примечание:** Три модуля Claude содержат в сумме **50 функций**: claude-state.js (5) + claude-ui.js (6) + claude-api.js (39).
 
 ## claude-state.js (5 функций)
 
@@ -16,11 +16,11 @@
 
 ---
 
-## claude-ui.js (5 функций)
+## claude-ui.js (6 функций)
 
 | Функция | Описание |
 |---------|----------|
-| `createResizer()` | Создать ресайзер панелей |
+| `createResizer()` | Создать ресайзер панелей (содержит вложенную `finishResize()`) |
 | `updateResizer()` | Обновить позицию/видимость |
 | `updateClaudeState()` | Получить состояние из Tauri |
 | `updateClaudeUI()` | Обновить кнопки и табы |
@@ -28,13 +28,14 @@
 
 ---
 
-## claude-api.js (37 функций)
+## claude-api.js (39 функций)
 
-### Core (11 функций)
+### Core (12 функций)
 
 | Функция | Описание |
 |---------|----------|
-| `cdpEval(tab, script, timeout)` | CDP вызов с результатом (низкоуровневый) |
+| `_getSendState(tab)` | Внутренняя: получение состояния отправки для таба |
+| `cdpEval(tab, script, options?)` | CDP вызов с результатом (retry, timeout, silent) |
 | `cdpPipeline(tab, steps)` | Последовательное выполнение CDP шагов |
 | `evalInClaude(tab, script)` | Выполнить JS в Claude WebView |
 | `navigateClaude(tab, url)` | Навигация с ожиданием загрузки |
@@ -151,21 +152,17 @@ await waitForClaudeInput(1, 15000);
 await waitForFilesUploaded(1, 3, 10000);
 ```
 
-### Files (2 функции)
+### Files (1 функция)
 
 | Функция | Описание |
 |---------|----------|
-| `attachScriptsToMessage(tab, scripts)` | Прикрепить Python-скрипты |
-| `attachFilesToMessage(tab, files)` | Прикрепить файлы |
+| `attachAllFiles(tab, scripts, files)` | Прикрепить скрипты и файлы (batch — один eval) |
 
 ```javascript
 // Прикрепить скрипты
-await attachScriptsToMessage(1, ['convert', 'count']);
+await attachAllFiles(1, ["convert"], [{path: "/tmp/file.txt"}]);
 
 // Прикрепить файлы
-await attachFilesToMessage(1, [
-    { name: 'doc.pdf', data: base64data }
-]);
 ```
 
 ### Generation Monitor (4 функции)
@@ -188,7 +185,7 @@ startGenerationMonitor();
 stopGenerationMonitor();
 ```
 
-### Project Lifecycle (9 функций)
+### Project Lifecycle (10 функций)
 
 | Функция | Описание |
 |---------|----------|
@@ -201,6 +198,7 @@ stopGenerationMonitor();
 | `hideContinueButton()` | Скрыть кнопку |
 | `restoreProjectState()` | Восстановить из localStorage |
 | `initProjectUrlTracking()` | Запуск отслеживания URL |
+| `uploadToProjectKnowledge(filePath, filename)` | Загрузить MD-файл в knowledge проекта |
 
 ```javascript
 // Получить UUID из URL
@@ -212,7 +210,17 @@ startProject('abc-123', 'My Project', 'my-tab');
 
 // Завершить
 await finishProject();
+
+// Загрузить файл в knowledge
+const result = await uploadToProjectKnowledge('/path/to/file.md', 'file.md');
+// { success: true } или { success: false, error: '...' }
 ```
+
+### Scraper (1 функция)
+
+| Функция | Описание |
+|---------|----------|
+| `onScrapeComplete(scraperItem)` | Обработка результатов скрапинга: загрузка собранных файлов в knowledge проекта |
 
 ### Init (2 функции)
 

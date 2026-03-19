@@ -12,22 +12,50 @@ const EMBEDDED_SCRIPTS = {
         name: 'convert.py',
         label: 'Конвертация (HTML-merge)',
         badge: 'C',
-        content: `#!/usr/bin/env python3
+        content: String.raw`#!/usr/bin/env python3
 """
-Конвертер v5 — HTML-merge
+HTML-merge v3.2: content.html + design.html → index.html
 
-content.html + design.html → index.html
-Для пайплайнов с data-content блоками.
+v3.2 — restore heading IDs after merge:
+- After innerHTML replacement, heading IDs from design.html
+  are transferred to corresponding headings in merged result
+  (matched by tag type and position within each data-content block).
+- Fixes broken TOC anchors and deep-linking to H3 subsections.
 
-Использование:
-  python convert.py [content.html] [design.html] [output.html]
+Берёт innerHTML каждого data-content блока из content.html
+и вставляет в соответствующий блок design.html.
+
+v3 — автоматическое обнаружение и фикс структурных расхождений:
+- Не требует ручного реестра компонентов (STRUCTURAL_COMPONENTS).
+- После мержа автоматически сканирует ВСЕ элементы с CSS-классами
+  внутри каждой секции, сравнивает количество дочерних <div>
+  в результате vs design.html.
+- Если design имел пустые/структурные div (разделители, spacers),
+  которые content.html не содержит — вставляет их обратно.
+- data-preserve: элементы в design с data-preserve="id" 
+  восстанавливаются после мержа.
+
+v3.1 — FAQ details-accordion:
+- Если design.html использует <details><summary> для FAQ,
+  а content.html использует <div> + <h3> (schema.org FAQPage),
+  скрипт автоматически конвертирует div-структуру в details/summary
+  с сохранением schema.org атрибутов.
+
+Пул визуальных компонентов из пайплайна:
+  Основной: info-box, odds-example, callout
+  Дополнительный (6 из 10): card-grid, comparison, key-takeaway,
+    fun-fact, glossary-term, dos-donts, pre-bet-checklist,
+    at-a-glance, worked-example, section-bridge
+Скрипт НЕ хардкодит их — он обнаруживает расхождения для ЛЮБОГО
+элемента с CSS-классом автоматически.
 """
-import re, sys
+import re
+import sys
 from pathlib import Path
 
 
 # ============================================================
-# ACTUAL MODE — HTML-merge v3.1
+# 1. Helpers
 # ============================================================
 
 def extract_blocks(html):
@@ -38,7 +66,7 @@ def extract_blocks(html):
     blocks = {}
     duplicates = []
     pattern = re.compile(
-        r'(<(?P<tag>section|div|article|aside|nav)\\s[^>]*data-content="(?P<id>[^"]+)"[^>]*>)'
+        r'(<(?P<tag>section|div|article|aside|nav)\s[^>]*data-content="(?P<id>[^"]+)"[^>]*>)'
         r'(?P<inner>.*?)'
         r'(</(?P=tag)>)',
         re.DOTALL
@@ -63,10 +91,10 @@ def find_component_blocks(html, css_class):
     """
     results = []
     open_pattern = re.compile(
-        r'<div\\s[^>]*class="[^"]*\\b' + re.escape(css_class) + r'\\b[^"]*"[^>]*>',
+        r'<div\s[^>]*class="[^"]*\b' + re.escape(css_class) + r'\b[^"]*"[^>]*>',
         re.DOTALL
     )
-    div_open = re.compile(r'<div[\\s>]')
+    div_open = re.compile(r'<div[\s>]')
     div_close = re.compile(r'</div>')
 
     for open_match in open_pattern.finditer(html):
@@ -98,7 +126,7 @@ def count_div_children(inner_html):
     """Количество <div> верхнего уровня внутри фрагмента."""
     count = 0
     depth = 0
-    for m in re.finditer(r'<(/?)div[\\s>]', inner_html):
+    for m in re.finditer(r'<(/?)div[\s>]', inner_html):
         if m.group(1) == '':
             if depth == 0:
                 count += 1
@@ -117,7 +145,7 @@ def extract_top_level_divs(html_fragment):
     depth = 0
     current_start = None
     current_tag = None
-    tag_pattern = re.compile(r'(<div\\b[^>]*>)|(</div>)', re.DOTALL)
+    tag_pattern = re.compile(r'(<div\b[^>]*>)|(</div>)', re.DOTALL)
 
     for m in tag_pattern.finditer(html_fragment):
         if m.group(1):
@@ -139,7 +167,7 @@ def discover_css_classes(html):
     Возвращает set of class names.
     """
     classes = set()
-    for m in re.finditer(r'<div\\s[^>]*class="([^"]+)"', html):
+    for m in re.finditer(r'<div\s[^>]*class="([^"]+)"', html):
         for cls in m.group(1).split():
             classes.add(cls)
     return classes
@@ -206,6 +234,11 @@ def insert_structural_divs(content_inner, design_inner, css_class):
     """
     Найти позиции пустых/структурных div в design_inner,
     вставить их в content_inner.
+    
+    v3.2 fix: убран fallback «найти самый короткий div» — 
+    он вызывал ложные срабатывания и дублирование контента.
+    Теперь функция работает ТОЛЬКО если в design есть 
+    действительно пустые структурные div-ы.
     """
     design_children = extract_top_level_divs(design_inner)
     content_children = extract_top_level_divs(content_inner)
@@ -221,14 +254,10 @@ def insert_structural_divs(content_inner, design_inner, css_class):
             structural_positions.append(i)
 
     if not structural_positions:
-        # Нет явно пустых — найти самый короткий div
-        min_len = float('inf')
-        insert_pos = len(design_children) // 2
-        for i, (tag, inner) in enumerate(design_children):
-            if len(inner.strip()) < min_len:
-                min_len = len(inner.strip())
-                insert_pos = i
-        structural_positions = [insert_pos]
+        # v3.2: если нет действительно пустых div — ничего не делать.
+        # Ранее здесь был fallback «найти самый короткий div»,
+        # который вызывал дублирование контента и orphan </div>.
+        return content_inner
 
     # Вставить структурные div в content_children
     result_children = list(content_children)
@@ -239,11 +268,11 @@ def insert_structural_divs(content_inner, design_inner, css_class):
 
     # Реконструировать HTML
     parts = []
-    first_div = re.search(r'<div[\\s>]', content_inner)
+    first_div = re.search(r'<div[\s>]', content_inner)
     if first_div:
         parts.append(content_inner[:first_div.start()])
     for tag, inner in result_children:
-        parts.append(f"\\n{tag}{inner}</div>")
+        parts.append(f"\n{tag}{inner}</div>")
     last_close = content_inner.rfind('</div>')
     if last_close != -1:
         parts.append(content_inner[last_close + 6:])
@@ -355,7 +384,7 @@ def convert_faq_to_details(html, design_html, warnings):
     """
     # Проверить: есть ли <details> в FAQ-секции design.html
     faq_section_design = re.search(
-        r'<(?:section|div|article)\\s[^>]*data-content="[^"]*faq[^"]*"[^>]*>'
+        r'<(?:section|div|article)\s[^>]*data-content="[^"]*faq[^"]*"[^>]*>'
         r'(.*?)'
         r'</(?:section|div|article)>',
         design_html, re.DOTALL
@@ -370,7 +399,7 @@ def convert_faq_to_details(html, design_html, warnings):
     # Используем nesting-aware подход: находим открывающий тег,
     # затем ищем парный закрывающий с учётом вложенности
     faq_open_pattern = re.compile(
-        r'<(section|div|article)\\s[^>]*data-content="[^"]*faq[^"]*"[^>]*>',
+        r'<(section|div|article)\s[^>]*data-content="[^"]*faq[^"]*"[^>]*>',
         re.DOTALL
     )
     faq_open_match = faq_open_pattern.search(html)
@@ -381,7 +410,7 @@ def convert_faq_to_details(html, design_html, warnings):
     inner_start = faq_open_match.end()
 
     # Найти парный закрывающий тег с учётом вложенности того же тега
-    open_re = re.compile(rf'<{faq_tag}[\\s>]')
+    open_re = re.compile(rf'<{faq_tag}[\s>]')
     close_re = re.compile(rf'</{faq_tag}>')
     depth = 1
     pos = inner_start
@@ -419,11 +448,11 @@ def convert_faq_to_details(html, design_html, warnings):
         open_tag = m.group(1)   # <div itemscope itemtype="...Question"...>
         inner = m.group(2)      # всё содержимое включая Answer-div
         # div → details (сохраняем все атрибуты: itemscope, itemtype)
-        details_open = re.sub(r'^<div\\b', '<details', open_tag)
+        details_open = re.sub(r'^<div\b', '<details', open_tag)
         # h3 itemprop="name" → summary itemprop="name"
         inner = re.sub(
-            r'<h3\\b([^>]*itemprop="name"[^>]*)>(.*?)</h3>',
-            r'<summary\\1>\\2</summary>',
+            r'<h3\b([^>]*itemprop="name"[^>]*)>(.*?)</h3>',
+            r'<summary\1>\2</summary>',
             inner,
             count=1,
             flags=re.DOTALL
@@ -439,11 +468,11 @@ def convert_faq_to_details(html, design_html, warnings):
     #   </div>        ← закрываем Answer
     # </div>          ← закрываем Question
     question_pattern = re.compile(
-        r'(<div\\s[^>]*itemtype="https?://schema\\.org/Question"[^>]*>)'
+        r'(<div\s[^>]*itemtype="https?://schema\.org/Question"[^>]*>)'
         r'(.*?'
-        r'<div\\s[^>]*itemtype="https?://schema\\.org/Answer"[^>]*>'
+        r'<div\s[^>]*itemtype="https?://schema\.org/Answer"[^>]*>'
         r'.*?</div>'   # закрываем Answer-div
-        r'\\s*)'
+        r'\s*)'
         r'</div>',     # закрываем Question-div
         re.DOTALL
     )
@@ -478,83 +507,79 @@ def restore_preserved_elements(result_html, design_html, warnings):
         pid = m.group(1)
         if f'data-preserve="{pid}"' not in result_html:
             warnings.append(
-                f"  ⚠ data-preserve=\\"{pid}\\" потерян после мержа"
+                f"  ⚠ data-preserve=\"{pid}\" потерян после мержа"
             )
     return result_html
 
 
 # ============================================================
-# 4b. Merge semantic attributes from content open-tags
+# 4b. Post-merge: restore heading IDs from design
 # ============================================================
 
-# Атрибуты, которые переносятся с content open-tag → result open-tag
-_SEMANTIC_ATTRS = re.compile(
-    r'(?<!\w)(itemscope|itemtype="[^"]*"|itemprop="[^"]*"|role="[^"]*"'
-    r'|aria-label="[^"]*"'
-    r'|data-(?!content\b)[a-z-]+="[^"]*")',
-    re.DOTALL
-)
-
-
-def _extract_open_tags(html):
+def restore_heading_ids(result_html, design_html, warnings):
     """
-    Вернуть dict {block_id: open_tag_string} для каждого data-content блока.
+    After merge, heading IDs inside data-content blocks are lost
+    because content.html replaces innerHTML entirely.
+    
+    v3.2: Directly patches individual heading tags in result_html
+    without replacing entire block innerHTML (avoids regex nesting bugs).
+    
+    Strategy: for each data-content block, build a map of
+    (tag_type, nth_occurrence) → id from design, then find the
+    corresponding headings in result and add id attributes.
     """
-    pattern = re.compile(
-        r'<(?:section|div|article|aside|nav)\s[^>]*data-content="([^"]+)"[^>]*>',
-        re.DOTALL
-    )
-    tags = {}
-    for m in pattern.finditer(html):
-        bid = m.group(1)
-        if bid not in tags:
-            tags[bid] = m.group(0)
-    return tags
-
-
-def merge_semantic_attrs(result_html, content_html, warnings):
-    """
-    Пост-мерж: для каждого data-content блока, если content.html
-    содержит семантические атрибуты (itemscope, itemtype, itemprop,
-    role, aria-label, data-*), которых нет на открывающем теге
-    в результирующем HTML — добавить их.
-    """
-    content_tags = _extract_open_tags(content_html)
-    result_tags = _extract_open_tags(result_html)
-
-    for bid, content_open in content_tags.items():
-        if bid not in result_tags:
+    design_blocks, _ = extract_blocks(design_html)
+    result_blocks, _ = extract_blocks(result_html)
+    
+    heading_re = re.compile(r'<(h[1-6])([^>]*)>(.*?)</\1>', re.DOTALL)
+    id_re = re.compile(r'\bid="([^"]+)"')
+    
+    # Collect all replacements: (old_heading_str, new_heading_str)
+    replacements = []
+    
+    for block_id in design_blocks:
+        if block_id not in result_blocks:
             continue
-
-        result_open = result_tags[bid]
-
-        # Собрать семантические атрибуты из content
-        content_attrs = _SEMANTIC_ATTRS.findall(content_open)
-        if not content_attrs:
+        
+        design_inner = design_blocks[block_id]
+        result_inner = result_blocks[block_id]
+        
+        # Build map from design: (tag, nth) → id
+        id_map = {}
+        tag_counts = {}
+        for m in heading_re.finditer(design_inner):
+            tag = m.group(1)
+            id_match = id_re.search(m.group(2))
+            tag_counts[tag] = tag_counts.get(tag, 0) + 1
+            if id_match:
+                id_map[(tag, tag_counts[tag])] = id_match.group(1)
+        
+        if not id_map:
             continue
-
-        # Отфильтровать те, что уже есть в result
-        missing = []
-        for attr in content_attrs:
-            attr_key = attr.split('=')[0]
-            if attr_key + '=' not in result_open and attr not in result_open:
-                missing.append(attr)
-
-        if not missing:
-            continue
-
-        # Вставить перед закрывающей > открывающего тега
-        inject = ' ' + ' '.join(missing)
-        new_open = result_open[:-1] + inject + '>'
-        result_html = result_html.replace(result_open, new_open, 1)
-
-        # Обновить кеш
-        result_tags[bid] = new_open
-
-        warnings.append(
-            f"  ✔ [{bid}]: перенесены атрибуты из content → {', '.join(missing)}"
-        )
-
+        
+        # Find corresponding headings in result inner
+        tag_counts_r = {}
+        for m in heading_re.finditer(result_inner):
+            tag = m.group(1)
+            attrs = m.group(2)
+            tag_counts_r[tag] = tag_counts_r.get(tag, 0) + 1
+            
+            if id_re.search(attrs):
+                continue  # already has id
+            
+            key = (tag, tag_counts_r[tag])
+            if key in id_map:
+                old_tag = m.group(0)
+                new_tag = f'<{tag}{attrs} id="{id_map[key]}">{m.group(3)}</{tag}>'
+                replacements.append((old_tag, new_tag))
+    
+    # Apply replacements directly on result_html
+    for old, new in replacements:
+        result_html = result_html.replace(old, new, 1)
+    
+    if replacements:
+        warnings.append(f"  ✓ Восстановлено {len(replacements)} heading ID из design.html")
+    
     return result_html
 
 
@@ -578,14 +603,14 @@ def merge(content_html, design_html):
         if block_id in content_blocks:
             content_inner = content_blocks[block_id]
             pattern = re.compile(
-                r'(<(?P<tag>section|div|article|aside|nav)\\s[^>]*data-content="'
+                r'(<(?P<tag>section|div|article|aside|nav)\s[^>]*data-content="'
                 + re.escape(block_id)
                 + r'"[^>]*>)'
                 r'.*?'
                 r'(</(?P=tag)>)',
                 re.DOTALL
             )
-            replacement = rf'\\1\\n{content_inner}\\n\\3'
+            replacement = rf'\1\n{content_inner}\n\3'
             result = pattern.sub(replacement, result, count=1)
             matched.append(block_id)
         else:
@@ -604,8 +629,7 @@ def merge(content_html, design_html):
 # 6. Main
 # ============================================================
 
-
-def main_actual():
+def main():
     content_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path('content.html')
     design_path = Path(sys.argv[2]) if len(sys.argv) > 2 else Path('design.html')
     output_path = Path(sys.argv[3]) if len(sys.argv) > 3 else Path('index.html')
@@ -634,24 +658,24 @@ def main_actual():
     # Дубликаты
     has_errors = False
     if design_dupes:
-        print(f"\\n✗ ОШИБКА: дубликаты data-content id в design.html:")
+        print(f"\n✗ ОШИБКА: дубликаты data-content id в design.html:")
         for bid in design_dupes:
             print(f"  ✗ {bid}")
         has_errors = True
     if content_dupes:
-        print(f"\\n✗ ОШИБКА: дубликаты data-content id в content.html:")
+        print(f"\n✗ ОШИБКА: дубликаты data-content id в content.html:")
         for bid in content_dupes:
             print(f"  ✗ {bid}")
         has_errors = True
     if has_errors:
-        print("\\nОстановлено. Исправь дубликаты.")
+        print("\nОстановлено. Исправь дубликаты.")
         sys.exit(1)
 
     # Pre-merge validation
     warnings = []
     validate_structures(content_html, design_html, warnings)
     if warnings:
-        print(f"\\n⚠ Предупреждения (до мержа):")
+        print(f"\n⚠ Предупреждения (до мержа):")
         for w in warnings:
             print(w)
         warnings.clear()
@@ -659,17 +683,17 @@ def main_actual():
     # Merge
     result, matched, missing_content, missing_design = merge(content_html, design_html)
 
-    print(f"\\nСовпало: {len(matched)}")
+    print(f"\nСовпало: {len(matched)}")
     for bid in matched:
         print(f"  + {bid}")
 
     if missing_content:
-        print(f"\\nНет в content.html ({len(missing_content)}):")
+        print(f"\nНет в content.html ({len(missing_content)}):")
         for bid in missing_content:
             print(f"  ! {bid} — lorem останется")
 
     if missing_design:
-        print(f"\\nНет в design.html ({len(missing_design)}):")
+        print(f"\nНет в design.html ({len(missing_design)}):")
         for bid in missing_design:
             print(f"  ! {bid} — контент потерян")
 
@@ -685,26 +709,31 @@ def main_actual():
     # Post-merge: restore preserved elements
     result = restore_preserved_elements(result, design_html, warnings)
 
-    # Post-merge: transfer semantic attrs from content open-tags
-    result = merge_semantic_attrs(result, content_html, warnings)
+    # Post-merge: restore heading IDs from design
+    result = restore_heading_ids(result, design_html, warnings)
 
     if warnings:
-        print(f"\\n⚠ Структурные исправления:")
+        print(f"\n⚠ Структурные исправления:")
         for w in warnings:
             print(w)
 
     # Link images-styles.css if not present
     if 'images-styles.css' not in result:
-        result = result.replace('</head>', '<link rel="stylesheet" href="images-styles.css">\\n</head>')
+        result = result.replace('</head>', '<link rel="stylesheet" href="images-styles.css">\n</head>')
+
+    # Post-merge: strip all HTML comments (claim IDs, stray notes, etc.)
+    comment_count = len(re.findall(r'<!--.*?-->', result, flags=re.DOTALL))
+    if comment_count:
+        result = re.sub(r'<!--.*?-->', '', result, flags=re.DOTALL)
+        result = re.sub(r'\n{3,}', '\n\n', result)
+        print(f"\n  ✓ Удалено {comment_count} HTML-комментариев")
 
     output_path.write_text(result, encoding='utf-8')
-    print(f"\\n✓ {content_path} + {design_path} → {output_path}")
-
-
+    print(f"\n✓ {content_path} + {design_path} → {output_path}")
 
 
 if __name__ == '__main__':
-    main_actual()
+    main()
 `
     },
     count: {

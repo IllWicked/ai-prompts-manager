@@ -8,11 +8,11 @@ Backend разбит на модули по функциональности:
 
 ```
 src-tauri/src/
-├── main.rs              (174 строки)  — точка входа, Tauri Builder
+├── main.rs              (140 строк)  — точка входа, Tauri Builder
 ├── lib.rs               (23 строки)  — реэкспорт модулей
 ├── types.rs             (74 строки)  — структуры данных
 ├── state.rs             (47 строк)   — глобальные состояния
-├── commands/            (57 команд)  — Tauri команды
+├── commands/              (51 команда)  — Tauri команды
 │   ├── mod.rs           — реэкспорт
 │   ├── app.rs           — управление приложением
 │   ├── claude.rs        — взаимодействие с Claude
@@ -20,7 +20,8 @@ src-tauri/src/
 │   ├── downloads.rs     — управление загрузками
 │   ├── logs.rs          — работа с логами
 │   ├── storage.rs       — хранение вкладок (файловая система)
-│   └── attachments.rs   — аттачменты
+│   ├── attachments.rs   — аттачменты
+│   └── scraper.rs       — автосбор данных из Google
 ├── downloads/           — логика загрузок
 │   ├── mod.rs
 │   └── paths.rs         — пути к файлам
@@ -41,23 +42,22 @@ src-tauri/src/
 |--------|----------|
 | `types` | Структуры: `ArchiveLogEntry`, `DownloadEntry`, `DownloadsSettings`, `FileData`, `DiagnosticEntry` |
 | `state` | Глобальные: `CLAUDE_VISIBLE`, `ACTIVE_TAB`, `PANEL_RATIO`, Mutex locks |
-| `commands` | 57 Tauri команд, разбитых по доменам |
+| `commands` | 51 Tauri команда, разбитых по доменам |
 | `downloads` | Пути к логам, настройкам, генерация уникальных имён |
 | `utils` | MIME-типы, платформо-зависимые функции, константы |
-| `webview` | JS скрипты, создание/resize webview, z-order, suspend/resume |
+| `webview` | JS скрипты, создание/resize webview, z-order |
 
 ---
 
 ## Полный список Tauri Commands
 
-Всего **57 команд**. Вызов из JS: `window.__TAURI__.core.invoke('command', { params })`
+Всего **51 команда**. Вызов из JS: `window.__TAURI__.core.invoke('command', { params })`
 
 ### Downloads & Files (`commands/downloads.rs`)
 
 | Команда | Параметры | Возврат | Описание |
 |---------|-----------|---------|----------|
 | `get_downloads_path` | — | `String` | Путь загрузок |
-| `set_downloads_path` | `path` | — | Установить путь |
 | `pick_downloads_folder` | — | `String` | Диалог выбора |
 | `open_file` | `file_path` | — | Открыть в системе |
 | `delete_download` | `file_path` | `bool` | Удалить |
@@ -68,7 +68,6 @@ src-tauri/src/
 | Команда | Параметры | Возврат | Описание |
 |---------|-----------|---------|----------|
 | `get_downloads_log` | — | `Vec<DownloadEntry>` | Лог (auto-cleanup) |
-| `add_download_entry` | `filename, file_path` | — | Добавить запись |
 | `get_archive_log` | — | `Vec<ArchiveLogEntry>` | Лог архивов |
 | `add_archive_log_entry` | `tab, filename, claudeUrl, filePath?` | — | Добавить |
 | `clear_archive_log` | — | — | Очистить |
@@ -82,32 +81,28 @@ src-tauri/src/
 | `read_file_for_attachment` | `path` | `FileData` | Читать для вложения |
 | `write_temp_file` | `filename, content` | `String` | Записать temp |
 | `attach_file_to_claude` | `tab, path` | — | Прикрепить файл |
+| `attach_files_batch` | `tab, paths` | — | Прикрепить несколько файлов (batch) |
 | `get_upload_count` | `tab` | `u32` | Счётчик загруженных файлов |
 | `reset_upload_count` | `tab` | — | Сбросить счётчик |
-| `increment_upload_count` | `tab` | — | Увеличить счётчик |
 
 ### Storage (`commands/storage.rs`)
 
 | Команда | Параметры | Возврат | Описание |
 |---------|-----------|---------|----------|
 | `save_tabs_to_file` | `data` | — | Атомарная запись вкладок в файл (temp → rename) |
-| `load_tabs_from_file` | — | `String` | Загрузка вкладок из файла |
+| `load_tabs_from_file` | — | `Option<String>` | Загрузка вкладок из файла |
 | `delete_tabs_file` | — | — | Удалить файл вкладок |
-| `get_tabs_file_size` | — | `u64` | Размер файла в байтах |
 
 ### Claude WebView (`commands/claude.rs`)
 
 | Команда | Параметры | Возврат | Описание |
 |---------|-----------|---------|----------|
-| `preload_claude` | — | — | Предзагрузка (устаревшее, табы создаются при старте) |
 | `toggle_claude` | — | `bool` | Показать/скрыть |
 | `get_active_tab` | — | `u8` | Активный таб |
 | `switch_claude_tab` | `tab` | — | Переключить (навигирует на claude.ai если about:blank) |
 | `switch_claude_tab_with_url` | `tab, url` | — | С навигацией |
 | `get_tab_url` | `tab` | `String` | URL таба |
 | `get_claude_state` | — | `(bool, u8, Vec<u8>)` | visible, active, tabs |
-| `new_chat_in_tab` | `tab` | — | Новый чат |
-| `reload_claude_tab` | `tab` | — | Перезагрузить страницу |
 | `recreate_claude_tab` | `tab` | — | Пересоздать webview (для зависших табов) |
 | `navigate_claude_tab` | `tab, url` | — | Навигация |
 | `notify_url_change` | `tab, url` | — | От helpers.js |
@@ -119,11 +114,10 @@ src-tauri/src/
 |---------|-----------|---------|----------|
 | `eval_in_claude` | `tab, script` | — | JS fire-and-forget |
 | `eval_in_claude_with_result` | `tab, script, timeout?` | `String` | JS с результатом (CDP) |
-| `insert_text_to_claude` | `tab, text, autoSend` | — | Вставить текст (через ClipboardEvent) |
+| `insert_text_to_claude` | `tab, text, autoSend` | — | Вставить текст (insertContent) |
 | `inject_generation_monitor` | `tab` | — | Мониторинг генерации |
-| `check_generation_status` | `tab` | `bool` | Статус генерации |
-| `set_generation_state` | `tab, generating` | — | Установить статус генерации |
-| `init_claude_webviews` | — | — | Инициализация всех Claude webview, toolbar, polling |
+| `check_generation_status` | `tab` | `bool` | Статус генерации (URL hash) |
+| `init_claude_webviews` | — | — | Инициализация всех Claude webview и toolbar |
 
 ### Panel & Window (`commands/claude.rs`, `commands/app.rs`)
 
@@ -144,8 +138,6 @@ src-tauri/src/
 | `toolbar_recreate` | — | — | Пересоздать webview (двойной клик reload в toolbar) |
 | `show_downloads` | — | — | Показать менеджер |
 | `hide_downloads` | — | — | Скрыть |
-| `forward_scroll` | `delta_y` | — | Проброс скролла |
-| `forward_click` | `x, y` | — | Проброс клика |
 
 ### App (`commands/app.rs`)
 
@@ -155,6 +147,16 @@ src-tauri/src/
 | `open_app_data_dir` | — | — | Открыть папку |
 
 > Команды `set_window_background` и `get_window_width` также в `app.rs` — см. [Panel & Window](#panel--window-commandsclauders-commandsapprs).
+
+### SERP Scraper (`commands/scraper.rs`)
+
+| Команда | Параметры | Возврат | Описание |
+|---------|-----------|---------|----------|
+| `create_scraper_webview` | — | — | Создание скрытого WebView для скрапинга |
+| `destroy_scraper_webview` | — | — | Закрытие скрапер-WebView |
+| `scrape_google_serp` | keyword, geo?, num_results?, lang?, queries? | Result<String> | Выполнение серии поисковых запросов в Google, извлечение и сохранение результатов |
+
+> Скрапер создаёт невидимый WebView2, выполняет поисковые запросы, фетчит и очищает HTML каждой страницы. Результаты сохраняются как файлы для загрузки в knowledge проекта Claude.
 
 ---
 
@@ -168,9 +170,8 @@ src-tauri/src/
 | `create_claude_webview(app, tab, url)` | Низкоуровневое создание без toolbar |
 | `ensure_toolbar(app)` | Создание toolbar и downloads popup |
 | `raise_toolbar_zorder(app)` | Поднятие z-order через Win32 `SetWindowPos(HWND_TOP)` |
-| `suspend_claude_tab(app, tab)` | Приостановка через WebView2 `TrySuspend()` |
-| `resume_claude_tab(app, tab)` | Возобновление через WebView2 `Resume()` |
 | `resize_webviews(app)` | Оркестратор: вызывает layout_ui/claude/overlay |
+| `allow_claude_multiple_downloads()` | Разрешение множественных загрузок с claude.ai в Chromium Preferences |
 | `layout_ui(...)` | Позиция и размер UI панели |
 | `layout_claude(...)` | Show/hide Claude табов |
 | `layout_overlay(...)` | Позиция toolbar, hide downloads |
@@ -180,12 +181,14 @@ src-tauri/src/
 | Функция/Константа | Описание |
 |-------------------|----------|
 | `CLAUDE_HELPERS_JS` | JS helpers из `scripts/claude_helpers.js` |
+| `CLAUDE_COUNTER_JS` | Claude Counter (логика) из `scripts/claude_counter.js` |
+| `CLAUDE_COUNTER_CSS` | Claude Counter (стили) из `scripts/claude_counter.css` |
 | `CLAUDE_SELECTORS_JSON` | Селекторы из `scripts/selectors.json` |
-| `GENERATION_CHECK_SCRIPT` | Компактный JS для проверки генерации через CDP |
+| `CLAUDE_AUTOCONTINUE_JS` | Auto-Continue из `scripts/claude_autocontinue.js` |
 | `get_claude_init_script(tab)` | Генерация init script для таба |
 | `get_generation_monitor_script()` | Скрипт мониторинга генерации |
-| `get_scroll_script(delta_y)` | Скрипт для скролла |
-| `get_click_script(x, y)` | Скрипт для клика |
+
+> **Примечание:** Константа `SERP_EXTRACT_JS` (из `scripts/serp_extract.js`) определена в `commands/scraper.rs`, а не в `scripts.rs`.
 
 ### downloads/paths.rs
 
@@ -249,20 +252,20 @@ sequenceDiagram
 | Событие | Направление | Payload | Описание |
 |---------|-------------|---------|----------|
 | `claude-page-loaded` | Rust → JS | `{tab: number}` | Страница Claude загружена |
-| `claude-navigation-started` | Rust → JS | `{tab: number, url: string}` | Начало навигации |
 | `claude-url-changed` | Rust → JS | `{tab: number, url: string}` | URL изменился |
 | `download-started` | Rust → JS | `string` (filename) | Начало загрузки |
 | `download-finished` | Rust → JS | `{filename, tab, url, file_path}` | Загрузка завершена |
 | `download-failed` | Rust → JS | `string` (filename) | Ошибка загрузки |
-| `startup-error` | Rust → JS | `{tab?: number, error: string}` | Ошибка создания webview |
 | `refresh-downloads` | Rust → JS | `()` | Обновить список |
 | `downloads-closed` | Rust → JS | `()` | Popup закрыт |
+| `scraper-progress` | Rust → JS | `ScrapeProgress` | Прогресс скрапинга |
+| `auto-continue-toast` | Claude JS → Main JS | `string` (сообщение) | Toast при автопродолжении |
 
 ---
 
 ## Synchronization & Thread Safety
 
-### Mutex Guards (`state.rs`)
+### Mutex Guards (`state.rs`, `commands/scraper.rs`)
 
 | Mutex | Назначение |
 |-------|------------|
@@ -270,7 +273,8 @@ sequenceDiagram
 | `TOOLBAR_CREATION_LOCK` | Защита от race condition при создании toolbar |
 | `DOWNLOADS_LOG_LOCK` | Синхронизация записи в downloads_log.json |
 | `ARCHIVE_LOG_LOCK` | Синхронизация записи в archive_log.json |
-| `DIAGNOSTICS_LOG_LOCK` | Синхронизация записи в diagnostics_log.json |
+| `DIAGNOSTICS_LOG_LOCK` | Синхронизация записи в diagnostics.json |
+| `SCRAPER_LOCK` | Защита от параллельных операций скрапинга (`commands/scraper.rs`, `std::sync::LazyLock`) |
 
 ### Atomic State (`state.rs`)
 
@@ -317,8 +321,8 @@ fn ensure_toolbar(...) -> Result<(), String> {
 | Константа | Значение | Описание |
 |-----------|----------|----------|
 | `TOOLBAR_WIDTH` | 152.0 | Ширина тулбара |
-| `TOOLBAR_HEIGHT` | 44.0 | Высота тулбара |
-| `TOOLBAR_BOTTOM_OFFSET` | 10.0 | Отступ от низа |
+| `TOOLBAR_HEIGHT` | 56.0 | Высота тулбара (toolbar 42px + indicator 4px + gaps) |
+| `TOOLBAR_BOTTOM_OFFSET` | 5.0 | Отступ от низа |
 | `DOWNLOADS_WIDTH` | 320.0 | Ширина popup |
 | `DOWNLOADS_HEIGHT` | 360.0 | Высота popup |
 | `DOWNLOADS_MARGIN` | 8.0 | Отступ от тулбара |
@@ -330,7 +334,7 @@ fn ensure_toolbar(...) -> Result<(), String> {
 | `MAX_ATTACHMENT_SIZE` | 50 MB | Макс. размер аттачмента |
 | `MAX_ARCHIVE_LOG_ENTRIES` | 1000 | Макс. записей в archive_log |
 | `MAX_DOWNLOADS_LOG_ENTRIES` | 500 | Макс. записей в downloads_log |
-| `MAX_DIAGNOSTICS_ENTRIES` | 500 | Макс. записей в diagnostics_log |
+| `MAX_DIAGNOSTICS_ENTRIES` | 500 | Макс. записей в diagnostics.json |
 
 ---
 
@@ -366,7 +370,7 @@ webview/scripts.rs::CLAUDE_SELECTORS_JSON
         ↓
 get_claude_init_script()
         ↓
-window.__SEL__                      ← Доступно в Claude WebView
+window._s                      ← Доступно в Claude WebView
 ```
 
 **При обновлении Claude.ai редактировать ТОЛЬКО** `src-tauri/scripts/selectors.json`

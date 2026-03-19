@@ -134,7 +134,7 @@ const WORKFLOW_CONFIG = {
     MAGNET_DISTANCE: 30,
     
     // Zoom
-    ZOOM_MIN: 0.4,
+    ZOOM_MIN: 0.2,
     ZOOM_MAX: 1.25
 };
 

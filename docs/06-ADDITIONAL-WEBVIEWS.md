@@ -21,7 +21,7 @@
 │                   │   │   ┌──────────────────┐          │   │
 │                   │   │   │ Toolbar WebView  │          │   │
 │                   │   │   │ (toolbar.html)   │          │   │
-│                   │   │   │ 152x44           │          │   │
+│                   │   │   │ 152x56           │          │   │
 │                   │   │   └──────────────────┘          │   │
 │                   │   └─────────────────────────────────┘   │
 └───────────────────┴─────────────────────────────────────────┘
@@ -29,13 +29,13 @@
 
 ---
 
-## toolbar.html (~128 строк)
+## toolbar.html (~176 строк)
 
 Плавающий тулбар над Claude WebView.
 
 ### Расположение
 
-- **Размер:** 152x44 пикселей
+- **Размер:** 152x56 пикселей
 - **Позиция:** по центру Claude WebView, внизу
 - **Z-Order:** выше Claude WebView
 
@@ -69,7 +69,7 @@ listen('downloads-closed', () => {
 
 ---
 
-## downloads.html (~600 строк)
+## downloads.html (~594 строк)
 
 Менеджер загруженных файлов (popup).
 
@@ -189,28 +189,24 @@ fn raise_toolbar_zorder(app: &AppHandle) {
 - Нет задержек (`thread::sleep`) на ожидание закрытия/создания
 - Мгновенная операция (~0ms vs ~150ms)
 
-### Скрытие webview: hide()/show()
+### Скрытие webview: гибридный механизм
 
-Неактивные webview скрываются через нативный `webview.hide()` вместо позиционирования за экран:
+Используется комбинация `hide()`/`show()` и offscreen-позиционирования:
 
-| Метод | CPU | GPU | RAM | Visual |
-|-------|-----|-----|-----|--------|
-| `hide()` (WebView2 `put_IsVisible(FALSE)`) | Throttle | Off | Кэши очищены | Нет |
-| Off-screen `set_position(width*2, 0)` | 100% | Render продолжается | Кэши активны | Нет |
+| Состояние | Метод | IsVisible | CPU | DOM |
+|-----------|-------|-----------|-----|-----|
+| Панель открыта, активный таб | `show()` + `set_position(claude_x, 0)` | TRUE | Полный | Живой |
+| Панель открыта, неактивный таб | `set_position(width*2, 0)` (offscreen) | TRUE | Partial | Живой |
+| Панель закрыта (все табы) | `hide()` | FALSE | Throttled | Живой |
+| Создание при старте | `set_position(width*2, 0)` + `hide()` | FALSE | Minimal | Живой |
+
+**Offscreen** (неактивные табы при открытой панели): IsVisible=TRUE, DOM живой, timers работают — позволяет фоновую генерацию и мониторинг.
+
+**hide()** (панель закрыта): WebView2 `put_IsVisible(FALSE)` throttle-ит анимации, снижает CPU — применяется ко всем табам когда панель Claude скрыта.
 
 ### Suspend/Resume неактивных табов
 
-Дополнительно к `hide()`, неактивные Claude табы приостанавливаются через WebView2 `ICoreWebView2_3`:
-
-```rust
-// Suspend: паузит script timers, анимации, минимизирует CPU
-core3.TrySuspend(None);
-
-// Resume: мгновенное возобновление
-core3.Resume();
-```
-
-Вызывается при переключении табов и при toggle панели Claude.
+**Отключено.** Ранее планировалось использовать WebView2 `ICoreWebView2_3::TrySuspend()` для экономии CPU, но `TrySuspend()` замораживал DOM и ломал `querySelector`/`insertContent` на фоновых табах. Механизм отключён — неактивные табы остаются живыми (offscreen-позиционирование при открытой панели, hide() при закрытой).
 
 ---
 
@@ -224,8 +220,6 @@ core3.Resume();
 | `toolbar_recreate` | Пересоздать webview (двойной клик reload в toolbar) |
 | `show_downloads` | Показать popup загрузок |
 | `hide_downloads` | Скрыть popup |
-| `forward_scroll` | Проброс скролла на Claude |
-| `forward_click` | Проброс клика на Claude |
 
 ---
 
@@ -234,13 +228,33 @@ core3.Resume();
 | Команда | Параметры | Возврат | Описание |
 |---------|-----------|---------|----------|
 | `get_downloads_log` | — | `Vec<DownloadEntry>` | Список загрузок |
-| `add_download_entry` | `filename, file_path` | — | Добавить запись |
 | `delete_download` | `file_path` | `bool` | Удалить запись |
 | `delete_all_downloads` | — | `u32` | Удалить все |
 | `open_file` | `file_path` | — | Открыть в системе |
 | `read_file_for_attachment` | `path` | `FileData` | Читать для Claude |
 
 → Структура `DownloadEntry`: [03-BACKEND.md](03-BACKEND.md#downloads--files-commandsdownloadsrs)
+
+---
+
+## Scraper WebView
+
+Невидимый WebView2 для автосбора данных из Google. Создаётся по запросу, уничтожается после завершения.
+
+### Жизненный цикл
+
+1. `create_scraper_webview` — создание скрытого WebView (label: `scraper`)
+2. `scrape_google_serp` — серия навигаций Google → извлечение результатов через `serp_extract.js` → фетч и очистка страниц
+3. `destroy_scraper_webview` — закрытие WebView
+
+### Безопасность
+
+- WebView не видим пользователю (нулевой размер, no decorations)
+- Посещает только Google и страницы из выдачи
+- `SCRAPER_LOCK` мьютекс предотвращает параллельные операции
+- Результаты сохраняются локально, затем загружаются в knowledge проекта через Claude API
+
+→ Команды: [03-BACKEND.md](03-BACKEND.md#serp-scraper-commandsscraperrs)
 
 ---
 

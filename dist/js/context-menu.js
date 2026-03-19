@@ -41,6 +41,76 @@ function showContextMenu(x, y, items) {
             return;
         }
         
+        // Строка выбора цвета
+        if (item.colorRow) {
+            const row = document.createElement('div');
+            row.className = 'context-menu-color-row';
+            
+            item.colors.forEach(c => {
+                const swatch = document.createElement('div');
+                swatch.className = 'context-color-swatch' + (c.active ? ' active' : '');
+                swatch.style.backgroundColor = c.color;
+                swatch.title = c.name || '';
+                swatch.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    hideContextMenu();
+                    if (c.action) c.action();
+                });
+                row.appendChild(swatch);
+            });
+            
+            // Кастомный цвет (input[type=color])
+            if (item.customColor) {
+                const customWrap = document.createElement('div');
+                customWrap.className = 'context-color-swatch custom-color-swatch';
+                customWrap.title = 'Свой цвет';
+                const colorInput = document.createElement('input');
+                colorInput.type = 'color';
+                colorInput.value = item.currentColor || '#ec7441';
+                
+                // Сохраняем callback — меню может быть уничтожено до срабатывания
+                const applyColor = item.customColor;
+                colorInput.addEventListener('change', () => {
+                    applyColor(colorInput.value);
+                });
+                // Не даём клику по input закрыть меню
+                colorInput.addEventListener('click', (e) => e.stopPropagation());
+                
+                customWrap.appendChild(colorInput);
+                
+                const svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svgEl.setAttribute('viewBox', '0 0 24 24');
+                svgEl.setAttribute('fill', 'none');
+                svgEl.setAttribute('stroke', 'currentColor');
+                svgEl.setAttribute('stroke-width', '2.5');
+                svgEl.innerHTML = '<path d="M12 5v14M5 12h14"/>';
+                customWrap.appendChild(svgEl);
+                
+                customWrap.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    colorInput.click();
+                });
+                row.appendChild(customWrap);
+            }
+            
+            // Кнопка сброса (×)
+            if (item.onReset) {
+                const resetBtn = document.createElement('div');
+                resetBtn.className = 'context-color-swatch reset-color-swatch';
+                resetBtn.title = 'Сбросить цвет';
+                resetBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+                resetBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    hideContextMenu();
+                    item.onReset();
+                });
+                row.appendChild(resetBtn);
+            }
+            
+            menu.appendChild(row);
+            return;
+        }
+        
         const menuItem = document.createElement('div');
         menuItem.className = 'context-menu-item' + (item.disabled ? ' disabled' : '') + (item.submenu ? ' has-submenu' : '');
         
@@ -256,51 +326,86 @@ function renameBlockInline(blockId) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Копировать блоки в буфер (для ПКМ и Ctrl+C)
- * @param {string[]} blockIds - массив ID блоков
+ * Копировать блоки и заметки в буфер (для ПКМ и Ctrl+C)
+ * @param {string[]} blockIds - массив ID блоков и заметок
  */
 function copyBlocksToClipboard(blockIds) {
-    const blocks = getTabBlocks(currentTab);
+    const items = getTabItems(currentTab);
+    const blocks = items.filter(i => i.type === 'block' || i.type === 'scraper');
     
+    // Разделяем блоки и заметки
+    const noteIds = blockIds.filter(id => id.startsWith('note_'));
+    const realBlockIds = blockIds.filter(id => !id.startsWith('note_'));
+    
+    // Находим общий minX/minY для относительных координат
     let minX = Infinity, minY = Infinity;
-    blockIds.forEach(id => {
+    realBlockIds.forEach(id => {
         const pos = workflowPositions[id];
         if (pos) {
             minX = Math.min(minX, pos.x);
             minY = Math.min(minY, pos.y);
         }
     });
+    noteIds.forEach(id => {
+        const note = workflowNotes.find(n => n.id === id);
+        if (note) {
+            minX = Math.min(minX, note.x || 0);
+            minY = Math.min(minY, note.y || 0);
+        }
+    });
+    if (minX === Infinity) minX = 0;
+    if (minY === Infinity) minY = 0;
     
     // Создаём Set для быстрой проверки
-    const blockIdSet = new Set(blockIds);
+    const blockIdSet = new Set(realBlockIds);
     
     // Копируем блоки
     clipboard = [];
-    blockIds.forEach(id => {
+    realBlockIds.forEach(id => {
         const block = blocks.find(b => b.id === id);
         const pos = workflowPositions[id] || {x: 0, y: 0};
         const size = workflowSizes[id];
         if (block) {
-            // Читаем состояния из отдельных хранилищ
             const collapsed = isBlockCollapsed(id);
             const scripts = getBlockScripts(id);
             const automation = getBlockAutomationFlags(id);
             
             clipboard.push({
-                origId: id,  // Сохраняем оригинальный ID для маппинга соединений
+                origId: id,
+                type: block.type || 'block',
                 title: block.title,
                 content: block.content,
+                keyword: block.keyword,
+                queries: block.queries,
                 instruction: block.instruction,
                 collapsed: collapsed || undefined,
                 scripts: scripts && scripts.length > 0 ? [...scripts] : undefined,
                 automation: automation && Object.keys(automation).length > 0 ? {...automation} : undefined,
                 hasAttachments: block.hasAttachments,
+                color: workflowColors[id] || undefined,
                 relX: pos.x - minX,
                 relY: pos.y - minY,
                 origX: pos.x,
                 origY: pos.y,
                 width: size?.width,
                 height: size?.height
+            });
+        }
+    });
+    
+    // Копируем заметки
+    window.clipboardNotes = [];
+    noteIds.forEach(id => {
+        const note = workflowNotes.find(n => n.id === id);
+        if (note) {
+            window.clipboardNotes.push({
+                text: note.text || '',
+                relX: (note.x || 0) - minX,
+                relY: (note.y || 0) - minY,
+                origX: note.x || 0,
+                origY: note.y || 0,
+                width: note.width || 280,
+                height: note.height || 160
             });
         }
     });

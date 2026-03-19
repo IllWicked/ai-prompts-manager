@@ -63,7 +63,15 @@ function loadBlockScripts() {
     for (const tab of Object.values(getAllTabs())) {
         for (const item of (tab.items || [])) {
             if (item.type === 'block' && item.scripts && item.scripts.length > 0) {
-                blockScripts[item.id] = [...item.scripts];
+                // Фильтруем удалённые скрипты (например spellcheck)
+                const valid = item.scripts.filter(s => typeof EMBEDDED_SCRIPTS !== 'undefined' && EMBEDDED_SCRIPTS[s]);
+                if (valid.length > 0) {
+                    blockScripts[item.id] = valid;
+                }
+                // Чистим данные если были мёртвые ключи
+                if (valid.length !== item.scripts.length) {
+                    item.scripts = valid.length > 0 ? valid : undefined;
+                }
             }
         }
     }

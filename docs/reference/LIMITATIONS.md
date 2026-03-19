@@ -179,18 +179,6 @@ if (wouldCreateCycle(fromBlockId, toBlockId)) {
 
 ---
 
-### Retry механизм Claude табов
-
-**При создании табов 2/3:**
-
-1. WebView создаётся, начинается загрузка
-2. Ожидание события `claude-page-loaded` до 10 сек
-3. Таймаут → `reload_claude_tab()`
-4. До 3 попыток
-5. Максимум 30 сек на таб
-
----
-
 ### Race condition при быстром переключении
 
 **Случай:** Быстрое переключение между вкладками APM.
@@ -274,6 +262,14 @@ setInterval(checkUrlChange, 2000);
 ```
 
 SPA-переходы обнаруживаются с задержкой до 2 сек (polling). Для кнопки "Продолжить проект" и инвалидации org-кэша это некритично.
+
+---
+
+### Multiple Downloads (решено в v4.4.0)
+
+**Проблема:** WebView2 показывал диалог «Allow multiple downloads?» при скачивании нескольких файлов из Claude. При отказе — все множественные загрузки блокировались навсегда.
+
+**Решение:** `allow_claude_multiple_downloads()` в `webview/manager.rs` прописывает разрешение `automatic_downloads` для claude.ai в Chromium Preferences (`EBWebView/Default/Preferences`) при каждом запуске. Если ранее было отказано — исправляется автоматически.
 
 ---
 

@@ -37,6 +37,18 @@ function getTabBlocks(tabId) {
 }
 
 /**
+ * Получить только scraper-блоки вкладки
+ * @param {string} tabId
+ * @returns {Array}
+ */
+function getTabScrapers(tabId) {
+    const items = getTabItems(tabId);
+    return items.filter(item => item.type === 'scraper');
+}
+
+window.getTabScrapers = getTabScrapers;
+
+/**
  * Создать новую вкладку
  * @param {string} name - Название вкладки
  * @returns {string} ID созданной вкладки
@@ -166,7 +178,7 @@ function deleteTab(id) {
     // Очищаем связанные данные перед удалением
     const tabItems = tabs[id]?.items || [];
     tabItems.forEach(item => {
-        if (item.type === 'block' && item.id) {
+        if ((item.type === 'block' || item.type === 'scraper') && item.id) {
             // Очищаем скрипты блоков
             if (typeof blockScripts !== 'undefined' && blockScripts[item.id]) {
                 delete blockScripts[item.id];

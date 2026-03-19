@@ -1,6 +1,6 @@
 // === Claude Helpers ===
 // Общие функции для инжектирования в Claude.ai WebView
-// Селекторы передаются через window.__SEL__ из main.rs (selectors.json)
+// Селекторы передаются через window._s из main.rs (selectors.json)
 
 /**
  * Получить значение селектора по пути (поддержка вложенности)
@@ -9,7 +9,7 @@
  */
 function __getSel__(path) {
     const parts = path.split('.');
-    let value = window.__SEL__;
+    let value = window._s;
     for (const part of parts) {
         if (!value || typeof value !== 'object') return null;
         value = value[part];
@@ -158,12 +158,12 @@ function __logSelectorFallback__(path) {
     }
     __fallbackLogTimestamps__[path] = now;
     
-    if (window.__TAURI__?.core?.invoke) {
-        window.__TAURI__.core.invoke('write_diagnostic', {
+    if (window._inv) {
+        window._inv('write_diagnostic', {
             eventType: 'selector_heuristic_fallback',
             details: JSON.stringify({
                 path: path,
-                tab: window.__CLAUDE_TAB__ || 0
+                tab: window._t || 0
             })
         }).catch(() => {});
     }
@@ -206,14 +206,14 @@ function runSelectorHealthCheck() {
     
     // Пишем в лог, только если что-то сломано
     if (broken.length > 0 || heuristicWorking.length > 0) {
-        if (window.__TAURI__?.core?.invoke) {
-            window.__TAURI__.core.invoke('write_diagnostic', {
+        if (window._inv) {
+            window._inv('write_diagnostic', {
                 eventType: 'selector_health_check',
                 details: JSON.stringify({
                     broken: broken,
                     heuristicOnly: heuristicWorking,
                     total: critical.length,
-                    tab: window.__CLAUDE_TAB__ || 0
+                    tab: window._t || 0
                 })
             }).catch(() => {});
         }
@@ -267,15 +267,15 @@ function hideSidebar() {
 }
 
 function setupSidebarObserver() {
-    if (window.__sidebarObserver) {
-        window.__sidebarObserver.disconnect();
+    if (window._o1) {
+        window._o1.disconnect();
     }
-    window.__sidebarObserver = new MutationObserver(() => hideSidebar());
+    window._o1 = new MutationObserver(() => hideSidebar());
     
     const observeSidebar = () => {
         const leftNav = __findElSmart__('navigation.leftNav');
         if (leftNav) {
-            window.__sidebarObserver.observe(leftNav, { 
+            window._o1.observe(leftNav, { 
                 attributes: true, 
                 attributeFilter: ['style', 'class'],
                 subtree: false 
@@ -292,13 +292,13 @@ function setupSidebarObserver() {
  * Заменяет отдельные ghostObserver и uiObserver для лучшей производительности
  */
 function setupCombinedObserver() {
-    if (window.__combinedObserver) {
-        window.__combinedObserver.disconnect();
+    if (window._o2) {
+        window._o2.disconnect();
     }
     
     let uiUpdatePending = false;
     
-    window.__combinedObserver = new MutationObserver(() => {
+    window._o2 = new MutationObserver(() => {
         if (uiUpdatePending) return;
         uiUpdatePending = true;
         
@@ -309,7 +309,7 @@ function setupCombinedObserver() {
         });
     });
     
-    window.__combinedObserver.observe(document.body, { childList: true, subtree: true });
+    window._o2.observe(document.body, { childList: true, subtree: true });
 }
 
 function truncateChatTitle() {
@@ -329,97 +329,71 @@ function truncateChatTitle() {
     });
 }
 
-/**
- * Мониторинг генерации через DOM-наблюдение.
- * 
- * Проверяет наличие индикаторов генерации (stop button, streaming indicator,
- * thinking indicator) и уведомляет Rust через set_generation_state.
- * 
- * НЕ патчит window.fetch, НЕ оборачивает Response/ReadableStream.
- * Подсчёт загрузок файлов — только на стороне Rust (WebResourceRequested).
- */
-function setupGenerationMonitor() {
-    if (window.__generationMonitorInstalled) return;
-    window.__generationMonitorInstalled = true;
-    
-    const tabNum = window.__CLAUDE_TAB__ || 1;
-    let wasGenerating = false;
-    let offTimer = null;
-    // Задержка перед сбросом: Claude может делать thinking → response
-    // с короткой паузой между стримами, не сбрасываем сразу
-    const DEBOUNCE_OFF_MS = 2000;
-    
-    function notifyRust(generating) {
-        try {
-            if (window.__TAURI__?.core?.invoke) {
-                window.__TAURI__.core.invoke('set_generation_state', { tab: tabNum, generating: generating });
-            }
-        } catch(e) {}
-    }
-    
-    function checkGeneration() {
-        const SEL = window.__SEL__;
-        if (!SEL) return;
-        
-        let isGenerating = false;
-        
-        // 1. Stop button — самый надёжный индикатор
-        const stopSelectors = SEL.generation?.stopButton;
-        if (stopSelectors) {
-            const arr = Array.isArray(stopSelectors) ? stopSelectors : [stopSelectors];
-            for (const sel of arr) {
-                try { if (document.querySelector(sel)) { isGenerating = true; break; } } catch(e) {}
-            }
-        }
-        
-        // 2. Streaming indicator
-        if (!isGenerating && SEL.generation?.streamingIndicator) {
-            try { if (document.querySelector(SEL.generation.streamingIndicator)) isGenerating = true; } catch(e) {}
-        }
-        
-        // 3. Thinking indicator
-        if (!isGenerating && SEL.generation?.thinkingIndicator) {
-            try { if (document.querySelector(SEL.generation.thinkingIndicator)) isGenerating = true; } catch(e) {}
-        }
-        
-        // Переход idle → generating: мгновенно
-        if (isGenerating && !wasGenerating) {
-            if (offTimer) { clearTimeout(offTimer); offTimer = null; }
-            wasGenerating = true;
-            notifyRust(true);
-        }
-        // Переход generating → idle: с debounce (пауза между thinking и response)
-        else if (!isGenerating && wasGenerating) {
-            if (!offTimer) {
-                offTimer = setTimeout(() => {
-                    offTimer = null;
-                    wasGenerating = false;
-                    notifyRust(false);
-                }, DEBOUNCE_OFF_MS);
-            }
-        }
-        // Всё ещё генерирует — отменяем pending off timer
-        else if (isGenerating && wasGenerating && offTimer) {
-            clearTimeout(offTimer);
-            offTimer = null;
-        }
-    }
-    
-    // Polling с умеренной частотой
-    if (window.__generationMonitorInterval) {
-        clearInterval(window.__generationMonitorInterval);
-    }
-    window.__generationMonitorInterval = setInterval(checkGeneration, 700);
-}
-
 function initClaudeUI() {
+    // === Мониторинг генерации через Tauri invoke ===
+    // DOM polling → _inv('set_generation_state', {tab, generating}) → AtomicBool в Rust
+    // Main WebView читает через check_generation_status (polling 500мс).
+    // Sticky: при пропадании DOM-индикаторов состояние держится ещё ~2 сек
+    // (7 тиков × 300мс) чтобы пережить переходы Claude между фазами.
+    if (!window._g0) {
+        window._g0 = true;
+        var lastState = false;
+        var falseCount = 0;
+        var GEN_STICKY_COUNT = 7; // 7 × 300мс ≈ 2 сек
+        
+        function checkGenerating() {
+            var SEL = window._s;
+            if (!SEL || !SEL.generation) return;
+            
+            var detected = false;
+            
+            var stopSelectors = SEL.generation.stopButton;
+            if (stopSelectors) {
+                var arr = Array.isArray(stopSelectors) ? stopSelectors : [stopSelectors];
+                for (var i = 0; i < arr.length; i++) {
+                    try { if (document.querySelector(arr[i])) { detected = true; break; } } catch(e) {}
+                }
+            }
+            if (!detected && SEL.generation.streamingIndicator) {
+                try { if (document.querySelector(SEL.generation.streamingIndicator)) detected = true; } catch(e) {}
+            }
+            if (!detected && SEL.generation.thinkingIndicator) {
+                try { if (document.querySelector(SEL.generation.thinkingIndicator)) detected = true; } catch(e) {}
+            }
+            
+            // Sticky logic
+            var isGenerating;
+            if (detected) {
+                falseCount = 0;
+                isGenerating = true;
+            } else if (lastState) {
+                falseCount++;
+                isGenerating = falseCount < GEN_STICKY_COUNT;
+            } else {
+                isGenerating = false;
+            }
+            
+            if (isGenerating !== lastState) {
+                lastState = isGenerating;
+                // Прямой invoke → AtomicBool в Rust (надёжный канал, _inv проверен)
+                if (window._inv) {
+                    try { window._inv('set_generation_state', { tab: window._t, generating: isGenerating }); } catch(e) {}
+                }
+            }
+        }
+        
+        if (window._g1) clearInterval(window._g1);
+        window._g1 = setInterval(checkGenerating, 300);
+        checkGenerating();
+    }
+    
     // Получаем селектор для artifact controls
     const artifactControlsSelector = __getSel__('ui.artifactControls') || '[data-testid="wiggle-controls-actions"]';
     
     // Стили для скрытия элементов и убирания рамок фокуса
-    if (!document.getElementById('tauri-custom-styles')) {
+    if (!document.getElementById('_cs')) {
         const style = document.createElement('style');
-        style.id = 'tauri-custom-styles';
+        style.id = '_cs';
         style.textContent = `
             *:focus { outline: none !important; }
             *:focus-visible { outline: none !important; }
@@ -448,10 +422,10 @@ function initClaudeUI() {
     setupGlobalClickListener();
     
     // Резервный интервал (редкий, на случай пропуска)
-    if (window.__claudeUIInterval) {
-        clearInterval(window.__claudeUIInterval);
+    if (window._u0) {
+        clearInterval(window._u0);
     }
-    window.__claudeUIInterval = setInterval(() => { hideSidebar(); truncateChatTitle(); }, 5000);
+    window._u0 = setInterval(() => { hideSidebar(); truncateChatTitle(); }, 5000);
     
     // Health-check селекторов через 3 сек (DOM должен стабилизироваться)
     setTimeout(runSelectorHealthCheck, 3000);
@@ -461,12 +435,12 @@ function initClaudeUI() {
  * Слушает клики в Claude webview и закрывает downloads popup
  */
 function setupGlobalClickListener() {
-    if (window.__globalClickListenerInstalled) return;
-    window.__globalClickListenerInstalled = true;
+    if (window._c0) return;
+    window._c0 = true;
     
     document.addEventListener('click', () => {
-        if (window.__TAURI__?.core?.invoke) {
-            window.__TAURI__.core.invoke('hide_downloads').catch(() => {});
+        if (window._inv) {
+            window._inv('hide_downloads').catch(() => {});
         }
     }, { capture: true });
 }
@@ -479,8 +453,8 @@ function setupGlobalClickListener() {
  * Не патчит history.pushState/replaceState.
  */
 function setupUrlChangeDetection() {
-    if (window.__urlChangeDetectionInstalled) return;
-    window.__urlChangeDetectionInstalled = true;
+    if (window._d0) return;
+    window._d0 = true;
     
     let lastUrl = location.href;
     
@@ -496,9 +470,9 @@ function setupUrlChangeDetection() {
             if (oldBase === newBase) return;
             
             // Уведомляем Tauri
-            if (window.__TAURI__?.core?.invoke) {
-                window.__TAURI__.core.invoke('notify_url_change', { 
-                    tab: window.__CLAUDE_TAB__ || 1,
+            if (window._inv) {
+                window._inv('notify_url_change', { 
+                    tab: window._t || 1,
                     url: location.href 
                 }).catch(() => {});
             }
@@ -511,8 +485,8 @@ function setupUrlChangeDetection() {
     });
     
     // Периодическая проверка (ловит SPA-навигацию через pushState)
-    if (window.__urlCheckInterval) {
-        clearInterval(window.__urlCheckInterval);
+    if (window._d1) {
+        clearInterval(window._d1);
     }
-    window.__urlCheckInterval = setInterval(checkUrlChange, 2000);
+    window._d1 = setInterval(checkUrlChange, 2000);
 }

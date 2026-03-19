@@ -8,9 +8,9 @@ use std::fs;
 use chrono::Local;
 
 use crate::types::{ArchiveLogEntry, DownloadEntry, DiagnosticEntry};
-use crate::state::{ARCHIVE_LOG_LOCK, DOWNLOADS_LOG_LOCK, DIAGNOSTICS_LOG_LOCK};
+use crate::state::{ARCHIVE_LOG_LOCK, DIAGNOSTICS_LOG_LOCK};
 use crate::downloads::paths::{get_archive_log_path, get_downloads_log_path, get_diagnostics_log_path};
-use crate::utils::dimensions::limits::{MAX_ARCHIVE_LOG_ENTRIES, MAX_DOWNLOADS_LOG_ENTRIES, MAX_DIAGNOSTICS_ENTRIES};
+use crate::utils::dimensions::limits::{MAX_ARCHIVE_LOG_ENTRIES, MAX_DIAGNOSTICS_ENTRIES};
 
 // ============================================================================
 // Лог архивов (скачанные из Claude файлы)
@@ -233,57 +233,6 @@ pub fn get_downloads_log() -> Result<Vec<DownloadEntry>, String> {
     }
     
     Ok(valid_entries)
-}
-
-/// Добавляет запись в лог загрузок
-///
-/// Потокобезопасная запись. Не добавляет дубликаты (по file_path).
-///
-/// # Arguments
-/// * `filename` - имя файла
-/// * `file_path` - полный путь к файлу
-#[tauri::command]
-pub fn add_download_entry(filename: String, file_path: String) -> Result<(), String> {
-    let _guard = DOWNLOADS_LOG_LOCK.lock()
-        .map_err(|_| "Downloads log lock poisoned")?;
-    
-    let log_path = get_downloads_log_path().ok_or("Cannot get log path")?;
-    
-    // Создаём директорию если нет
-    if let Some(parent) = log_path.parent() {
-        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-    
-    // Читаем существующий лог
-    let mut entries: Vec<DownloadEntry> = if log_path.exists() {
-        let content = fs::read_to_string(&log_path).unwrap_or_default();
-        serde_json::from_str(&content).unwrap_or_default()
-    } else {
-        Vec::new()
-    };
-    
-    // Проверяем, нет ли уже записи с таким file_path
-    if entries.iter().any(|e| e.file_path == file_path) {
-        return Ok(());
-    }
-    
-    // Добавляем новую запись
-    entries.push(DownloadEntry {
-        timestamp: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-        filename,
-        file_path,
-    });
-    
-    // Ограничиваем размер
-    if entries.len() > MAX_DOWNLOADS_LOG_ENTRIES {
-        entries = entries.split_off(entries.len() - MAX_DOWNLOADS_LOG_ENTRIES);
-    }
-    
-    // Сохраняем
-    let json = serde_json::to_string_pretty(&entries).map_err(|e| e.to_string())?;
-    fs::write(&log_path, json).map_err(|e| e.to_string())?;
-    
-    Ok(())
 }
 
 // ============================================================================

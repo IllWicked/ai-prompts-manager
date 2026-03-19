@@ -87,7 +87,7 @@ en: {
 
 | Код | Язык | Мультигео |
 |-----|------|-----------|
-| en | английский | 🌍 6 стран (US, GB, CA, AU, NZ, IE) |
+| en | английский | 🌍 7 стран (US, GB, CA, AU, NZ, IE, ET) |
 | de | немецкий | 🌍 4 страны (DE, AT, CH, BE) |
 | fr | французский | 🌍 4 страны (FR, CA, CH, BE) |
 | nl | голландский | 🌍 2 страны (NL, BE) |
@@ -159,7 +159,7 @@ getLanguageWithCountry('en', 'us');
 ### Хранение
 
 - **Runtime:** `blockAttachments[blockId]` — `{name, type, path, data}`
-- **Отправка:** через `attachFilesToMessage()`
+- **Отправка:** через `attachAllFiles()` (batch — один eval, все файлы за раз)
 
 ---
 
@@ -268,11 +268,13 @@ function setupDownloadListeners()
 **Структура `ArchiveLogEntry`:**
 ```javascript
 {
-    tab: string,          // Номер Claude таба (1-3)
+    tab: number,          // Номер Claude таба (1-3), u8 в Rust
     filename: string,     // Имя файла архива
     claudeUrl: string,    // URL в Claude
-    filePath: string,     // Путь к файлу (опционально)
-    timestamp: string     // ISO дата
+    filePath: string,     // Путь к файлу (опционально, serde default)
+    projectName: string,  // Имя проекта из URL (опционально, serde default)
+    downloadCount: number,// Счётчик скачиваний, дубли объединяются (default 1)
+    timestamp: string     // Дата в формате "YYYY-MM-DD HH:MM:SS"
 }
 ```
 
@@ -280,7 +282,7 @@ function setupDownloadListeners()
 
 | Команда | Описание |
 |---------|----------|
-| `add_archive_log_entry(tab, filename, claudeUrl)` | Добавить |
+| `add_archive_log_entry(tab, filename, claudeUrl, filePath?)` | Добавить |
 | `get_archive_log()` | Получить |
 | `clear_archive_log()` | Очистить |
 
@@ -359,6 +361,78 @@ function setupDownloadListeners()
 |---------|------|----------|
 | `writeDiagnostic(eventType, details)` | utils.js | Запись события в диагностику |
 | `export_diagnostics` | logs.rs | Tauri: экспорт файла диагностики |
+
+---
+
+## Knowledge Upload
+
+Автозагрузка скачанных MD-файлов в knowledge проекта Claude.
+
+### Как работает
+
+При скачивании файла из Claude WebView проверяется:
+1. Расширение `.md`
+2. Наличие активного проекта (`isProjectActive()`)
+
+Если оба условия выполнены — файл загружается в knowledge через `POST /api/organizations/{orgId}/projects/{uuid}/docs`, после чего удаляется с диска.
+
+### Функции
+
+| Функция | Файл | Описание |
+|---------|------|----------|
+| `uploadToProjectKnowledge(filePath, filename)` | claude-api.js | Чтение файла (Rust) → base64 → CDP eval fetch → delete |
+
+### Toast-уведомления
+
+| Ситуация | Toast |
+|----------|-------|
+| Успешная загрузка | `📎 file.md → knowledge` |
+| Ошибка загрузки | `⚠️ Knowledge upload failed: {error}` |
+
+---
+
+## SERP Scraper
+
+Автосбор данных из Google — новый тип блока на холсте workflow.
+
+### Как работает
+
+1. Пользователь добавляет скрапер-блок на canvas (максимум 1 на вкладку)
+2. Задаёт ключевое слово и поисковые запросы через модалку (⚙)
+3. Нажимает Start — приложение создаёт скрытый WebView, выполняет запросы в Google
+4. Для каждого результата фетчит и очищает HTML страницы
+5. Собранные файлы загружаются в knowledge активного проекта Claude
+
+### Tauri-команды
+
+| Команда | Описание |
+|---------|----------|
+| `create_scraper_webview` | Создание скрытого WebView2 для скрапинга |
+| `destroy_scraper_webview` | Закрытие скрапер-WebView |
+| `scrape_google_serp` | Выполнение серии запросов, извлечение и сохранение результатов |
+
+### Файлы
+
+| Файл | Описание |
+|------|----------|
+| `src-tauri/src/commands/scraper.rs` | Backend-логика скрапинга |
+| `src-tauri/scripts/serp_extract.js` | Извлечение органических результатов из SERP |
+
+---
+
+## Auto-Continue
+
+Автоматический клик Continue при достижении tool-use limit в Claude.
+
+### Как работает
+
+Скрипт `claude_autocontinue.js` инжектируется в каждый Claude WebView. Поллит DOM каждые 2-4 сек (с jitter). При обнаружении кнопки Continue **и** фразы о tool-use limit в последнем сообщении — кликает с задержкой 1.5-3 сек. Toast через Tauri emit в Main WebView.
+
+### Настройка
+
+Тогл: Настройки → Дополнительно → Auto-continue. По умолчанию выключен. Сохраняется в `settings.autoContinue`.
+
+→ Подробнее: [04-CLAUDE.md](04-CLAUDE.md#auto-continue-v440)
 
 ---
 

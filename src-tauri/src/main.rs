@@ -16,7 +16,7 @@ use tauri::{
 use ai_prompts_manager::{
     utils, 
     webview, 
-    commands::{app, claude, attachments, downloads, logs, toolbar, storage},
+    commands::{app, claude, attachments, downloads, logs, toolbar, storage, scraper},
 };
 
 fn main() {
@@ -35,15 +35,12 @@ fn main() {
             
             // Claude commands
             claude::init_claude_webviews,
-            claude::preload_claude,
             claude::toggle_claude,
             claude::get_active_tab,
             claude::switch_claude_tab,
             claude::switch_claude_tab_with_url,
             claude::get_tab_url,
             claude::get_claude_state,
-            claude::new_chat_in_tab,
-            claude::reload_claude_tab,
             claude::recreate_claude_tab,
             claude::navigate_claude_tab,
             claude::notify_url_change,
@@ -61,19 +58,17 @@ fn main() {
             attachments::read_file_for_attachment,
             attachments::write_temp_file,
             attachments::attach_file_to_claude,
+            attachments::attach_files_batch,
             attachments::get_upload_count,
             attachments::reset_upload_count,
-            attachments::increment_upload_count,
             
             // Storage commands
             storage::save_tabs_to_file,
             storage::load_tabs_from_file,
             storage::delete_tabs_file,
-            storage::get_tabs_file_size,
             
             // Downloads commands
             downloads::get_downloads_path,
-            downloads::set_downloads_path,
             downloads::pick_downloads_folder,
             downloads::open_file,
             downloads::delete_download,
@@ -84,7 +79,6 @@ fn main() {
             logs::clear_archive_log,
             logs::add_archive_log_entry,
             logs::get_downloads_log,
-            logs::add_download_entry,
             logs::write_diagnostic,
             logs::export_diagnostics,
             
@@ -95,10 +89,16 @@ fn main() {
             toolbar::toolbar_recreate,
             toolbar::show_downloads,
             toolbar::hide_downloads,
-            toolbar::forward_scroll,
-            toolbar::forward_click,
+            
+            // Scraper commands
+            scraper::create_scraper_webview,
+            scraper::destroy_scraper_webview,
+            scraper::scrape_google_serp,
         ])
         .setup(|app| {
+            // Разрешаем множественные загрузки с claude.ai до создания WebView2
+            webview::allow_claude_multiple_downloads();
+            
             // Создаём окно - на весь экран
             let window = WindowBuilder::new(app, "main")
                 .title("AI Prompts Manager")

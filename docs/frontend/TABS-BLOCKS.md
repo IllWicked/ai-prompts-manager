@@ -8,6 +8,7 @@
 |---------|----------|
 | `getTabItems(tabId)` | Все items вкладки (блоки + разделители) |
 | `getTabBlocks(tabId)` | Только блоки с нумерацией |
+| `getTabScrapers(tabId)` | Только скрапер-элементы вкладки |
 | `createNewTab(name)` | Создать вкладку |
 | `renameTab(oldId, newName)` | Переименовать (меняет и name, и id) |
 | `deleteTab(id)` | Удалить (кроме последней) |
@@ -125,8 +126,8 @@ Incremental snapshots + input grouping + hash comparison. Per-tab система
 
 **Константы:**
 - `MAX_HISTORY_SIZE = 50` — максимум записей в истории
-- `SNAPSHOT_DEBOUNCE_MS = 1000` — debounce для набора текста
-- `INPUT_GROUP_MS = 2000` — пауза для группировки быстрых правок
+- `SNAPSHOT_DEBOUNCE_MS = 300` — debounce для набора текста
+- `INPUT_GROUP_MS = 800` — пауза для группировки быстрых правок
 
 ### Внутренние функции
 
@@ -134,7 +135,7 @@ Incremental snapshots + input grouping + hash comparison. Per-tab система
 |---------|----------|
 | `djb2Hash(str)` | Быстрое хеширование строки |
 | `hashTabData(tabData)` | Хеш данных вкладки (content + title блоков) |
-| `hashWorkflow()` | Хеш workflow состояния (positions, connections, sizes) |
+| `hashWorkflow()` | Хеш workflow состояния (positions, connections, sizes, notes, colors) |
 | `captureFullState()` | Захват полного состояния (lazy workflow — только в workflow mode) |
 | `hasStateChanged(lastSnapshot)` | Проверка изменений через hash comparison |
 | `applyState(state)` | Применение состояния при undo/redo (crash-safe через `finally`) |
@@ -188,7 +189,9 @@ UndoManager.redo();
     workflow: {
         positions: {...},   // из глобальных переменных (не localStorage)
         connections: [...],
-        sizes: {...}
+        sizes: {...},
+        notes: [...],       // заметки на canvas (v4.4.0+)
+        colors: {...}       // цвета блоков (v4.4.0+)
     },
     tabData: {...},          // deep clone из getAllTabs() кэша
     fieldValues: {...},      // из localStorage (field-value-*)

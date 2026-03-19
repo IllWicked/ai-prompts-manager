@@ -157,7 +157,8 @@ const LANGUAGE_COUNTRIES = {
         { code: 'ca', name: 'Канада', locale: 'en-CA' },
         { code: 'au', name: 'Австралия', locale: 'en-AU' },
         { code: 'nz', name: 'Новая Зеландия', locale: 'en-NZ' },
-        { code: 'ie', name: 'Ирландия', locale: 'en-IE' }
+        { code: 'ie', name: 'Ирландия', locale: 'en-IE' },
+        { code: 'et', name: 'Эфиопия', locale: 'en-ET' }
     ],
     de: [
         { code: 'de', name: 'Германия', locale: 'de-DE' },
@@ -532,6 +533,17 @@ function resolveMarkersToText(text, langCode, countryCode) {
     if (!text) return text;
     // Сначала убираем маркеры скрытых полей
     let result = stripFieldMarkers(text);
+    // Раскрываем {{SERP}} или {{SERP:id}} → keyword из первого scraper-блока
+    result = result.replace(/\{\{SERP(?::([a-z0-9_-]+))?\}\}/gi, (match, scraperId) => {
+        try {
+            const items = getTabItems(currentTab);
+            const scraper = scraperId
+                ? (items.find(i => i.type === 'scraper' && i.id === scraperId) || items.find(i => i.type === 'scraper'))
+                : items.find(i => i.type === 'scraper');
+            if (!scraper?.keyword) return match;
+            return resolveMarkersToText(scraper.keyword, langCode, countryCode);
+        } catch (_) { return match; }
+    });
     // Затем раскрываем языковые маркеры
     result = result.replace(MARKER_REGEX, (match, type, form) => {
         return resolveMarker(type, form, langCode, countryCode);
@@ -549,19 +561,31 @@ function resolveMarkersToText(text, langCode, countryCode) {
 function renderMarkedContent(text, langCode, countryCode) {
     if (!text) return '';
     // Убираем маркеры скрытых полей перед рендерингом
-    const cleanText = stripFieldMarkers(text);
-    // Разбиваем на куски: обычный текст и маркеры
+    let cleanText = stripFieldMarkers(text);
+    
+    // Раскрываем {{SERP}} или {{SERP:id}} → подсвеченный keyword
+    cleanText = cleanText.replace(/\{\{SERP(?::([a-z0-9_-]+))?\}\}/gi, (match, scraperId) => {
+        try {
+            const items = getTabItems(currentTab);
+            const scraper = scraperId
+                ? (items.find(i => i.type === 'scraper' && i.id === scraperId) || items.find(i => i.type === 'scraper'))
+                : items.find(i => i.type === 'scraper');
+            if (!scraper?.keyword) return escapeHtmlForMarkers(match);
+            const resolved = resolveMarkersToText(scraper.keyword, langCode, countryCode);
+            return `\u0000SERP_START\u0000${escapeHtmlForMarkers(resolved)}\u0000SERP_END\u0000`;
+        } catch (_) { return escapeHtmlForMarkers(match); }
+    });
+    
+    // Разбиваем на куски: обычный текст и языковые маркеры
     const parts = [];
     let lastIndex = 0;
     const regex = new RegExp(MARKER_REGEX.source, 'g');
     let match;
     
     while ((match = regex.exec(cleanText)) !== null) {
-        // Текст до маркера
         if (match.index > lastIndex) {
             parts.push(escapeHtmlForMarkers(cleanText.slice(lastIndex, match.index)));
         }
-        // Маркер → оранжевый span
         const type = match[1];
         const form = match[2] || '';
         const resolved = resolveMarker(type, form, langCode, countryCode);
@@ -569,12 +593,14 @@ function renderMarkedContent(text, langCode, countryCode) {
         lastIndex = regex.lastIndex;
     }
     
-    // Остаток текста
     if (lastIndex < cleanText.length) {
         parts.push(escapeHtmlForMarkers(cleanText.slice(lastIndex)));
     }
     
-    return parts.join('');
+    // Заменяем SERP sentinel обратно на подсвеченные span-ы
+    return parts.join('')
+        .replace(/\u0000SERP_START\u0000/g, '<span class="lang-marker">')
+        .replace(/\u0000SERP_END\u0000/g, '</span>');
 }
 
 /**
@@ -584,7 +610,7 @@ function renderMarkedContent(text, langCode, countryCode) {
  */
 function hasLanguageMarkers(text) {
     if (!text) return false;
-    // Используем новый regex без флага g для .test() (избегаем проблем с lastIndex)
+    if (/\{\{SERP(?::[a-z0-9_-]+)?\}\}/i.test(text)) return true;
     return /\{\{(lang|native|country|locale)(?::([a-z]+(?:\.[a-z]+)?))?\}\}/.test(text);
 }
 

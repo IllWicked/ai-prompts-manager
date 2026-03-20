@@ -1,6 +1,6 @@
 {
   "name": "ai-prompts-manager",
-  "version": "4.4.1",
+  "version": "4.4.2",
   "description": "AI Prompts Manager - Unit tests configuration",
   "private": true,
   "scripts": {

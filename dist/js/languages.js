@@ -157,8 +157,7 @@ const LANGUAGE_COUNTRIES = {
         { code: 'ca', name: 'Канада', locale: 'en-CA' },
         { code: 'au', name: 'Австралия', locale: 'en-AU' },
         { code: 'nz', name: 'Новая Зеландия', locale: 'en-NZ' },
-        { code: 'ie', name: 'Ирландия', locale: 'en-IE' },
-        { code: 'et', name: 'Эфиопия', locale: 'en-ET' }
+        { code: 'ie', name: 'Ирландия', locale: 'en-IE' }
     ],
     de: [
         { code: 'de', name: 'Германия', locale: 'de-DE' },

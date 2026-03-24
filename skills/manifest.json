@@ -1,16 +1,11 @@
 {
-    "version": "1.0.5",
+    "version": "1.0.6",
     "updated": "2026-03-24",
     "skills": [
         {
             "name": "content-writing-style",
             "file": "content-writing-style.skill",
-            "size": 18547
-        },
-        {
-            "name": "quality-audit",
-            "file": "quality-audit.skill",
-            "size": 5015
+            "size": 21666
         }
     ]
 }

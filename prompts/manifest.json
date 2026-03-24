@@ -13,14 +13,23 @@
     "bet-pillar-main": {
       "name": "BET-PILLAR-MAIN",
       "version": "1.0.44",
-      "order": 6
+      "order": 5
     },
     "gamble-pillar-main": {
       "name": "GAMBLE-PILLAR-MAIN",
       "version": "1.0.9",
       "order": 3
+    },
+    "gamble-mirror-nogeo": {
+      "name": "GAMBLE-MIRROR-NOGEO",
+      "version": "1.0.0",
+      "order": 4
+    },
+    "gamble-mirror": {
+      "name": "GAMBLE-MIRROR",
+      "version": "1.0.0",
+      "order": 6
     }
   },
-  "release_notes": "ЧТО НОВОГО:",
-  "updated": "2026-03-23"
+  "updated": "2026-03-24"
 }

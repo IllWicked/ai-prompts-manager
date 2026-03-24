@@ -1,11 +1,11 @@
 {
-    "version": "1.0.3",
+    "version": "1.0.4",
     "updated": "2026-03-24",
     "skills": [
         {
-            "name": "content-writing-style",
-            "file": "content-writing-style.skill",
-            "size": 18507
+            "name": "html-page-design",
+            "file": "html-page-design.skill",
+            "size": 18619
         }
     ]
 }

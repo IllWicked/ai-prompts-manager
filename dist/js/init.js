@@ -1149,6 +1149,27 @@ function initSettingsHandlers() {
         }
     });
     
+    document.getElementById('manual-skills-check-btn')?.addEventListener('click', async () => {
+        const btn = document.getElementById('manual-skills-check-btn');
+        const originalHtml = btn.innerHTML;
+        btn.classList.add('checking');
+        btn.disabled = true;
+        
+        try {
+            const result = await refreshAndBindSkills((status) => {
+                btn.textContent = status;
+            });
+            
+            showToast(result.message, result.success ? 2000 : 3000);
+        } catch (e) {
+            showToast(`✗ Ошибка: ${String(e).slice(0, 50)}`, 3000);
+        } finally {
+            btn.innerHTML = originalHtml;
+            btn.classList.remove('checking');
+            btn.disabled = false;
+        }
+    });
+    
     // Темы
     document.getElementById('theme-light')?.addEventListener('click', () => setTheme('light'));
     document.getElementById('theme-auto')?.addEventListener('click', () => setTheme('auto'));

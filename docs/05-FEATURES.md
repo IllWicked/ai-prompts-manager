@@ -436,6 +436,38 @@ function setupDownloadListeners()
 
 ---
 
+## Agent Skills {#agent-skills}
+
+Система скиллов — третья обновляемая сущность рядом с программой и промптами. Скиллы (`.skill` файлы) — ZIP-архивы (5-18 KB), содержащие `SKILL.md` + `references/` + `scripts/`. Привязываются к аккаунту Claude через внутренний API.
+
+### Архитектура
+
+Два независимых процесса: **скачивание** (GitHub → localStorage) и **привязка** (localStorage → Claude API).
+
+Скачивание: `remote-skills.js` загружает `skills/manifest.json` с GitHub, сравнивает `version` с кэшированным, при отличии скачивает все `.skill` файлы как base64, сохраняет в `localStorage['remote-skills-data']`.
+
+Привязка: `uploadSkillsToClaude()` в `claude-api.js` — для каждого скилла выполняет `cdpEval` в Claude WebView: `atob` → `Uint8Array` → `Blob` → `FormData` → `fetch('/api/organizations/{orgId}/skills/upload-skill?overwrite=true')`.
+
+### localStorage ключи
+
+| Ключ | Содержимое |
+|------|-----------|
+| `remote-skills-manifest` | `{version, updated, skills: [...]}` |
+| `remote-skills-data` | `{"html-page-design": "UEsDBBQ...", ...}` (base64) |
+| `remote-skills-last-check` | timestamp |
+
+### UI
+
+- Кнопка «Скиллы» в настройках (ряд с «Обновление» и «Промпты») — проверка обновлений с GitHub
+- Кнопка «Привязать» в Дополнительно — загрузка в аккаунт Claude
+- Модалка `skills-update-modal` — версия, список скиллов, обновление
+
+### Project Manager
+
+Push скиллов интегрирован в меню Push (пункт 2 главного меню, рядом с push промптов). При push автоинкрементится версия манифеста, манифест пересобирается по фактическим `.skill` файлам. Бинарная загрузка через `github_api_put_binary_file`.
+
+---
+
 ## Связанные документы
 
 - [02-FRONTEND.md](02-FRONTEND.md) — JS модули

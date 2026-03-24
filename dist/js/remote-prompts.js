@@ -191,13 +191,12 @@ async function checkForPromptsUpdate(showModal = false) {
         newTabs,
         updatedTabs,
         removedTabs,
-        remoteManifest,
-        releaseNotes: remoteManifest.release_notes || ''
+        remoteManifest
     };
     
     if (showModal) {
         if (hasUpdates) {
-            showPromptsUpdateAvailable(newTabs, updatedTabs, remoteManifest.release_notes, removedTabs);
+            showPromptsUpdateAvailable(newTabs, updatedTabs, removedTabs);
         } else {
             showPromptsUpdateLatest();
         }
@@ -465,15 +464,13 @@ function removeObsoleteTabs(removedTabs) {
 /**
  * Показывает модалку "Обновление доступно"
  */
-function showPromptsUpdateAvailable(newTabs, updatedTabs, releaseNotes = '', removedTabs = []) {
+function showPromptsUpdateAvailable(newTabs, updatedTabs, removedTabs = []) {
     if (typeof closeAllModals === 'function') closeAllModals();
     
     const modal = document.getElementById('prompts-update-modal');
     const availableState = document.getElementById('prompts-update-available-state');
     const latestState = document.getElementById('prompts-update-latest-state');
     const listEl = document.getElementById('prompts-update-list');
-    const notesContainer = document.getElementById('prompts-update-notes');
-    const notesContent = document.getElementById('prompts-update-notes-content');
     const titleEl = document.getElementById('prompts-update-title');
     const subtitleEl = document.getElementById('prompts-update-subtitle');
     const hintEl = document.getElementById('prompts-update-hint');
@@ -535,22 +532,6 @@ function showPromptsUpdateAvailable(newTabs, updatedTabs, releaseNotes = '', rem
     }
     if (listEl) listEl.innerHTML = listHtml;
     
-    // Патчноуты
-    if (notesContainer && notesContent) {
-        if (releaseNotes && releaseNotes.trim()) {
-            let formattedNotes = releaseNotes
-                .replace(/\r\n/g, '\n')
-                .replace(/^### (.+)$/gm, '<strong class="block mt-2 mb-1">$1</strong>')
-                .replace(/^- (.+)$/gm, '<div class="flex gap-2"><span class="text-claude-accent">•</span><span>$1</span></div>')
-                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\n/g, '<br>');
-            notesContent.innerHTML = formattedNotes;
-            notesContainer.classList.remove('hidden');
-        } else {
-            notesContainer.classList.add('hidden');
-        }
-    }
-    
     // Показываем кнопки "Обновить" и "Позже", скрываем "OK"
     if (applyBtn) applyBtn.classList.remove('hidden');
     if (laterBtn) laterBtn.classList.remove('hidden');
@@ -599,7 +580,7 @@ function hidePromptsUpdateModal() {
 async function applyPendingPromptsUpdate() {
     if (!lastPromptsCheck || !lastPromptsCheck.hasUpdates) return;
     
-    const { newTabs, updatedTabs, removedTabs = [], remoteManifest, releaseNotes } = lastPromptsCheck;
+    const { newTabs, updatedTabs, removedTabs = [], remoteManifest } = lastPromptsCheck;
     const allTabs = [...newTabs, ...updatedTabs];
     
     if (allTabs.length === 0 && removedTabs.length === 0) return;
@@ -629,7 +610,7 @@ async function applyPendingPromptsUpdate() {
         hidePromptsUpdateModal();
         
         if (result.updated.length > 0 || removedTabs.length > 0) {
-            showPromptsReleaseNotes(newTabs, updatedTabs, releaseNotes, removedTabs);
+            showPromptsReleaseNotes(newTabs, updatedTabs, removedTabs);
         }
         if (result.failed.length > 0) {
             if (typeof showToast === 'function') {
@@ -650,7 +631,7 @@ async function applyPendingPromptsUpdate() {
 
 /**
  * Инициализирует промпты при первом запуске (нет данных в localStorage)
- * @returns {Promise<{success: boolean, tabs?: Array, releaseNotes?: string}>}
+ * @returns {Promise<{success: boolean, tabs?: Array}>}
  */
 async function initializeRemotePrompts() {
     // Загружаем манифест
@@ -675,8 +656,7 @@ async function initializeRemotePrompts() {
     if (result.success) {
         return { 
             success: true, 
-            tabs: newTabs,
-            releaseNotes: manifest.release_notes || ''
+            tabs: newTabs
         };
     } else {
         console.error('[RemotePrompts] Initialization failed:', result.failed);
@@ -694,8 +674,6 @@ async function autoCheckPromptsUpdates() {
         const result = await checkForPromptsUpdate(false);
         
         if (result.hasUpdates) {
-            const releaseNotes = result.remoteManifest.release_notes || '';
-            
             // Удаляем вкладки, которых больше нет в манифесте
             if (result.removedTabs.length > 0) {
                 removeObsoleteTabs(result.removedTabs);
@@ -719,7 +697,7 @@ async function autoCheckPromptsUpdates() {
             if (typeof initTabSelector === 'function') initTabSelector();
             
             // Показываем модалку "Что нового" после обновления
-            showPromptsReleaseNotes(result.newTabs, result.updatedTabs, releaseNotes, result.removedTabs);
+            showPromptsReleaseNotes(result.newTabs, result.updatedTabs, result.removedTabs);
         }
     } catch (e) {
         console.error('[RemotePrompts] Auto-check failed:', e);
@@ -729,15 +707,13 @@ async function autoCheckPromptsUpdates() {
 /**
  * Показывает модалку "Что нового" после автоматического обновления
  */
-function showPromptsReleaseNotes(newTabs, updatedTabs, releaseNotes = '', removedTabs = []) {
+function showPromptsReleaseNotes(newTabs, updatedTabs, removedTabs = []) {
     if (typeof closeAllModals === 'function') closeAllModals();
     
     const modal = document.getElementById('prompts-update-modal');
     const availableState = document.getElementById('prompts-update-available-state');
     const latestState = document.getElementById('prompts-update-latest-state');
     const listEl = document.getElementById('prompts-update-list');
-    const notesContainer = document.getElementById('prompts-update-notes');
-    const notesContent = document.getElementById('prompts-update-notes-content');
     const titleEl = document.getElementById('prompts-update-title');
     const subtitleEl = document.getElementById('prompts-update-subtitle');
     const hintEl = document.getElementById('prompts-update-hint');
@@ -785,22 +761,6 @@ function showPromptsReleaseNotes(newTabs, updatedTabs, releaseNotes = '', remove
         });
     }
     if (listEl) listEl.innerHTML = listHtml;
-    
-    // Патчноуты
-    if (notesContainer && notesContent) {
-        if (releaseNotes && releaseNotes.trim()) {
-            let formattedNotes = releaseNotes
-                .replace(/\r\n/g, '\n')
-                .replace(/^### (.+)$/gm, '<strong class="block mt-2 mb-1">$1</strong>')
-                .replace(/^- (.+)$/gm, '<div class="flex gap-2"><span class="text-claude-accent">•</span><span>$1</span></div>')
-                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\n/g, '<br>');
-            notesContent.innerHTML = formattedNotes;
-            notesContainer.classList.remove('hidden');
-        } else {
-            notesContainer.classList.add('hidden');
-        }
-    }
     
     // Скрываем кнопки "Обновить" и "Позже", показываем только "OK"
     if (applyBtn) applyBtn.classList.add('hidden');

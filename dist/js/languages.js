@@ -385,6 +385,16 @@ const LANGUAGES = {
         aboutUs: 'Despre noi',
         legalInfo: 'Informații legale',
         cookiePolicy: 'Politica de cookies',
+    },
+    et: {
+        lang: 'эстонский',
+        native: 'эстоноязычный',
+        country: 'Эстония',
+        locale: 'et-EE',
+        privacyPolicy: 'Privaatsuspoliitika',
+        aboutUs: 'Meist',
+        legalInfo: 'Õiguslik teave',
+        cookiePolicy: 'Küpsiste poliitika',
     }
 };
 

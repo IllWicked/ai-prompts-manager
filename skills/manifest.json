@@ -1,11 +1,10 @@
 {
-    "version": "1.0.7",
-    "updated": "2026-03-24",
+    "version": "1.0.0",
+    "updated": "2026-03-23",
     "skills": [
-        {
-            "name": "content-writing-style",
-            "file": "content-writing-style.skill",
-            "size": 21796
-        }
+        {"name": "content-writing-style", "file": "content-writing-style.skill", "size": 6007},
+        {"name": "html-page-design", "file": "html-page-design.skill", "size": 18455},
+        {"name": "logo-and-branding", "file": "logo-and-branding.skill", "size": 5626},
+        {"name": "quality-audit", "file": "quality-audit.skill", "size": 4931}
     ]
 }

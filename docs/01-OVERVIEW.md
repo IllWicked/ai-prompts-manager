@@ -48,9 +48,13 @@ ai-prompts-manager/
 │   ├── manifest.json           # Манифест вкладок с версиями
 │   └── *.json                  # JSON файлы вкладок
 │
+├── skills/                     # Agent Skills (создаётся при push через project-manager.py)
+│   ├── manifest.json           # Манифест скиллов с версиями
+│   └── *.skill                 # ZIP-архивы скиллов
+│
 ├── docs/                       # Документация
 ├── project-manager/            # CLI управления
-│   └── project-manager.py      # Скрипт управления промптами и релизами
+│   └── project-manager.py      # Скрипт управления промптами, скиллами и релизами
 ├── tests/                      # Unit-тесты (Jest)
 └── .github/workflows/          # CI/CD
 

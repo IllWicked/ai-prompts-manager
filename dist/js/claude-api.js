@@ -52,6 +52,8 @@
  *   - finishProject()
  *   - getProjectUUIDFromUrl(url)
  *   - restoreProjectState()
+ *   - uploadToProjectKnowledge(filePath, filename)
+ *   - uploadSkillsToClaude(onProgress)
  *   
  * Перенесено в claude-state.js:
  *   - isProjectActive()
@@ -648,7 +650,6 @@ function abortSendToClaude(tab) {
             state.abort = null;
             state.sending = false;
             generatingTabs[tab] = false;
-            _genAwaitConfirm[tab] = false;
             updateClaudeUI();
             showToast(`Чат ${tab}: отправка отменена`);
             return true;
@@ -664,7 +665,6 @@ function abortSendToClaude(tab) {
             state.abort = null;
             state.sending = false;
             generatingTabs[t] = false;
-            _genAwaitConfirm[t] = false;
             aborted = true;
         }
     }
@@ -776,7 +776,6 @@ async function sendNodeToClaude(index, chatTab) {
     
     const block = blocks[index];
     const blockId = block.id;
-    let sendCompleted = false;
     
     try {
         // ─── CHECKPOINT: init ────────────────────────────────────────
@@ -889,7 +888,6 @@ async function sendNodeToClaude(index, chatTab) {
         
         // ─── CHECKPOINT: done ────────────────────────────────────────
         SendCheckpoint.setFor(targetTab, 'done');
-        sendCompleted = true;
         
         // Запоминаем название блока для этого таба
         const blockName = block.title || `Блок ${index + 1}`;
@@ -950,13 +948,6 @@ async function sendNodeToClaude(index, chatTab) {
     } finally {
         state.sending = false;
         state.abort = null;
-        // При успешной отправке: кнопки остаются disabled через generatingTabs.
-        // Sticky debounce в claude_helpers.js (~2 сек) определит реальный конец.
-        // При abort/error: sendCompleted=false → кнопки включаются сразу.
-        if (sendCompleted) {
-            generatingTabs[targetTab] = true;
-            _genAwaitConfirm[targetTab] = Date.now(); // timestamp для таймаута 30 сек
-        }
         updateClaudeUI();
     }
 }
@@ -1064,13 +1055,10 @@ async function injectGenerationMonitor(tab) {
 }
 
 
-const _genAwaitConfirm = {}; // tab → timestamp когда ждём подтверждения от helpers
-
-
 /**
  * Проверка статуса генерации через Rust (AtomicBool).
  * claude_helpers.js → _inv('set_generation_state') → AtomicBool
- * Здесь: check_generation_status → читаем AtomicBool. Мгновенно, без URL hash.
+ * Здесь: check_generation_status → читаем AtomicBool. Мгновенно.
  */
 async function checkAllGenerationStatus() {
     let changed = false;
@@ -1079,24 +1067,13 @@ async function checkAllGenerationStatus() {
             const isGenerating = await window.__TAURI__.core.invoke('check_generation_status', { tab });
             const wasGenerating = generatingTabs[tab] || false;
             
-            if (isGenerating) {
-                _genAwaitConfirm[tab] = false;
-                if (!wasGenerating) {
-                    generatingTabs[tab] = true;
-                    changed = true;
-                }
-            } else if (wasGenerating) {
-                if (_genAwaitConfirm[tab]) {
-                    if (Date.now() - _genAwaitConfirm[tab] > 30000) {
-                        _genAwaitConfirm[tab] = false;
-                        generatingTabs[tab] = false;
-                        changed = true;
-                    }
-                } else {
-                    generatingTabs[tab] = false;
-                    changed = true;
-                    showToast(`Чат ${tab}: Claude закончил`, 3000);
-                }
+            if (isGenerating && !wasGenerating) {
+                generatingTabs[tab] = true;
+                changed = true;
+            } else if (!isGenerating && wasGenerating) {
+                generatingTabs[tab] = false;
+                changed = true;
+                showToast(`Чат ${tab}: Claude закончил`, 3000);
             }
             
             // Обновляем URL таба
@@ -1696,6 +1673,90 @@ async function uploadToProjectKnowledge(filePath, filename) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SKILLS UPLOAD
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Загружает скиллы в аккаунт Claude через внутренний API
+ * @param {function} [onProgress] - колбэк (current, total, name)
+ * @returns {Promise<{success: boolean, uploaded: number, total: number, errors: string[]}>}
+ */
+async function uploadSkillsToClaude(onProgress) {
+    const claudeTab = activeClaudeTab;
+    
+    // Получаем org_id
+    const orgId = await getOrganizationId(claudeTab);
+    if (!orgId) {
+        return { success: false, uploaded: 0, total: 0, errors: ['No organization ID'] };
+    }
+    
+    // Получаем кэшированные скиллы
+    const skills = typeof getCachedSkills === 'function' ? getCachedSkills() : {};
+    const names = Object.keys(skills);
+    if (names.length === 0) {
+        return { success: false, uploaded: 0, total: 0, errors: ['No cached skills'] };
+    }
+    
+    const total = names.length;
+    let uploaded = 0;
+    const errors = [];
+    
+    for (let i = 0; i < names.length; i++) {
+        const name = names[i];
+        const base64 = skills[name];
+        
+        if (onProgress) onProgress(i + 1, total, name);
+        
+        const script = `
+            (async function() {
+                try {
+                    const base64 = ${JSON.stringify(base64)};
+                    const binary = atob(base64);
+                    const bytes = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                    const blob = new Blob([bytes], {type: 'application/zip'});
+                    
+                    const formData = new FormData();
+                    formData.append('file', blob, ${JSON.stringify(name + '.skill')});
+                    
+                    const response = await fetch(
+                        '/api/organizations/${orgId}/skills/upload-skill?overwrite=true',
+                        { method: 'POST', credentials: 'include', body: formData }
+                    );
+                    
+                    if (!response.ok) {
+                        const text = await response.text().catch(() => '');
+                        return { success: false, name: ${JSON.stringify(name)}, status: response.status, error: text };
+                    }
+                    
+                    const result = await response.json();
+                    return { success: true, name: result.skill?.name || ${JSON.stringify(name)} };
+                } catch (e) {
+                    return { success: false, name: ${JSON.stringify(name)}, error: e.message };
+                }
+            })();
+        `;
+        
+        try {
+            const resultStr = await cdpEval(claudeTab, script, {
+                timeoutType: 'slow', maxRetries: 2
+            });
+            const result = JSON.parse(resultStr);
+            
+            if (result?.success) {
+                uploaded++;
+            } else {
+                errors.push(`${name}: ${result?.error || 'HTTP ' + result?.status}`);
+            }
+        } catch (e) {
+            errors.push(`${name}: CDP failed — ${e}`);
+        }
+    }
+    
+    return { success: errors.length === 0, uploaded, total, errors };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // SCRAPER AUTO-CHAIN
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1825,6 +1886,7 @@ window.isCurrentTabProjectOwner = isCurrentTabProjectOwner;
 window.restoreProjectState = restoreProjectState;
 window.initProjectUrlTracking = initProjectUrlTracking;
 window.uploadToProjectKnowledge = uploadToProjectKnowledge;
+window.uploadSkillsToClaude = uploadSkillsToClaude;
 window.onScrapeComplete = onScrapeComplete;
 
 // CDP Resilience Layer

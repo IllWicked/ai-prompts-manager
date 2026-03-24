@@ -40,6 +40,7 @@
     <script src="js/config.js"></script>
     <script src="js/app-state.js"></script>
     <script src="js/remote-prompts.js"></script>
+    <script src="js/remote-skills.js"></script>
     <script src="js/languages.js"></script>
     <script src="js/language-ui.js"></script>
     <script src="js/embedded-scripts.js"></script>
@@ -129,6 +130,7 @@
                                 <svg class="w-3 h-3 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                             </div>
                             <div class="language-option px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors" data-value="es">ES Испанский</div>
+                            <div class="language-option px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors" data-value="et">ET Эстонский</div>
                             <div class="language-option px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors" data-value="fi">FI Финский</div>
                             <div class="language-option has-submenu px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors flex items-center justify-between" data-value="fr">
                                 <span>FR Французский</span>
@@ -588,12 +590,6 @@
                 <div id="prompts-update-list" class="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 mb-4 max-h-[150px] overflow-y-auto border border-gray-100">
                 </div>
                 
-                <!-- Патчноуты -->
-                <div id="prompts-update-notes" class="hidden mb-4">
-                    <p class="text-xs font-medium text-gray-500 tracking-wider mb-2">Что нового:</p>
-                    <div id="prompts-update-notes-content" class="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 max-h-[150px] overflow-y-auto border border-gray-100"></div>
-                </div>
-                
                 <p id="prompts-update-hint" class="text-xs text-gray-400 mb-2">Новые вкладки будут добавлены автоматически. Обновления существующих вкладок применяются по запросу.</p>
                 
                 <div class="flex justify-end gap-3 mt-6">
@@ -632,7 +628,7 @@
     
     <!-- МОДАЛЬНОЕ ОКНО НАСТРОЕК -->
     <div id="settings-modal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-content" style="max-width: 460px;">
             <h3 class="text-lg font-semibold mb-2 text-gray-800">Настройки</h3>
             
             <!-- Переключатель автообновлений -->
@@ -671,6 +667,12 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
                         Промпты
+                    </button>
+                    <button id="manual-skills-check-btn" class="btn btn-secondary flex-1 text-xs px-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                        </svg>
+                        Скиллы
                     </button>
                 </div>
             </div>
@@ -829,7 +831,7 @@
             <!-- Версия и кнопка закрытия -->
             <div class="pt-2 border-t border-gray-200 flex items-center justify-between">
                 <span id="version-label" class="text-xs text-gray-400 cursor-default select-none">
-                    Версия: <span id="settings-version">4.4.3</span>
+                    Версия: <span id="settings-version">4.4.4</span>
                 </span>
                 <button id="settings-close-btn" class="btn btn-primary">
                     Закрыть
@@ -893,7 +895,7 @@
     <script>
         /**
          * ╔═══════════════════════════════════════════════════════════════════════════╗
-         * ║                    AI PROMPTS MANAGER v4.4.3                              ║
+         * ║                    AI PROMPTS MANAGER v4.4.4                              ║
          * ║                                                                           ║
          * ║  Tauri 2.0 приложение для управления промптами с интеграцией Claude AI   ║
          * ╚═══════════════════════════════════════════════════════════════════════════╝

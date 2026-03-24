@@ -41,7 +41,7 @@ async function initializeDefaultTabs() {
             if (result.success) {
                 // Показываем модалку "Промпты загружены"
                 if (typeof showPromptsReleaseNotes === 'function' && result.tabs) {
-                    showPromptsReleaseNotes(result.tabs, [], result.releaseNotes);
+                    showPromptsReleaseNotes(result.tabs, []);
                 }
                 return;
             }
@@ -197,7 +197,8 @@ async function performReset(options = {}) {
             key.startsWith('field-value-') ||
             key.startsWith('collapsed-') ||
             key.startsWith('block-') ||
-            key.startsWith('remote-prompts')
+            key.startsWith('remote-prompts') ||
+            key.startsWith('remote-skills')
         )) {
             // Не удаляем ключи настроек
             if (!key.includes('settings')) {

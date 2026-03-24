@@ -1,6 +1,6 @@
 # AI Prompts Manager — Документация
 
-> **Версия:** 4.4.3 | [CHANGELOG](reference/CHANGELOG.md)
+> **Версия:** 4.4.4 | [CHANGELOG](reference/CHANGELOG.md)
 
 ## Быстрый старт
 
@@ -21,7 +21,7 @@ cd src-tauri && cargo tauri dev
 │   Main WebView    │   Claude WebView (Tab 1-3) │
 │   (UI приложения) │   (claude.ai)              │
 │   - index.html    ├─────────────────────────────┤
-│   - 34 JS модулей │   Toolbar + Downloads       │
+│   - 35 JS модулей │   Toolbar + Downloads       │
 └───────────────────┴─────────────────────────────┘
 ```
 
@@ -151,7 +151,7 @@ cd src-tauri && cargo tauri dev
 ai-prompts-manager/
 ├── dist/                    # Frontend
 │   ├── index.html           # UI + подключение JS модулей
-│   ├── js/                  # 34 JS модулей
+│   ├── js/                  # 35 JS модулей
 │   └── css/                 # Стили
 │
 ├── src-tauri/               # Backend
@@ -159,6 +159,8 @@ ai-prompts-manager/
 │   └── scripts/             # Инжектируемые скрипты
 │
 ├── tests/                   # Unit-тесты (Jest)
+├── prompts/                 # Промпты для GitHub
+├── skills/                  # Скиллы для GitHub
 ├── docs/                    # Документация
 └── project-manager/         # CLI управления
 ```
@@ -170,6 +172,7 @@ ai-prompts-manager/
 | Термин | Документ |
 |--------|----------|
 | Active Project | [04-CLAUDE](04-CLAUDE.md) |
+| Agent Skills | [05-FEATURES](05-FEATURES.md#agent-skills) |
 | Auto-Continue | [04-CLAUDE](04-CLAUDE.md) |
 | AppState | [frontend/APPSTATE](frontend/APPSTATE.md) |
 | Block | [frontend/DATA-STRUCTURES](frontend/DATA-STRUCTURES.md) |

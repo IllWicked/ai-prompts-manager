@@ -611,6 +611,11 @@ body {
     animation: pulse-icon 0.8s ease-in-out infinite;
 }
 
+/* Пульсация иконки при проверке скиллов */
+#manual-skills-check-btn.checking svg {
+    animation: pulse-icon 0.8s ease-in-out infinite;
+}
+
 @keyframes pulse-icon {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
@@ -4387,7 +4392,7 @@ header .flex {
     background: white;
     color: var(--text-muted);
     cursor: pointer;
-    transition: var(--transition-fast);
+    transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;

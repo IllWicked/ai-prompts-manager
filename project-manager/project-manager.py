@@ -127,27 +127,19 @@ class PromptsManager:
         self.script_dir = script_dir
         self.prompts_dir = script_dir / PROMPTS_DIR
         self.manifest_path = self.prompts_dir / MANIFEST_FILE
-        self.release_notes_path = script_dir / "RELEASE_NOTES_PROMPTS.txt"
     
     def ensure_dir(self) -> None:
         self.prompts_dir.mkdir(exist_ok=True)
     
-    def load_release_notes(self) -> str:
-        """Загружает release notes из файла"""
-        if self.release_notes_path.exists():
-            return self.release_notes_path.read_text(encoding='utf-8').strip()
-        return ""
-    
     def load_manifest(self) -> Dict:
         if not self.manifest_path.exists():
-            return {"version": "1.0.0", "updated": "", "release_notes": "", "tabs": {}}
+            return {"version": "1.0.0", "updated": "", "tabs": {}}
         return json.loads(self.manifest_path.read_text(encoding='utf-8'))
     
     def save_manifest(self, manifest: Dict) -> None:
         self.ensure_dir()
         manifest["updated"] = datetime.now().strftime("%Y-%m-%d")
-        # Загружаем release_notes из файла
-        manifest["release_notes"] = self.load_release_notes()
+        manifest.pop("release_notes", None)
         self.manifest_path.write_text(
             json.dumps(manifest, ensure_ascii=False, indent=2),
             encoding='utf-8'
@@ -517,6 +509,39 @@ def github_api_put_file(path: str, content: str, message: str, token: str, sha: 
     except Exception as e:
         return False, str(e)
 
+def github_api_put_binary_file(path: str, binary_data: bytes, message: str, token: str, sha: str = None) -> Tuple[bool, str]:
+    """Создаёт или обновляет бинарный файл через GitHub API"""
+    import urllib.request
+    import urllib.error
+    import base64
+    
+    url = f"{GITHUB_API_BASE}/repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/{path}"
+    
+    content_b64 = base64.b64encode(binary_data).decode('utf-8')
+    
+    data = {
+        "message": message,
+        "content": content_b64,
+        "branch": "main"
+    }
+    
+    if sha:
+        data["sha"] = sha
+    
+    req = urllib.request.Request(url, data=json.dumps(data).encode('utf-8'), method='PUT')
+    req.add_header('Authorization', f'token {token}')
+    req.add_header('Accept', 'application/vnd.github.v3+json')
+    req.add_header('Content-Type', 'application/json')
+    
+    try:
+        with urllib.request.urlopen(req, timeout=30):
+            return True, "OK"
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode('utf-8')
+        return False, f"HTTP {e.code}: {error_body[:200]}"
+    except Exception as e:
+        return False, str(e)
+
 def github_api_delete_file(path: str, message: str, token: str, sha: str) -> Tuple[bool, str]:
     """Удаляет файл через GitHub API"""
     import urllib.request
@@ -656,11 +681,10 @@ def git_add_remote(script_dir: Path, url: str) -> Tuple[bool, str]:
     return True, "Remote добавлен"
 
 def git_commit_prompts(script_dir: Path, message: str, tab_ids: List[str] = None) -> Tuple[bool, str]:
-    """Коммитит только промпты и release notes.
+    """Коммитит только промпты.
     Если tab_ids указан — добавляет только эти вкладки + манифест.
     """
     prompts_dir = script_dir / PROMPTS_DIR
-    release_notes_file = script_dir / "RELEASE_NOTES_PROMPTS.txt"
     
     if tab_ids:
         # Добавляем только указанные файлы + манифест
@@ -677,9 +701,6 @@ def git_commit_prompts(script_dir: Path, message: str, tab_ids: List[str] = None
         success, _, err = run_git(['add', '--ignore-removal', str(prompts_dir)], script_dir)
         if not success:
             return False, f"Ошибка git add prompts: {err}"
-    
-    if release_notes_file.exists():
-        run_git(['add', str(release_notes_file)], script_dir)
     
     # Check if there's anything STAGED to commit
     success, stdout, _ = run_git(['diff', '--cached', '--name-only'], script_dir)
@@ -1128,7 +1149,6 @@ def menu_prompts(script_dir: Path, project_dir: Path):
         print("\n  1. Переименовать вкладку (GitHub)")
         print("  2. Удалить вкладку (GitHub)")
         print("  3. Изменить порядок вкладок (GitHub)")
-        print("  4. Редактировать Release Notes")
         print("  ─────────────────────────────────────")
         print("  0. ← Назад")
         
@@ -1142,10 +1162,6 @@ def menu_prompts(script_dir: Path, project_dir: Path):
             submenu_delete_tab(script_dir)
         elif choice == '3':
             submenu_reorder_tabs(script_dir)
-        elif choice == '4':
-            open_in_editor(project_dir / 'RELEASE_NOTES_PROMPTS.txt')
-            print("\n  ✓ Файл открыт в редакторе")
-            press_any_key()
 
 def submenu_rename_tab(script_dir: Path):
     print("\n  ─── ПЕРЕИМЕНОВАНИЕ ВКЛАДКИ (GitHub) ───")
@@ -1405,28 +1421,38 @@ def submenu_reorder_tabs(script_dir: Path):
 # ═══════════════════════════════════════════════════════════════════════════
 
 def menu_git(script_dir: Path, project_dir: Path):
-    """Подменю Git операций"""
+    """Подменю Push операций"""
+    
     while True:
         clear_screen()
         
         print("\n  ═══════════════════════════════════════════════════════")
-        print("                       PUSH ПРОМПТОВ")
+        print("                          PUSH")
         print("  ═══════════════════════════════════════════════════════\n")
         
-        # JSON файлы к пушу
+        # JSON файлы к пушу промптов
         json_files = [f for f in script_dir.glob('*.json') 
                       if f.name != 'manifest.json' and f.parent == script_dir]
         
         if json_files:
-            print(f"  📁 JSON файлов к пушу: {len(json_files)}")
+            print(f"  📝 JSON файлов к пушу: {len(json_files)}")
             for f in json_files:
                 print(f"      - {f.name}")
         else:
-            print("  📁 Нет JSON файлов для пуша")
-            print("     Положи экспортированные вкладки рядом со скриптом")
+            print("  📝 Нет JSON файлов для пуша промптов")
+        
+        # .skill файлы к пушу (лежат рядом со скриптом)
+        skill_files = sorted(script_dir.glob('*.skill'))
+        if skill_files:
+            print(f"\n  ⚡ Скиллов к пушу: {len(skill_files)}")
+            for sf in skill_files:
+                print(f"      - {sf.name} ({sf.stat().st_size / 1024:.1f} KB)")
+        else:
+            print("\n  ⚡ Нет .skill файлов для пуша")
         
         print("\n  ─────────────────────────────────────")
-        print("  1. ↑ Push (отправить JSON на GitHub)")
+        print("  1. ↑ Push промптов на GitHub")
+        print("  2. ↑ Push скиллов на GitHub")
         print("  ─────────────────────────────────────")
         print("  0. ← Назад")
         
@@ -1436,6 +1462,8 @@ def menu_git(script_dir: Path, project_dir: Path):
             break
         elif choice == '1':
             submenu_git_push(script_dir, project_dir)
+        elif choice == '2':
+            _push_skills(script_dir)
 
 def submenu_git_push(script_dir: Path, project_dir: Path):
     print("\n  ─── PUSH ПРОМПТОВ НА GITHUB ───")
@@ -1529,19 +1557,14 @@ def submenu_git_push(script_dir: Path, project_dir: Path):
         for i, (tab_id, info) in enumerate(tabs_sorted, 1):
             manifest['tabs'][tab_id]['order'] = i
     
-    # Обновляем release_notes из локального файла (в корне проекта)
-    release_notes_path = project_dir / "RELEASE_NOTES_PROMPTS.txt"
-    if release_notes_path.exists():
-        manifest['release_notes'] = release_notes_path.read_text(encoding='utf-8').strip()
+    manifest.pop('release_notes', None)
     manifest['updated'] = datetime.now().strftime("%Y-%m-%d")
     
     # Добавляем манифест
     manifest_content = json.dumps(manifest, ensure_ascii=False, indent=2)
     files_to_push.append(("prompts/manifest.json", manifest_content))
     
-    message = input("\n  Сообщение коммита (Enter = авто): ").strip()
-    if not message:
-        message = f"Prompts update {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+    message = f"Prompts update {datetime.now().strftime('%Y-%m-%d %H:%M')}"
     
     if not confirm(f"Отправить {len(files_to_push)} файлов?"):
         return
@@ -1746,6 +1769,124 @@ def submenu_create_release(project_dir: Path):
 # ГЛАВНОЕ МЕНЮ
 # ═══════════════════════════════════════════════════════════════════════════
 
+# ═══════════════════════════════════════════════════════════════════════════
+# PUSH СКИЛЛОВ
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _push_skills(script_dir: Path):
+    """Пушит скиллы на GitHub. .skill файлы лежат рядом со скриптом, удаляются после пуша."""
+    print("\n  ─── PUSH СКИЛЛОВ НА GITHUB ───")
+    
+    token = get_github_token()
+    if not token:
+        print("\n  ⚠ Нет GitHub токена!")
+        print("  Установи: set GITHUB_TOKEN=твой_токен")
+        press_any_key()
+        return
+    
+    # Ищем .skill файлы рядом со скриптом
+    skill_files = sorted(script_dir.glob('*.skill'))
+    if not skill_files:
+        print("\n  ⚠ Нет .skill файлов для отправки!")
+        print("  Положи .skill файлы рядом со скриптом.")
+        press_any_key()
+        return
+    
+    # Загружаем текущий манифест с GitHub для определения версии
+    print("\n  📡 Загрузка данных с GitHub...", end="", flush=True)
+    github_manifest = None
+    try:
+        import urllib.request
+        import base64
+        url = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/skills/manifest.json"
+        req = urllib.request.Request(url, headers={
+            'Accept': 'application/vnd.github.v3+json',
+            'Authorization': f'token {token}',
+            'User-Agent': 'ai-prompts-manager'
+        })
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            github_manifest = json.loads(base64.b64decode(data['content']).decode('utf-8'))
+    except:
+        pass
+    print(f" {'✓' if github_manifest else '!'} {'Загружено' if github_manifest else 'Новый репозиторий'}")
+    
+    # Определяем версию (автоинкремент)
+    old_version = github_manifest.get('version', '0.0.0') if github_manifest else None
+    if old_version:
+        parts = old_version.split('.')
+        parts[-1] = str(int(parts[-1]) + 1)
+        new_version = '.'.join(parts)
+    else:
+        new_version = '1.0.0'
+    
+    # Собираем манифест из файлов к пушу
+    skills_list = []
+    print(f"\n  📂 Подготовка файлов ({len(skill_files)})...\n")
+    for sf in skill_files:
+        skills_list.append({
+            "name": sf.stem,
+            "file": sf.name,
+            "size": sf.stat().st_size
+        })
+        if old_version:
+            print(f"     {sf.name} ({sf.stat().st_size / 1024:.1f} KB)")
+        else:
+            print(f"     {sf.name} ({sf.stat().st_size / 1024:.1f} KB) (новый)")
+    
+    manifest = {
+        "version": new_version,
+        "updated": datetime.now().strftime("%Y-%m-%d"),
+        "skills": skills_list
+    }
+    
+    if old_version:
+        print(f"\n  Версия: v{old_version} → v{new_version}")
+    else:
+        print(f"\n  Версия: v{new_version}")
+    
+    message = f"Skills v{new_version}"
+    
+    if not confirm(f"Отправить {len(skill_files) + 1} файлов?"):
+        return
+    
+    print("\n  📤 Загрузка на GitHub...")
+    errors = []
+    
+    # Загружаем .skill файлы (бинарные)
+    for sf in skill_files:
+        path = f"skills/{sf.name}"
+        existing = github_api_get_file(path, token)
+        sha = existing.get('sha') if existing else None
+        success, err = github_api_put_binary_file(path, sf.read_bytes(), message, token, sha)
+        print(f"     {'✓' if success else '✗'} {sf.name}" + (f": {err}" if not success else ""))
+        if not success:
+            errors.append(sf.name)
+    
+    # Загружаем манифест (текстовый)
+    manifest_content = json.dumps(manifest, ensure_ascii=False, indent=4)
+    path = "skills/manifest.json"
+    existing = github_api_get_file(path, token)
+    sha = existing.get('sha') if existing else None
+    success, err = github_api_put_file(path, manifest_content, message, token, sha)
+    print(f"     {'✓' if success else '✗'} manifest.json" + (f": {err}" if not success else ""))
+    if not success:
+        errors.append("manifest.json")
+    
+    if not errors:
+        # Очистка — удаляем .skill файлы рядом со скриптом
+        print("\n  🧹 Очистка...")
+        for sf in skill_files:
+            try:
+                sf.unlink()
+            except:
+                pass
+        print(f"  ✓ Готово! ({len(skill_files)} скиллов, v{new_version})")
+    else:
+        print(f"\n  ⚠ Ошибки: {', '.join(errors)}")
+    
+    press_any_key()
+
 def main_menu():
     """Главное меню"""
     script_dir = Path(__file__).parent  # project-manager/
@@ -1767,15 +1908,23 @@ def main_menu():
         # JSON файлы к пушу (лежат рядом со скриптом)
         json_files = [f for f in script_dir.glob('*.json') 
                       if f.name != 'manifest.json' and f.parent == script_dir]
-        if json_files:
-            print(f"\n  📁 JSON файлов к пушу: {len(json_files)}")
-            for f in json_files:
-                print(f"      - {f.name}")
+        skill_files = sorted(script_dir.glob('*.skill'))
+        
+        if json_files or skill_files:
+            print()
+            if json_files:
+                print(f"  📝 JSON файлов к пушу: {len(json_files)}")
+                for f in json_files:
+                    print(f"      - {f.name}")
+            if skill_files:
+                print(f"  ⚡ Скиллов к пушу: {len(skill_files)}")
+                for f in skill_files:
+                    print(f"      - {f.name}")
         
         print("\n  ГЛАВНОЕ МЕНЮ:")
         print("  ═════════════════════════════════════")
         print("  1. 📝 Промпты (переименовать/порядок на GitHub)")
-        print("  2. 📦 Push (отправить JSON на GitHub)")
+        print("  2. 📦 Push (промпты и скиллы на GitHub)")
         print("  3. 🚀 Релизы (новая версия программы)")
         print("  ═════════════════════════════════════")
         print("  0. Выход")

@@ -8,6 +8,46 @@
 
 ---
 
+## [Unreleased] {#unreleased}
+
+### Новые функции
+
+#### Agent Skills — система скиллов Claude
+- **Скиллы (`.skill` файлы)** — ZIP-архивы с `SKILL.md` + `references/` + `scripts/`, привязываются к аккаунту Claude через внутренний API
+- **4 скилла в комплекте:** `content-writing-style`, `html-page-design`, `logo-and-branding`, `quality-audit`
+- **Автообновление:** скиллы скачиваются с GitHub при первом запуске и обновляются автоматически при наличии новой версии
+- **Привязка к аккаунту:** кнопка «Привязать» в Дополнительно → загрузка через `POST /api/organizations/{orgId}/skills/upload-skill?overwrite=true` в Claude WebView
+- **Новый модуль `remote-skills.js`** — скачивание, кэширование (base64 в localStorage), версионирование скиллов
+- **Новая функция `uploadSkillsToClaude()`** в claude-api.js — CDP eval → atob → Blob → FormData → fetch
+- **UI:** третья кнопка «Скиллы» в настройках, модалка обновления скиллов, кнопка привязки в Дополнительно
+- **Project Manager:** push скиллов в меню Push (рядом с промптами), автоинкремент версии манифеста
+
+### Изменено
+
+- **Ширина модалки настроек:** 400px → 460px (три кнопки в ряд)
+- **Project Manager:** меню Push теперь содержит два пункта — промпты и скиллы
+
+### Новые файлы
+
+| Файл | Описание |
+|------|----------|
+| `dist/js/remote-skills.js` | Модуль скачивания и кэширования скиллов |
+| `skills/manifest.json` | Манифест скиллов для GitHub |
+| `skills/*.skill` | 4 файла скиллов |
+
+### Изменённые файлы
+
+| Файл | Изменения |
+|------|-----------|
+| `dist/index.html` | `<script>` remote-skills.js, кнопка «Скиллы», кнопка «Привязать», модалка `skills-update-modal`, ширина 460px |
+| `dist/css/styles.css` | Анимация `#manual-skills-check-btn.checking` |
+| `dist/js/claude-api.js` | Функция `uploadSkillsToClaude()`, `github_api_put_binary_file()` |
+| `dist/js/init.js` | Обработчики кнопок скиллов, `initSkillsUpdateHandlers()`, `initializeDefaultSkills()`, `autoCheckSkillsUpdates()` |
+| `dist/js/persistence.js` | Экспорт `initializeDefaultSkills()`, очистка `remote-skills*` при сбросе |
+| `project-manager/project-manager.py` | Подменю скиллов (push + версия), `SKILLS_DIR`, `github_api_put_binary_file()` |
+
+---
+
 ## [4.4.0] - 2026-03-15 {#v440}
 
 ### Новые функции

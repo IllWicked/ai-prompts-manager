@@ -8,8 +8,8 @@
   "generation": {
     "_comment": "Индикаторы генерации ответа",
     "stopButton": [
-      "button[aria-label='Stop Response']",
-      "button[aria-label='Stop']",
+      "button[aria-label='Stop response' i]",
+      "button[aria-label='Stop' i]",
       "[data-testid='stop-button']"
     ],
     "streamingIndicator": "[data-is-streaming='true']",

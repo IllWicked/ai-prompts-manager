@@ -199,6 +199,7 @@ stopGenerationMonitor();
 | `restoreProjectState()` | Восстановить из localStorage |
 | `initProjectUrlTracking()` | Запуск отслеживания URL |
 | `uploadToProjectKnowledge(filePath, filename)` | Загрузить MD-файл в knowledge проекта |
+| `uploadSkillsToClaude(onProgress)` | Загрузить скиллы в аккаунт Claude |
 
 ```javascript
 // Получить UUID из URL
@@ -214,6 +215,12 @@ await finishProject();
 // Загрузить файл в knowledge
 const result = await uploadToProjectKnowledge('/path/to/file.md', 'file.md');
 // { success: true } или { success: false, error: '...' }
+
+// Загрузить скиллы в аккаунт Claude
+const skillResult = await uploadSkillsToClaude((current, total, name) => {
+    console.log(`Загрузка ${name} (${current}/${total})`);
+});
+// { success: true, uploaded: 4, total: 4, errors: [] }
 ```
 
 ### Scraper (1 функция)

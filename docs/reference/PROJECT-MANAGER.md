@@ -2,7 +2,7 @@
 
 [← Назад к INDEX](../INDEX.md)
 
-CLI-скрипт для управления промптами и релизами AI Prompts Manager.
+CLI-скрипт для управления промптами, скиллами и релизами AI Prompts Manager.
 
 ---
 
@@ -17,7 +17,7 @@ project-root/
 ├── src-tauri/
 ├── dist/
 ├── RELEASE_NOTES.txt
-└── RELEASE_NOTES_PROMPTS.txt
+└── skills/
 ```
 
 ---
@@ -49,7 +49,7 @@ python project-manager.py
   ГЛАВНОЕ МЕНЮ:
   ═════════════════════════════════════
   1. 📝 Промпты (переименовать/порядок на GitHub)
-  2. 📦 Push (отправить JSON на GitHub)
+  2. 📦 Push (промпты и скиллы на GitHub)
   3. 🚀 Релизы (новая версия программы)
   ═════════════════════════════════════
   0. Выход
@@ -66,7 +66,6 @@ python project-manager.py
 | **Переименовать вкладку** | Изменить display name вкладки |
 | **Удалить вкладку** | Удалить вкладку с GitHub |
 | **Изменить порядок вкладок** | Изменить сортировку |
-| **Редактировать Release Notes** | Открыть RELEASE_NOTES_PROMPTS.txt в редакторе |
 
 ### Переименование
 
@@ -93,9 +92,14 @@ python project-manager.py
 
 ## 2. Меню "Push"
 
-Отправка JSON-файлов вкладок на GitHub.
+Отправка промптов и скиллов на GitHub. Два пункта:
 
-### Workflow
+| Пункт | Описание |
+|-------|----------|
+| **Push промптов** | JSON-файлы вкладок из `project-manager/` → GitHub (автоинкремент версии) |
+| **Push скиллов** | `.skill` файлы из `skills/` → GitHub (автоинкремент версии манифеста) |
+
+### Push промптов — Workflow
 
 1. Экспортируй вкладку из приложения (Настройки → Экспорт)
 2. Положи JSON-файл **в папку `project-manager/`** (рядом со скриптом)
@@ -106,9 +110,8 @@ python project-manager.py
 
 1. **Автоинкремент версии** — patch-версия каждой вкладки увеличивается
 2. **Обновление manifest.json** — добавляются новые вкладки, обновляются версии
-3. **Release notes** — берутся из `RELEASE_NOTES_PROMPTS.txt` (в корне проекта)
-4. **Git push** — файлы отправляются на GitHub через API
-5. **Удаление JSON** — после успешного пуша файлы удаляются из папки `project-manager/`
+3. **Git push** — файлы отправляются на GitHub через API
+4. **Удаление JSON** — после успешного пуша файлы удаляются из папки `project-manager/`
 
 ### Структура manifest.json
 
@@ -127,6 +130,16 @@ python project-manager.py
   }
 }
 ```
+
+---
+
+### Push скиллов — Workflow
+
+1. Положи `.skill` файлы в папку `skills/`
+2. Запусти скрипт → Push → Push скиллов
+3. Версия манифеста автоинкрементится, файлы загружаются на GitHub
+
+В отличие от промптов (текстовые JSON), скиллы — бинарные ZIP-файлы. Push использует `github_api_put_binary_file()` для корректной загрузки (base64-кодирование бинарных данных). Манифест пересобирается автоматически по фактическим `.skill` файлам.
 
 ---
 
@@ -184,9 +197,10 @@ python project-manager.py
 | Файл | Расположение | Описание |
 |------|--------------|----------|
 | `RELEASE_NOTES.txt` | Корень проекта | Release notes для приложения |
-| `RELEASE_NOTES_PROMPTS.txt` | Корень проекта | Release notes для промптов |
 | `prompts/manifest.json` | GitHub | Манифест вкладок |
 | `prompts/*.json` | GitHub | JSON-файлы вкладок |
+| `skills/manifest.json` | GitHub | Манифест скиллов |
+| `skills/*.skill` | GitHub | ZIP-архивы скиллов |
 | `*.json` (для пуша) | `project-manager/` | Экспортированные вкладки |
 
 ---
@@ -251,12 +265,13 @@ GitHub API имеет лимиты:
 # project-manager.py
 
 PROMPTS_DIR = 'prompts'
+SKILLS_DIR = 'skills'
 MANIFEST_FILE = 'manifest.json'
 RELEASE_NOTES_FILE = 'RELEASE_NOTES.txt'
 DEFAULT_REMOTE_URL = 'https://github.com/IllWicked/ai-prompts-manager.git'
 ```
 
-> **Примечание:** Папка `prompts/` создаётся автоматически при первом push промптов. До этого она отсутствует в репозитории.
+> **Примечание:** Папки `prompts/` и `skills/` создаются автоматически при первом push. До этого они отсутствуют в репозитории.
 
 ---
 

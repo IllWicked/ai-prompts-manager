@@ -293,6 +293,7 @@ function initLanguageSelector() {
         'dk': 'DK Датский',
         'en': 'EN Английский',
         'es': 'ES Испанский',
+        'et': 'ET Эстонский',
         'fi': 'FI Финский',
         'fr': 'FR Французский',
         'gr': 'GR Греческий',

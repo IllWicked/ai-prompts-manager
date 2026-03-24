@@ -23,7 +23,7 @@
 | Ядро | config.js, app-state.js, utils.js, toast.js, storage.js, modals.js, dropdown.js | ~31 |
 | Языки/скрипты | languages.js, language-ui.js, embedded-scripts.js | ~30 |
 | Вкладки/блоки | tabs.js, tab-selector.js, blocks.js, block-ui.js, undo.js | ~57 |
-| Данные | persistence.js, export-import.js, remote-prompts.js | ~32 |
+| Данные | persistence.js, export-import.js, remote-prompts.js, remote-skills.js | ~36 |
 | UI | settings.js, updates.js, context-menu.js, dynamic-input.js, edit-helpers.js, attachments.js | ~69 |
 | Workflow | workflow-state.js, workflow-grid.js, workflow-zoom.js, workflow-render.js, workflow-interactions.js, connections.js | ~71 |
 | Claude | claude-state.js, claude-ui.js, claude-api.js | ~50 (5+6+39) |
@@ -131,6 +131,7 @@ graph TD
 
     subgraph Features["Функции"]
         REMOTE[remote-prompts.js]
+        RSKILLS[remote-skills.js]
         LANG[languages.js]
         EMBED[embedded-scripts.js]
         UNDO[undo.js]
@@ -186,6 +187,7 @@ graph TD
 <script src="js/config.js"></script>
 <script src="js/app-state.js"></script>
 <script src="js/remote-prompts.js"></script>
+<script src="js/remote-skills.js"></script>
 <script src="js/languages.js"></script>
 <script src="js/language-ui.js"></script>
 <script src="js/embedded-scripts.js"></script>
@@ -236,3 +238,4 @@ graph TD
 | `workflow-render.js` | state, grid, connections | index.html, interactions |
 | `claude-api.js` | state, ui | index.html |
 | `remote-prompts.js` | config, storage | index.html |
+| `remote-skills.js` | config | index.html |

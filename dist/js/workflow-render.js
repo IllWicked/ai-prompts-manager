@@ -357,20 +357,20 @@ function generateExpandedFooterHtml(index, chatTabs, options = {}) {
     const editSvg = SVG_ICONS.edit;
     
     // Кнопка редактирования: полный текст → иконка + "Ред." → только иконка
-    let html = `<button class="workflow-node-btn edit-btn" onclick="editWorkflowNode(${index})" title="Редактировать">${editSvg}<span class="btn-label-full">Редактировать</span><span class="btn-label-short">Ред.</span></button>`;
+    let html = `<button class="workflow-node-btn edit-btn" onclick="editWorkflowNode(${index})">${editSvg}<span class="btn-label-full">Редактировать</span><span class="btn-label-short">Ред.</span></button>`;
     
     // Оффлайн-режим: одна кнопка «Скопировать» вместо кнопок чатов
     if (isOfflineMode()) {
-        html += `<button class="workflow-node-btn primary copy-btn" onclick="copyNodeContent(${index})" title="Скопировать промпт">${copySvg}<span class="btn-label-chat">Скопировать</span></button>`;
+        html += `<button class="workflow-node-btn primary copy-btn" onclick="copyNodeContent(${index})">${copySvg}<span class="btn-label-chat">Скопировать</span></button>`;
     } else if (showChatButtons) {
         // Кнопки отправки в чаты (если разрешено)
         if (chatTabs.length === 1) {
             const isGen = (typeof isTabBusy === 'function' ? isTabBusy(chatTabs[0]) : generatingTabs[chatTabs[0]]) || false;
-            html += `<button class="workflow-node-btn primary chat-btn" onclick="sendNodeToClaude(${index}, ${chatTabs[0]})" title="Отправить в чат"${isGen ? ' disabled' : ''}>${arrowSvg}<span class="btn-label-chat">Чат</span></button>`;
+            html += `<button class="workflow-node-btn primary chat-btn" onclick="sendNodeToClaude(${index}, ${chatTabs[0]})"${isGen ? ' disabled' : ''}>${arrowSvg}<span class="btn-label-chat">Чат</span></button>`;
         } else {
             chatTabs.forEach(tab => {
                 const isGen = (typeof isTabBusy === 'function' ? isTabBusy(tab) : generatingTabs[tab]) || false;
-                html += `<button class="workflow-node-btn primary chat-btn" onclick="sendNodeToClaude(${index}, ${tab})" title="${isGen ? 'Claude генерирует...' : 'Отправить в Чат ' + tab}"${isGen ? ' disabled' : ''}>${arrowSvg}<span class="btn-label-chat">Чат\u00A0</span><span class="btn-label-num">${tab}</span></button>`;
+                html += `<button class="workflow-node-btn primary chat-btn" onclick="sendNodeToClaude(${index}, ${tab})"${isGen ? ' disabled' : ''}>${arrowSvg}<span class="btn-label-chat">Чат\u00A0</span><span class="btn-label-num">${tab}</span></button>`;
             });
         }
     }

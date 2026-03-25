@@ -28,7 +28,7 @@
     "gamble-mirror": {
       "name": "GAMBLE-MIRROR",
       "version": "1.0.1",
-      "order": 8
+      "order": 7
     },
     "test-pillar-skills": {
       "name": "TEST-PILLAR-SKILLS",
@@ -37,8 +37,8 @@
     },
     "bet-wm2026": {
       "name": "BET-WM2026",
-      "version": "1.0.0",
-      "order": 7
+      "version": "1.0.1",
+      "order": 8
     }
   },
   "updated": "2026-03-25"

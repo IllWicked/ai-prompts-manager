@@ -13,7 +13,7 @@
     "bet-pillar-main": {
       "name": "BET-PILLAR-MAIN",
       "version": "1.0.46",
-      "order": 7
+      "order": 5
     },
     "gamble-pillar-main": {
       "name": "GAMBLE-PILLAR-MAIN",
@@ -22,19 +22,24 @@
     },
     "gamble-mirror-nogeo": {
       "name": "GAMBLE-MIRROR-NOGEO",
-      "version": "1.0.0",
-      "order": 4
+      "version": "1.0.1",
+      "order": 6
     },
     "gamble-mirror": {
       "name": "GAMBLE-MIRROR",
-      "version": "1.0.0",
-      "order": 5
+      "version": "1.0.1",
+      "order": 8
     },
     "test-pillar-skills": {
       "name": "TEST-PILLAR-SKILLS",
       "version": "1.0.0",
-      "order": 6
+      "order": 4
+    },
+    "bet-wm2026": {
+      "name": "BET-WM2026",
+      "version": "1.0.0",
+      "order": 7
     }
   },
-  "updated": "2026-03-24"
+  "updated": "2026-03-25"
 }

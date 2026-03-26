@@ -39,7 +39,12 @@
       "name": "BET-WM2026",
       "version": "1.0.2",
       "order": 8
+    },
+    "gamble-mirror-packs": {
+      "name": "GAMBLE-MIRROR-PACKS",
+      "version": "1.0.0",
+      "order": 9
     }
   },
-  "updated": "2026-03-25"
+  "updated": "2026-03-26"
 }

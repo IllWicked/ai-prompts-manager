@@ -44,7 +44,12 @@
       "name": "GAMBLE-MIRROR-PACKS",
       "version": "1.0.1",
       "order": 9
+    },
+    "bet-wm2026-nolinks": {
+      "name": "BET-WM2026-NOLINKS",
+      "version": "1.0.0",
+      "order": 10
     }
   },
-  "updated": "2026-03-27"
+  "updated": "2026-04-02"
 }

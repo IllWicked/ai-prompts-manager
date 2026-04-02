@@ -30,11 +30,13 @@
 - **Исландия (IS)** — исландский язык, locale is-IS
 - **Латвия (LV)** — латышский язык, locale lv-LV
 - **Эстония (ET)** — эстонский язык, locale et-EE
+- **Ирландия (GA)** — ирландский язык, locale ga-IE
+- **Люксембург (LB)** — люксембургский язык, locale lb-LU
 - **Лихтенштейн** — добавлен в мультигео немецкого (de-LI)
 - **Люксембург** — добавлен в мультигео немецкого (de-LU) и французского (fr-LU)
 - **Перу** — добавлен в мультигео испанского (es-PE), ES стал мультигео
 - **Финляндия (шведский)** — добавлен в мультигео шведского (sv-FI), SE стал мультигео
-- Итого: 23 языка, 41 гео-вариант (было 20/32)
+- Итого: 25 языков, 43 гео-варианта (было 20/32)
 
 ### Исправления
 
@@ -65,7 +67,7 @@
 
 | Файл | Изменения |
 |------|-----------|
-| `dist/index.html` | Кнопка «Скиллы», ширина 460px, убрана модалка release notes промптов, IS/LV/ES/SE в дропдауне |
+| `dist/index.html` | Кнопка «Скиллы», ширина 460px, убрана модалка release notes промптов, IS/LV/GA/LB/ES/SE в дропдауне |
 | `dist/css/styles.css` | Анимация `#manual-skills-check-btn.checking`, точечный transition на `.workflow-node-btn` |
 | `dist/js/claude-api.js` | `uploadSkillsToClaude()`, интервал поллинга 500→2000мс, `updateClaudeUI` только при `changed` |
 | `dist/js/workflow-state.js` | `repairWorkflowState()` — автопочинка при загрузке |
@@ -75,8 +77,8 @@
 | `dist/js/remote-prompts.js` | Убраны releaseNotes из всех функций |
 | `dist/js/persistence.js` | Убрана `initializeDefaultSkills()`, очистка `remote-skills*` |
 | `dist/js/init.js` | Обработчик кнопки «Скиллы», авто-ретрай загрузки Claude WebView |
-| `dist/js/languages.js` | IS, LV, ET + мультигео LI, LU, PE, FI(sv) |
-| `dist/js/language-ui.js` | IS, LV, ET в langTexts |
+| `dist/js/languages.js` | IS, LV, ET, GA, LB + мультигео LI, LU, PE, FI(sv) |
+| `dist/js/language-ui.js` | IS, LV, ET, GA, LB в langTexts |
 | `dist/js/settings.js` | ResizeObserver для grid3d высоты |
 | `src-tauri/scripts/selectors.json` | v1.1.0 — обновлены 4 критических селектора |
 | `project-manager/project-manager.py` | Push скиллов, убраны commit message и release notes промптов |

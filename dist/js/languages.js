@@ -426,6 +426,26 @@ const LANGUAGES = {
         aboutUs: 'Par mums',
         legalInfo: 'Juridiskā informācija',
         cookiePolicy: 'Sīkdatņu politika',
+    },
+    ga: {
+        lang: 'ирландский',
+        native: 'ирландскоязычный',
+        country: 'Ирландия',
+        locale: 'ga-IE',
+        privacyPolicy: 'Polasaí Príobháideachais',
+        aboutUs: 'Fúinn',
+        legalInfo: 'Faisnéis Dhlíthiúil',
+        cookiePolicy: 'Polasaí Fianán',
+    },
+    lb: {
+        lang: 'люксембургский',
+        native: 'люксембургскоязычный',
+        country: 'Люксембург',
+        locale: 'lb-LU',
+        privacyPolicy: 'Dateschutz',
+        aboutUs: 'Iwwer eis',
+        legalInfo: 'Rechtlech Informatioun',
+        cookiePolicy: 'Cookie-Richtlinn',
     }
 };
 

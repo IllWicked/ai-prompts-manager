@@ -347,22 +347,23 @@ function startMarqueeSelection(container, e) {
     // Запоминаем что было выделено до marquee (для Ctrl+drag)
     _marqueePreSelection = new Set(selectedNodes);
     
-    // Стартовая точка в координатах контейнера (screen)
-    _marqueeStartX = e.clientX - container.getBoundingClientRect().left;
-    _marqueeStartY = e.clientY - container.getBoundingClientRect().top;
+    // Стартовая точка в координатах контейнера (с учётом скролла)
+    const rect = container.getBoundingClientRect();
+    _marqueeStartX = e.clientX - rect.left + container.scrollLeft;
+    _marqueeStartY = e.clientY - rect.top + container.scrollTop;
     
     // Создаём элемент прямоугольника
-    let rect = document.getElementById('marquee-selection-rect');
-    if (!rect) {
-        rect = document.createElement('div');
-        rect.id = 'marquee-selection-rect';
-        container.appendChild(rect);
+    let selRect = document.getElementById('marquee-selection-rect');
+    if (!selRect) {
+        selRect = document.createElement('div');
+        selRect.id = 'marquee-selection-rect';
+        container.appendChild(selRect);
     }
-    rect.style.left = _marqueeStartX + 'px';
-    rect.style.top = _marqueeStartY + 'px';
-    rect.style.width = '0';
-    rect.style.height = '0';
-    rect.style.display = 'block';
+    selRect.style.left = _marqueeStartX + 'px';
+    selRect.style.top = _marqueeStartY + 'px';
+    selRect.style.width = '0';
+    selRect.style.height = '0';
+    selRect.style.display = 'block';
 }
 
 /**
@@ -373,8 +374,9 @@ function startMarqueeSelection(container, e) {
 function updateMarqueeSelection(container, e) {
     if (!_marqueeActive) return;
     
-    const currentX = e.clientX - container.getBoundingClientRect().left;
-    const currentY = e.clientY - container.getBoundingClientRect().top;
+    const rect = container.getBoundingClientRect();
+    const currentX = e.clientX - rect.left + container.scrollLeft;
+    const currentY = e.clientY - rect.top + container.scrollTop;
     
     // Вычисляем прямоугольник (может быть в любом направлении)
     const left = Math.min(_marqueeStartX, currentX);
@@ -382,12 +384,12 @@ function updateMarqueeSelection(container, e) {
     const width = Math.abs(currentX - _marqueeStartX);
     const height = Math.abs(currentY - _marqueeStartY);
     
-    const rect = document.getElementById('marquee-selection-rect');
-    if (rect) {
-        rect.style.left = left + 'px';
-        rect.style.top = top + 'px';
-        rect.style.width = width + 'px';
-        rect.style.height = height + 'px';
+    const selRect = document.getElementById('marquee-selection-rect');
+    if (selRect) {
+        selRect.style.left = left + 'px';
+        selRect.style.top = top + 'px';
+        selRect.style.width = width + 'px';
+        selRect.style.height = height + 'px';
     }
     
     // Порог: не считаем за marquee если движение < 5px

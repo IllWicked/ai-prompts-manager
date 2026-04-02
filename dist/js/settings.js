@@ -578,6 +578,17 @@ function _createGrid3d(container) {
     wrap.appendChild(inner);
     container.insertBefore(wrap, container.firstChild);
     container.classList.add('has-animated-bg');
+    
+    // Синхронизируем высоту inner с контейнером (vh ненадёжен при зуме WebView2)
+    const syncHeight = () => {
+        inner.style.height = container.clientHeight + 'px';
+    };
+    syncHeight();
+    
+    if (!container._grid3dObserver) {
+        container._grid3dObserver = new ResizeObserver(syncHeight);
+        container._grid3dObserver.observe(container);
+    }
 }
 
 /**
@@ -586,6 +597,10 @@ function _createGrid3d(container) {
 function _removeGrid3d(container) {
     container.querySelector('.grid3d-wrap')?.remove();
     container.classList.remove('has-animated-bg');
+    if (container._grid3dObserver) {
+        container._grid3dObserver.disconnect();
+        container._grid3dObserver = null;
+    }
 }
 
 /**

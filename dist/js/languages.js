@@ -163,13 +163,20 @@ const LANGUAGE_COUNTRIES = {
         { code: 'de', name: 'Германия', locale: 'de-DE' },
         { code: 'at', name: 'Австрия', locale: 'de-AT' },
         { code: 'ch', name: 'Швейцария', locale: 'de-CH' },
-        { code: 'be', name: 'Бельгия', locale: 'de-BE' }
+        { code: 'be', name: 'Бельгия', locale: 'de-BE' },
+        { code: 'li', name: 'Лихтенштейн', locale: 'de-LI' },
+        { code: 'lu', name: 'Люксембург', locale: 'de-LU' }
+    ],
+    es: [
+        { code: 'es', name: 'Испания', locale: 'es-ES' },
+        { code: 'pe', name: 'Перу', locale: 'es-PE' }
     ],
     fr: [
         { code: 'fr', name: 'Франция', locale: 'fr-FR' },
         { code: 'ca', name: 'Канада', locale: 'fr-CA' },
         { code: 'ch', name: 'Швейцария', locale: 'fr-CH' },
-        { code: 'be', name: 'Бельгия', locale: 'fr-BE' }
+        { code: 'be', name: 'Бельгия', locale: 'fr-BE' },
+        { code: 'lu', name: 'Люксембург', locale: 'fr-LU' }
     ],
     nl: [
         { code: 'nl', name: 'Нидерланды', locale: 'nl-NL' },
@@ -178,6 +185,10 @@ const LANGUAGE_COUNTRIES = {
     pt: [
         { code: 'pt', name: 'Португалия', locale: 'pt-PT' },
         { code: 'br', name: 'Бразилия', locale: 'pt-BR' }
+    ],
+    se: [
+        { code: 'se', name: 'Швеция', locale: 'sv-SE' },
+        { code: 'fi', name: 'Финляндия', locale: 'sv-FI' }
     ]
 };
 
@@ -395,6 +406,26 @@ const LANGUAGES = {
         aboutUs: 'Meist',
         legalInfo: 'Õiguslik teave',
         cookiePolicy: 'Küpsiste poliitika',
+    },
+    is: {
+        lang: 'исландский',
+        native: 'исландскоязычный',
+        country: 'Исландия',
+        locale: 'is-IS',
+        privacyPolicy: 'Persónuverndarstefna',
+        aboutUs: 'Um okkur',
+        legalInfo: 'Lagalegar upplýsingar',
+        cookiePolicy: 'Vafrakökustefna',
+    },
+    lv: {
+        lang: 'латышский',
+        native: 'латышскоязычный',
+        country: 'Латвия',
+        locale: 'lv-LV',
+        privacyPolicy: 'Privātuma politika',
+        aboutUs: 'Par mums',
+        legalInfo: 'Juridiskā informācija',
+        cookiePolicy: 'Sīkdatņu politika',
     }
 };
 

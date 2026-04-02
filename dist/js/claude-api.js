@@ -1087,19 +1087,19 @@ async function checkAllGenerationStatus() {
     }
     
     const anyGenerating = generatingTabs[1] || generatingTabs[2] || generatingTabs[3];
-    if (changed || anyGenerating) {
+    if (changed) {
         updateClaudeUI();
     }
 }
 
 /**
- * Запуск периодической проверки генерации (раз в 3 сек)
+ * Запуск периодической проверки генерации
  */
 function startGenerationMonitor() {
     if (generationCheckInterval) {
         return;
     }
-    generationCheckInterval = setInterval(checkAllGenerationStatus, 500);
+    generationCheckInterval = setInterval(checkAllGenerationStatus, 2000);
     
     // Периодически сохраняем URL табов (каждые 5 сек)
     if (!urlSaveInterval) {

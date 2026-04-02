@@ -1,6 +1,6 @@
 # AI Prompts Manager — Документация
 
-> **Версия:** 4.4.4 | [CHANGELOG](reference/CHANGELOG.md)
+> **Версия:** 4.4.5 | [CHANGELOG](reference/CHANGELOG.md)
 
 ## Быстрый старт
 
@@ -202,5 +202,6 @@ ai-prompts-manager/
 | Toolbar | [06-ADDITIONAL-WEBVIEWS](06-ADDITIONAL-WEBVIEWS.md) |
 | Undo/Redo | [frontend/TABS-BLOCKS](frontend/TABS-BLOCKS.md) |
 | Workflow | [frontend/WORKFLOW](frontend/WORKFLOW.md) |
+| Workflow Repair | [05-FEATURES](05-FEATURES.md#workflow-repair) |
 
 → Полный глоссарий: [reference/GLOSSARY](reference/GLOSSARY.md)

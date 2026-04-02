@@ -1723,6 +1723,21 @@ function initApp() {
         window.__TAURI__.core.invoke('init_claude_webviews').catch(e => {
             console.warn('[Init] Claude webviews init failed:', e);
         });
+        
+        // Авто-ретрай: если через 10 сек таб 1 не загрузился — перенавигировать
+        setTimeout(async () => {
+            try {
+                const url = await window.__TAURI__.core.invoke('get_tab_url', { tab: 1 });
+                if (!url || url === 'about:blank' || !url.startsWith('https://claude.ai')) {
+                    console.warn('[Init] Tab 1 not loaded, retrying navigation...');
+                    await window.__TAURI__.core.invoke('navigate_claude_tab', { 
+                        tab: 1, url: 'https://claude.ai/new' 
+                    });
+                }
+            } catch (e) {
+                // Ignore — webview may not exist in offline mode
+            }
+        }, 10000);
     }
     
     // 11. (Скроллбар — нативный webkit, стили в CSS)

@@ -8,30 +8,56 @@
 
 ---
 
-## [Unreleased] {#unreleased}
+## [4.4.5] - 2026-03-27 {#v445}
 
 ### Новые функции
 
-#### Agent Skills — система скиллов Claude
-- **Скиллы (`.skill` файлы)** — ZIP-архивы с `SKILL.md` + `references/` + `scripts/`, привязываются к аккаунту Claude через внутренний API
+#### Agent Skills — скиллы Claude
+- **Кнопка «Скиллы»** в настройках — скачивает `.skill` файлы с GitHub и привязывает к аккаунту Claude за один клик
+- **Модуль `remote-skills.js`** — одна функция `refreshAndBindSkills()`: скачать манифест → скачать файлы → привязать через CDP
+- **Функция `uploadSkillsToClaude()`** в claude-api.js — CDP eval → atob → Blob → FormData → fetch к `/api/organizations/{orgId}/skills/upload-skill?overwrite=true`
 - **4 скилла в комплекте:** `content-writing-style`, `html-page-design`, `logo-and-branding`, `quality-audit`
-- **Автообновление:** скиллы скачиваются с GitHub при первом запуске и обновляются автоматически при наличии новой версии
-- **Привязка к аккаунту:** кнопка «Привязать» в Дополнительно → загрузка через `POST /api/organizations/{orgId}/skills/upload-skill?overwrite=true` в Claude WebView
-- **Новый модуль `remote-skills.js`** — скачивание, кэширование (base64 в localStorage), версионирование скиллов
-- **Новая функция `uploadSkillsToClaude()`** в claude-api.js — CDP eval → atob → Blob → FormData → fetch
-- **UI:** третья кнопка «Скиллы» в настройках, модалка обновления скиллов, кнопка привязки в Дополнительно
 - **Project Manager:** push скиллов в меню Push (рядом с промптами), автоинкремент версии манифеста
+
+#### Автопочинка пайплайнов
+- **`repairWorkflowState()`** в workflow-state.js — при загрузке вкладки автоматически чинит:
+  - Соединения: удаление битых ссылок, self-connections, дубликатов, починка невалидных сторон
+  - Позиции: удаление осиротевших, починка NaN-координат
+  - Размеры: удаление осиротевших, починка невалидных значений
+  - Цвета и заметки: удаление ссылок на несуществующие блоки
+
+#### Новые языки и гео
+- **Исландия (IS)** — исландский язык, locale is-IS
+- **Латвия (LV)** — латышский язык, locale lv-LV
+- **Эстония (ET)** — эстонский язык, locale et-EE
+- **Лихтенштейн** — добавлен в мультигео немецкого (de-LI)
+- **Люксембург** — добавлен в мультигео немецкого (de-LU) и французского (fr-LU)
+- **Перу** — добавлен в мультигео испанского (es-PE), ES стал мультигео
+- **Финляндия (шведский)** — добавлен в мультигео шведского (sv-FI), SE стал мультигео
+- Итого: 23 языка, 41 гео-вариант (было 20/32)
+
+### Исправления
+
+- **Мерцание кнопок при генерации:** `updateClaudeUI()` вызывается только при реальном изменении статуса, а не каждые 500мс. Убран полный innerHTML-перезапись кнопок на каждом тике
+- **Мерцание hover на кнопках:** `transition: all` заменён на конкретные свойства (`background`, `border-color`, `opacity`), убраны `title` атрибуты (тултип WebView2 крал фокус мыши)
+- **Marquee selection улетает:** координаты учитывают `scrollLeft/scrollTop` контейнера
+- **Undo/redo троит:** throttle 200мс на `undo()` (защита от key repeat), буфер 50 → 15 шагов
+- **Нагрузка на систему:** интервал поллинга генерации 500мс → 2000мс
+- **Устаревшие селекторы Claude.ai:** обновлены `sendButton`, `stopButton`, `leftNav`, `scrollContainer` — добавлены case-insensitive флаги, `data-testid` фоллбэки, массивы вместо строк
+- **Фон «Матрица» обрезается:** высота inner привязана к `container.clientHeight` через `ResizeObserver` вместо ненадёжных `vh`-единиц
+- **Чёрный экран Claude WebView:** авто-ретрай навигации на claude.ai через 10 сек если таб не загрузился
 
 ### Изменено
 
 - **Ширина модалки настроек:** 400px → 460px (три кнопки в ряд)
-- **Project Manager:** меню Push теперь содержит два пункта — промпты и скиллы
+- **Project Manager:** убран ввод сообщения коммита из push (автоматический текст), убраны release notes для промптов
+- **Селекторы:** версия 1.0.0 → 1.1.0
 
 ### Новые файлы
 
 | Файл | Описание |
 |------|----------|
-| `dist/js/remote-skills.js` | Модуль скачивания и кэширования скиллов |
+| `dist/js/remote-skills.js` | Модуль скачивания и привязки скиллов |
 | `skills/manifest.json` | Манифест скиллов для GitHub |
 | `skills/*.skill` | 4 файла скиллов |
 
@@ -39,12 +65,27 @@
 
 | Файл | Изменения |
 |------|-----------|
-| `dist/index.html` | `<script>` remote-skills.js, кнопка «Скиллы», кнопка «Привязать», модалка `skills-update-modal`, ширина 460px |
-| `dist/css/styles.css` | Анимация `#manual-skills-check-btn.checking` |
-| `dist/js/claude-api.js` | Функция `uploadSkillsToClaude()`, `github_api_put_binary_file()` |
-| `dist/js/init.js` | Обработчики кнопок скиллов, `initSkillsUpdateHandlers()`, `initializeDefaultSkills()`, `autoCheckSkillsUpdates()` |
-| `dist/js/persistence.js` | Экспорт `initializeDefaultSkills()`, очистка `remote-skills*` при сбросе |
-| `project-manager/project-manager.py` | Подменю скиллов (push + версия), `SKILLS_DIR`, `github_api_put_binary_file()` |
+| `dist/index.html` | Кнопка «Скиллы», ширина 460px, убрана модалка release notes промптов, IS/LV/ES/SE в дропдауне |
+| `dist/css/styles.css` | Анимация `#manual-skills-check-btn.checking`, точечный transition на `.workflow-node-btn` |
+| `dist/js/claude-api.js` | `uploadSkillsToClaude()`, интервал поллинга 500→2000мс, `updateClaudeUI` только при `changed` |
+| `dist/js/workflow-state.js` | `repairWorkflowState()` — автопочинка при загрузке |
+| `dist/js/workflow-interactions.js` | Marquee координаты с учётом scroll |
+| `dist/js/workflow-render.js` | Убраны title с кнопок |
+| `dist/js/undo.js` | `MAX_HISTORY_SIZE` 50→15, throttle 200мс на undo |
+| `dist/js/remote-prompts.js` | Убраны releaseNotes из всех функций |
+| `dist/js/persistence.js` | Убрана `initializeDefaultSkills()`, очистка `remote-skills*` |
+| `dist/js/init.js` | Обработчик кнопки «Скиллы», авто-ретрай загрузки Claude WebView |
+| `dist/js/languages.js` | IS, LV, ET + мультигео LI, LU, PE, FI(sv) |
+| `dist/js/language-ui.js` | IS, LV, ET в langTexts |
+| `dist/js/settings.js` | ResizeObserver для grid3d высоты |
+| `src-tauri/scripts/selectors.json` | v1.1.0 — обновлены 4 критических селектора |
+| `project-manager/project-manager.py` | Push скиллов, убраны commit message и release notes промптов |
+
+### Удалённые файлы
+
+| Файл | Причина |
+|------|---------|
+| `RELEASE_NOTES_PROMPTS.txt` | Неиспользуемый функционал |
 
 ---
 

@@ -22,7 +22,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 /** @constant {number} Максимальный размер истории */
-const MAX_HISTORY_SIZE = 50;
+const MAX_HISTORY_SIZE = 15;
 
 /** @constant {number} Debounce для snapshot при наборе текста (мс) */
 const SNAPSHOT_DEBOUNCE_MS = 300;
@@ -446,6 +446,11 @@ const UndoManager = (() => {
         /** Отмена */
         undo() {
             if (undoStack.length <= 1) return;
+            
+            // Throttle: не чаще раза в 200мс (защита от key repeat)
+            const now = Date.now();
+            if (now - (this._lastUndoTime || 0) < 200) return;
+            this._lastUndoTime = now;
             
             InputGroup.reset();
             

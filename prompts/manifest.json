@@ -49,7 +49,12 @@
       "name": "BET-WM2026-NOLINKS",
       "version": "1.0.0",
       "order": 10
+    },
+    "ausslot-renewal": {
+      "name": "AUSSLOT-RENEWAL",
+      "version": "1.0.0",
+      "order": 11
     }
   },
-  "updated": "2026-04-02"
+  "updated": "2026-04-05"
 }

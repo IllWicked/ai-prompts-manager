@@ -1111,11 +1111,11 @@ function initSettingsHandlers() {
     // Оффлайн-режим
     document.getElementById('offline-mode-off')?.addEventListener('click', () => {
         setOfflineMode(false);
-        updateOfflineModeButtons(false);
+        updateOfflineModeButtons(getSettings().offlineMode);
     });
     document.getElementById('offline-mode-on')?.addEventListener('click', () => {
         setOfflineMode(true);
-        updateOfflineModeButtons(true);
+        updateOfflineModeButtons(getSettings().offlineMode);
     });
     
     // Auto-continue

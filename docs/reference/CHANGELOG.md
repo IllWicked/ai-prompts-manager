@@ -8,6 +8,25 @@
 
 ---
 
+## [4.4.7] - 2026-04-06 {#v447}
+
+### Исправления
+
+- **Оффлайн-режим десинхронизируется:** `setOfflineMode` стал идемпотентным (проверяет текущее значение перед изменением), `renderWorkflow` вызывает `applyOfflineMode()` в начале для пересинхронизации CSS-класса body с настройками, обработчики кнопок перечитывают `getSettings().offlineMode` для визуального обновления
+- **Селекторы Claude.ai v1.2.0:** усилены хвристики `sendButton` (поиск по `fieldset`, фоллбэк на последнюю кнопку в области ввода), `stopButton` (фоллбэк на кнопку с квадратной SVG-иконкой, `aria-label*="Cancel"`), `scrollContainer` (фоллбэк через `getComputedStyle` на потомков `main`)
+
+### Изменённые файлы
+
+| Файл | Изменения |
+|------|-----------|
+| `dist/js/settings.js` | `setOfflineMode` идемпотентный |
+| `dist/js/workflow-render.js` | `applyOfflineMode()` в начале `renderWorkflow` |
+| `dist/js/init.js` | Обработчики оффлайн-кнопок перечитывают settings |
+| `src-tauri/scripts/claude_helpers.js` | Усилены хвристики sendButton, stopButton, scrollContainer |
+| `src-tauri/scripts/selectors.json` | v1.2.0 |
+
+---
+
 ## [4.4.5] - 2026-03-27 {#v445}
 
 ### Новые функции

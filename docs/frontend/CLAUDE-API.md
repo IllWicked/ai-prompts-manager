@@ -2,7 +2,7 @@
 
 [← Назад к Frontend](../02-FRONTEND.md)
 
-> **Примечание:** Три модуля Claude содержат в сумме **50 функций**: claude-state.js (5) + claude-ui.js (6) + claude-api.js (39).
+> **Примечание:** Три модуля Claude содержат в сумме **49 функций**: claude-state.js (5) + claude-ui.js (5) + claude-api.js (39).
 
 ## claude-state.js (5 функций)
 
@@ -132,19 +132,15 @@ const orgId = await getOrganizationId(1);
 invalidateOrgCache();
 ```
 
-### Wait Functions (4 функции)
+### Wait Functions (3 функции)
 
 | Функция | Описание |
 |---------|----------|
-| `waitForTabLoad(tab, timeoutMs)` | Ожидание загрузки страницы |
 | `waitForClaudeInput(tab, timeout)` | Ожидание ProseMirror editor |
 | `waitForFileInput(tab, timeout)` | Ожидание file input |
 | `waitForFilesUploaded(tab, count, timeout)` | Ожидание загрузки файлов |
 
 ```javascript
-// Дождаться загрузки страницы (10 сек)
-await waitForTabLoad(1, 10000);
-
 // Дождаться готовности input (15 сек)
 await waitForClaudeInput(1, 15000);
 
@@ -185,7 +181,7 @@ startGenerationMonitor();
 stopGenerationMonitor();
 ```
 
-### Project Lifecycle (10 функций)
+### Project Lifecycle (11 функций)
 
 | Функция | Описание |
 |---------|----------|

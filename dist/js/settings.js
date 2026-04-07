@@ -793,6 +793,10 @@ function updateOfflineModeButtons(enabled) {
  */
 function setOfflineMode(enabled) {
     const settings = getSettings();
+    
+    // Идемпотентность: не делаем ничего если значение не изменилось
+    if (settings.offlineMode === enabled) return;
+    
     settings.offlineMode = enabled;
     saveSettings(settings);
     applyOfflineMode(enabled);

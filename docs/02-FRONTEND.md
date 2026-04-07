@@ -28,7 +28,7 @@
 | Workflow | workflow-state.js, workflow-grid.js, workflow-zoom.js, workflow-render.js, workflow-interactions.js, connections.js | ~71 |
 | Claude | claude-state.js, claude-ui.js, claude-api.js | ~50 (5+6+39) |
 | Инициализация | init.js | ~33 |
-| **Всего** | **34 файла** | **~373** |
+| **Всего** | **35 файлов** | **~373** |
 
 > **Примечание:** Число ~373 включает все функции (публичные API + внутренние helpers), считая вложенные. Публичных API функций около 102 — см. [INDEX-HTML-API.md](frontend/INDEX-HTML-API.md).
 

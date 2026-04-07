@@ -38,28 +38,6 @@ function __findEl__(path) {
 }
 
 /**
- * Поиск всех элементов по пути к селектору
- * @param {string} path - путь к селектору
- * @returns {Element[]}
- */
-function __findAll__(path) {
-    const selectors = __getSel__(path);
-    if (!selectors) return [];
-    const arr = Array.isArray(selectors) ? selectors : [selectors];
-    const results = [];
-    for (const sel of arr) {
-        try {
-            document.querySelectorAll(sel).forEach(el => {
-                if (!results.includes(el)) results.push(el);
-            });
-        } catch (e) {
-            // Невалидный селектор — пробуем следующий
-        }
-    }
-    return results;
-}
-
-/**
  * Эвристики для поиска элементов по контексту.
  * Используют стабильные атрибуты (aria-*, role, contenteditable),
  * которые привязаны к accessibility и меняются реже CSS-классов.
@@ -72,24 +50,48 @@ const __HEURISTICS__ = {
             || document.querySelector('div[contenteditable="true"][data-placeholder]');
     },
     'input.sendButton': () => {
-        // Кнопка Send — рядом с editor, обычно submit или с aria-label
-        const editor = __findElSmart__('input.proseMirror');
-        if (!editor) return null;
-        const form = editor.closest('form') || editor.closest('[role="presentation"]')
-            || editor.parentElement?.parentElement?.parentElement;
-        if (!form) return null;
-        return form.querySelector('button[type="submit"]')
-            || form.querySelector('button[aria-label*="Send"]')
-            || form.querySelector('button[aria-label*="send"]');
+        // Кнопка Send — рядом с editor
+        const editor = document.querySelector('.ProseMirror')
+            || document.querySelector('[contenteditable="true"][role="textbox"]')
+            || document.querySelector('[contenteditable="true"]');
+        if (editor) {
+            const area = editor.closest('fieldset') || editor.closest('form')
+                || editor.closest('[role="presentation"]')
+                || editor.parentElement?.parentElement?.parentElement;
+            if (area) {
+                const btn = area.querySelector('button[type="submit"]')
+                    || area.querySelector('button[aria-label*="Send" i]')
+                    || area.querySelector('button[aria-label*="send" i]')
+                    || area.querySelector('button[data-testid*="send"]');
+                if (btn) return btn;
+                // Фоллбэк: последняя кнопка в области ввода (обычно Send)
+                const buttons = area.querySelectorAll('button:not([aria-label*="Stop" i]):not([disabled])');
+                if (buttons.length > 0) return buttons[buttons.length - 1];
+            }
+        }
+        return null;
     },
     'input.fileInput': () => {
         return document.querySelector('input[type="file"][accept]');
     },
     'generation.stopButton': () => {
-        // Кнопка Stop — button с aria-label содержащим Stop
-        return document.querySelector('button[aria-label*="Stop"]')
-            || document.querySelector('button[aria-label*="stop"]')
-            || document.querySelector('[data-testid*="stop"]');
+        // Кнопка Stop — ищем по aria-label, testid, или по SVG-иконке (квадрат = stop)
+        return document.querySelector('button[aria-label*="Stop" i]')
+            || document.querySelector('button[aria-label*="stop" i]')
+            || document.querySelector('[data-testid*="stop"]')
+            || document.querySelector('button[aria-label*="Cancel" i]')
+            || (() => {
+                // Фоллбэк: кнопка с квадратной SVG-иконкой рядом с input
+                const editor = document.querySelector('.ProseMirror, [contenteditable="true"]');
+                if (!editor) return null;
+                const area = editor.closest('fieldset') || editor.closest('form') || editor.parentElement?.parentElement?.parentElement;
+                if (!area) return null;
+                const buttons = area.querySelectorAll('button');
+                for (const btn of buttons) {
+                    if (btn.querySelector('rect, [d*="M4 4h16v16H4"], [d*="M6 6h12v12H6"]')) return btn;
+                }
+                return null;
+            })();
     },
     'navigation.leftNav': () => {
         // Навигация — элемент nav в корне
@@ -102,9 +104,21 @@ const __HEURISTICS__ = {
     },
     'navigation.scrollContainer': () => {
         // Скроллируемый контейнер с сообщениями
-        const candidates = document.querySelectorAll('[class*="overflow-y"]');
-        for (const el of candidates) {
+        // Ищем по классам overflow
+        const byClass = document.querySelectorAll('[class*="overflow-y"]');
+        for (const el of byClass) {
             if (el.scrollHeight > el.clientHeight + 100) return el;
+        }
+        // Фоллбэк: ищем main > div со скроллом, или [role="main"] потомок
+        const main = document.querySelector('main') || document.querySelector('[role="main"]');
+        if (main) {
+            const children = main.querySelectorAll('div');
+            for (const el of children) {
+                const style = getComputedStyle(el);
+                if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && el.scrollHeight > el.clientHeight + 100) {
+                    return el;
+                }
+            }
         }
         return null;
     },
@@ -243,10 +257,6 @@ function hideGhostButton() {
             btn.style.display = 'none';
         }
     });
-}
-
-function setupGhostObserver() {
-    // Ghost observer теперь объединён с UI observer в setupCombinedObserver()
 }
 
 function hideSidebar() {

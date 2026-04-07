@@ -362,42 +362,6 @@ async function evalInClaude(tab, script) {
 }
 
 /**
- * Ожидание загрузки страницы в табе
- * @param {number} tab - номер таба
- * @param {number} timeoutMs - таймаут в мс (по умолчанию 10 сек)
- * @returns {Promise<boolean>} - true если загрузилась, false если таймаут
- */
-async function waitForTabLoad(tab, timeoutMs = 10000) {
-    let resolved = false;
-    
-    // Сначала подписываемся (await!) чтобы гарантировать наличие unlisten
-    const unlisten = await window.__TAURI__.event.listen('claude-page-loaded', (event) => {
-        if (!resolved && event.payload?.tab === tab) {
-            resolved = true;
-            clearTimeout(timeout);
-            unlisten();
-            resolvePromise(true);
-        }
-    });
-    
-    let resolvePromise;
-    const promise = new Promise((resolve) => {
-        resolvePromise = resolve;
-    });
-    
-    // Теперь создаём timeout - unlisten гарантированно существует
-    const timeout = setTimeout(() => {
-        if (!resolved) {
-            resolved = true;
-            unlisten();
-            resolvePromise(false);
-        }
-    }, timeoutMs);
-    
-    return promise;
-}
-
-/**
  * Навигация Claude на URL
  * Ждёт реальной загрузки страницы через событие page-loaded
  */

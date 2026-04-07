@@ -21,7 +21,7 @@ ai-prompts-manager/
 │   ├── downloads.html          # Менеджер загрузок (~594 строк)
 │   ├── css/
 │   │   └── styles.css          # Стили (~4700 строк)
-│   └── js/                     # JavaScript модули (34 файла)
+│   └── js/                     # JavaScript модули (35 файлов)
 │
 ├── src-tauri/                  # Backend (Rust)
 │   ├── src/                    # Модульная структура (22 файла)
@@ -34,7 +34,7 @@ ai-prompts-manager/
 │   │   ├── utils/              # Утилиты (MIME, платформа, размеры)
 │   │   └── webview/            # Управление WebView
 │   ├── scripts/
-│   │   ├── claude_helpers.js   # Инжектируемый скрипт для Claude WebView (~477 строк)
+│   │   ├── claude_helpers.js   # Инжектируемый скрипт для Claude WebView (~502 строк)
 │   │   ├── claude_counter.js   # Claude Counter — usage, кэш (~27KB)
 │   │   ├── claude_counter.css  # Claude Counter — стили (~2KB)
 │   │   ├── serp_extract.js    # Извлечение результатов из Google SERP (~70 строк)

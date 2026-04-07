@@ -169,7 +169,6 @@ window._s = {
 |---------|----------|
 | `__getSel__(path)` | Получить селектор по пути (например `'input.proseMirror'`) |
 | `__findEl__(path)` | Поиск элемента по пути с fallback для массивов |
-| `__findAll__(path)` | Поиск всех элементов |
 | `__findElSmart__(path)` | Умный поиск с эвристическим fallback и диагностикой |
 | `__logSelectorFallback__(path)` | Логирование использования fallback-селектора в диагностику |
 
@@ -231,16 +230,16 @@ function setupGlobalClickListener()
 Мониторинг генерации встроен в initClaudeUI()
 ```
 
-Мониторинг генерации через DOM-наблюдение (без monkey-patching):
-- `window._g0 = true`
+Мониторинг генерации через DOM-наблюдение → Tauri invoke → AtomicBool (без monkey-patching):
+- `window._g0 = true` — флаг инициализации
 - Проверяет наличие stop button, streaming indicator, thinking indicator
 - `setInterval` каждые 300мс
-- Обновляет URL hash через `history.replaceState("#generating")`
+- При изменении состояния: `_inv('set_generation_state', {tab, generating})` → `GENERATING_STATE[tab]` в Rust
+- Sticky debounce: при пропадании DOM-индикаторов состояние держится ещё ~2 сек (7 тиков × 300мс)
+
+Main WebView читает статус через `check_generation_status` (polling каждые 2 сек), который просто возвращает `GENERATING_STATE[tab].load()`.
 
 Подсчёт загрузок файлов — только на стороне Rust (WebResourceRequested).
-
-Для фоновых суспендированных табов используется Rust CDP polling
-Rust читает `webview.url()` — синхронно, без CDP. JS polling каждые 500мс через `check_generation_status`.
 
 ### URL Change Detection
 
@@ -541,7 +540,6 @@ HTML-merge: content.html + design.html → index.html:
 
 | Функция | Описание |
 |---------|----------|
-| `waitForTabLoad(tab, timeoutMs)` | Загрузка страницы |
 | `waitForClaudeInput(tab, timeout)` | ProseMirror editor |
 | `waitForFileInput(tab, timeout)` | File input |
 | `waitForFilesUploaded(tab, expectedCount, timeout)` | Все файлы |
@@ -599,7 +597,7 @@ HTML-merge: content.html + design.html → index.html:
 |---------------------|----------------|
 | Патчит `window.fetch` | Прямой `fetch()` к API |
 | Патчит `history.pushState/replaceState` | `popstate` + polling 1.5 сек |
-| Перехватывает SSE event-stream | Refresh usage при окончании генерации (URL hash) |
+| Перехватывает SSE event-stream | Refresh usage при окончании генерации (`set_generation_state` → AtomicBool) |
 | Bridge pattern (postMessage) | Не нужен — единый контекст WebView2 |
 
 ### Файлы

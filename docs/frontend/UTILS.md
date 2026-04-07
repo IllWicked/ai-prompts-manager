@@ -15,8 +15,8 @@ const STORAGE_KEYS = {
     DATA_VERSION: 'ai-prompts-manager-version',
     APP_VERSION: 'ai-prompts-manager-app-version',
     WORKFLOW_ZOOM: 'workflowZoom',
-    // Примечание: workflowCameraX и workflowCameraY используются напрямую
-    // как hardcoded строки в workflow-zoom.js, не через STORAGE_KEYS
+    WORKFLOW_CAMERA_X: 'workflowCameraX',
+    WORKFLOW_CAMERA_Y: 'workflowCameraY',
     COLLAPSED_BLOCKS: 'collapsed-blocks',
     BLOCK_SCRIPTS: 'block-scripts',
     BLOCK_AUTOMATION: 'block-automation',
@@ -164,13 +164,12 @@ showToast('Ошибка загрузки', 3000);
 
 ---
 
-## storage.js (15 функций)
+## storage.js (14 функций)
 
 | Функция | Описание |
 |---------|----------|
 | `getSettings()` | Настройки с дефолтами |
 | `saveSettings(settings)` | Сохранить настройки |
-| `loadFromStorage(key, defaultValue)` | Загрузить JSON |
 | `saveToStorage(key, value)` | Сохранить JSON |
 | `safeSetItem(key, value)` | localStorage.setItem с QuotaExceeded protection |
 | `getAllTabs()` | Все вкладки (кэш + валидация) |
@@ -201,7 +200,6 @@ saveAllTabs(tabs);
 
 // Произвольные данные
 saveToStorage('my-key', { foo: 'bar' });
-const data = loadFromStorage('my-key', {});
 ```
 
 ### StorageMonitor (объект с 5 методами)

@@ -8,10 +8,10 @@ Backend разбит на модули по функциональности:
 
 ```
 src-tauri/src/
-├── main.rs              (140 строк)  — точка входа, Tauri Builder
+├── main.rs              (144 строк)  — точка входа, Tauri Builder
 ├── lib.rs               (23 строки)  — реэкспорт модулей
 ├── types.rs             (74 строки)  — структуры данных
-├── state.rs             (47 строк)   — глобальные состояния
+├── state.rs             (56 строк)   — глобальные состояния
 ├── commands/              (51 команда)  — Tauri команды
 │   ├── mod.rs           — реэкспорт
 │   ├── app.rs           — управление приложением
@@ -42,7 +42,7 @@ src-tauri/src/
 |--------|----------|
 | `types` | Структуры: `ArchiveLogEntry`, `DownloadEntry`, `DownloadsSettings`, `FileData`, `DiagnosticEntry` |
 | `state` | Глобальные: `CLAUDE_VISIBLE`, `ACTIVE_TAB`, `PANEL_RATIO`, Mutex locks |
-| `commands` | 51 Tauri команда, разбитых по доменам |
+| `commands` | 53 Tauri команды, разбитых по доменам |
 | `downloads` | Пути к логам, настройкам, генерация уникальных имён |
 | `utils` | MIME-типы, платформо-зависимые функции, константы |
 | `webview` | JS скрипты, создание/resize webview, z-order |
@@ -51,7 +51,7 @@ src-tauri/src/
 
 ## Полный список Tauri Commands
 
-Всего **51 команда**. Вызов из JS: `window.__TAURI__.core.invoke('command', { params })`
+Всего **53 команды**. Вызов из JS: `window.__TAURI__.core.invoke('command', { params })`
 
 ### Downloads & Files (`commands/downloads.rs`)
 
@@ -116,7 +116,8 @@ src-tauri/src/
 | `eval_in_claude_with_result` | `tab, script, timeout?` | `String` | JS с результатом (CDP) |
 | `insert_text_to_claude` | `tab, text, autoSend` | — | Вставить текст (insertContent) |
 | `inject_generation_monitor` | `tab` | — | Мониторинг генерации |
-| `check_generation_status` | `tab` | `bool` | Статус генерации (URL hash) |
+| `check_generation_status` | `tab` | `bool` | Статус генерации (читает AtomicBool) |
+| `set_generation_state` | `tab, generating` | — | Установить статус генерации (из Claude WebView) |
 | `init_claude_webviews` | — | — | Инициализация всех Claude webview и toolbar |
 
 ### Panel & Window (`commands/claude.rs`, `commands/app.rs`)
@@ -284,6 +285,7 @@ sequenceDiagram
 | `ACTIVE_TAB` | `AtomicU8` | Активный таб Claude (1-3) |
 | `PANEL_RATIO` | `AtomicU32` | Соотношение панелей (35-65) |
 | `UPLOAD_COUNTERS` | `[AtomicU32; 3]` | Счётчики загруженных файлов по табам |
+| `GENERATING_STATE` | `[AtomicBool; 3]` | Статус генерации по табам (устанавливается из Claude WebView через `set_generation_state`) |
 
 ```rust
 // Пример использования (webview/manager.rs)

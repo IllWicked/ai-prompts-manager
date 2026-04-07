@@ -17,6 +17,8 @@ const STORAGE_KEYS = {
     
     // Workflow
     WORKFLOW_ZOOM: 'workflowZoom',
+    WORKFLOW_CAMERA_X: 'workflowCameraX',
+    WORKFLOW_CAMERA_Y: 'workflowCameraY',
     COLLAPSED_BLOCKS: 'collapsed-blocks',
     BLOCK_SCRIPTS: 'block-scripts',
     BLOCK_AUTOMATION: 'block-automation',

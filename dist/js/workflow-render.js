@@ -185,6 +185,9 @@ function observeFooterButtons(canvas) {
 function renderWorkflow(preserveScroll = null) {
     if (!workflowMode) return;
     
+    // Синхронизируем CSS-класс offline-mode с настройками (защита от десинхронизации)
+    if (typeof applyOfflineMode === 'function') applyOfflineMode();
+    
     const canvas = getWorkflowCanvas();
     const svg = getWorkflowSvg();
     const container = getWorkflowContainer();

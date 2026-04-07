@@ -109,15 +109,7 @@ function saveSettings(settings) {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
 }
 
-// Generic load/save для JSON объектов в localStorage
-function loadFromStorage(key, defaultValue = {}) {
-    try {
-        return JSON.parse(localStorage.getItem(key) || JSON.stringify(defaultValue));
-    } catch(e) {
-        return defaultValue;
-    }
-}
-
+// Generic save для JSON объектов в localStorage
 function saveToStorage(key, value) {
     safeSetItem(key, JSON.stringify(value));
 }

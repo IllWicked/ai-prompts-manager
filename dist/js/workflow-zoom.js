@@ -366,13 +366,13 @@ function scrollToBlocks() {
 
 function saveCameraState() {
     localStorage.setItem(STORAGE_KEYS.WORKFLOW_ZOOM, camera.z);
-    try { localStorage.setItem('workflowCameraX', camera.x); localStorage.setItem('workflowCameraY', camera.y); } catch (_) {}
+    try { localStorage.setItem(STORAGE_KEYS.WORKFLOW_CAMERA_X, camera.x); localStorage.setItem(STORAGE_KEYS.WORKFLOW_CAMERA_Y, camera.y); } catch (_) {}
 }
 
 function loadCameraState() {
     const z = parseFloat(localStorage.getItem(STORAGE_KEYS.WORKFLOW_ZOOM));
-    const x = parseFloat(localStorage.getItem('workflowCameraX'));
-    const y = parseFloat(localStorage.getItem('workflowCameraY'));
+    const x = parseFloat(localStorage.getItem(STORAGE_KEYS.WORKFLOW_CAMERA_X));
+    const y = parseFloat(localStorage.getItem(STORAGE_KEYS.WORKFLOW_CAMERA_Y));
     if (!isNaN(z) && z > 0) camera.z = z;
     if (!isNaN(x)) camera.x = x;
     if (!isNaN(y)) camera.y = y;

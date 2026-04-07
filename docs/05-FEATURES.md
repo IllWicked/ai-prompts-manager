@@ -435,7 +435,7 @@ function setupDownloadListeners()
 
 ### Настройка
 
-Тогл: Настройки → Дополнительно → Auto-continue. По умолчанию выключен. Сохраняется в `settings.autoContinue`.
+Тогл: Настройки → Дополнительно → Auto-continue. По умолчанию включён. Сохраняется в `settings.autoContinue`.
 
 → Подробнее: [04-CLAUDE.md](04-CLAUDE.md#auto-continue-v440)
 

@@ -149,6 +149,14 @@ async function performReset(options = {}) {
     generatingTabs = {};
     activeProject = null;
     
+    // Сбрасываем ProjectFSM (in-memory state может быть 'bound' после restore)
+    if (typeof ProjectFSM !== 'undefined' && ProjectFSM._state !== 'idle') {
+        ProjectFSM._state = 'idle';
+        ProjectFSM._data = null;
+        const finishBtn = document.getElementById('finish-project-btn');
+        if (finishBtn) finishBtn.classList.remove('visible', 'hiding');
+    }
+    
     // Очищаем JS переменные workflow
     workflowPositions = {};
     workflowConnections = [];

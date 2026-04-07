@@ -8,6 +8,21 @@
 
 ---
 
+## [4.4.8] - 2026-04-07 {#v448}
+
+### Исправления
+
+- **Кнопки чата пропадают после обновления:** `performReset()` (при смене версии) чистил `active-project` в localStorage, но `ProjectFSM.restore()` уже отработал до этого и установил `_state = 'bound'` в памяти. Результат: `isProjectActive()` возвращал `true` → кнопки чата скрыты на всех вкладках кроме ownerTab, при этом кнопка «Завершить проект» не отображалась (данных в localStorage уже нет). Исправлено: `performReset()` сбрасывает `ProjectFSM` в памяти, `renderWorkflow()` проверяет консистентность FSM с localStorage при каждом рендере.
+
+### Изменённые файлы
+
+| Файл | Изменения |
+|------|-----------|
+| `dist/js/persistence.js` | `performReset()` сбрасывает `ProjectFSM._state/data` + скрывает кнопку «Завершить проект» |
+| `dist/js/workflow-render.js` | Safety-net: если FSM `!= idle` но localStorage пуст → force-reset |
+
+---
+
 ## [4.4.7] - 2026-04-06 {#v447}
 
 ### Исправления

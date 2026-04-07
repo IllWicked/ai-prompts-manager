@@ -206,7 +206,6 @@ function updateWorkflowChatButtons() {
     const chatTabs = [1, 2, 3]; // Всегда 3 чата
     
     // Проверка доступности кнопок чата (для Project Binding)
-    // Показываем кнопки если нет активного проекта ИЛИ текущая вкладка — владелец
     const showChatButtons = !isProjectActive() || isCurrentTabProjectOwner();
     
     document.querySelectorAll('.workflow-node').forEach(node => {

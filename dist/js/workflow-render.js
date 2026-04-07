@@ -188,6 +188,17 @@ function renderWorkflow(preserveScroll = null) {
     // Синхронизируем CSS-класс offline-mode с настройками (защита от десинхронизации)
     if (typeof applyOfflineMode === 'function') applyOfflineMode();
     
+    // Синхронизируем ProjectFSM с localStorage (защита от десинхронизации после performReset)
+    if (typeof ProjectFSM !== 'undefined' && ProjectFSM._state !== 'idle') {
+        if (!localStorage.getItem(STORAGE_KEYS.ACTIVE_PROJECT)) {
+            ProjectFSM._state = 'idle';
+            ProjectFSM._data = null;
+            activeProject = null;
+            const finishBtn = document.getElementById('finish-project-btn');
+            if (finishBtn) finishBtn.classList.remove('visible', 'hiding');
+        }
+    }
+    
     const canvas = getWorkflowCanvas();
     const svg = getWorkflowSvg();
     const container = getWorkflowContainer();

@@ -37,7 +37,7 @@
     },
     "bet-wm2026": {
       "name": "BET-WM2026",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "order": 10
     },
     "gamble-mirror-packs": {
@@ -47,7 +47,7 @@
     },
     "bet-wm2026-nolinks": {
       "name": "BET-WM2026-NOLINKS",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "order": 11
     },
     "ausslot-renewal": {

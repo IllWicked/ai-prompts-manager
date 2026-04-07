@@ -52,9 +52,9 @@
     },
     "ausslot-renewal": {
       "name": "AUSSLOT-RENEWAL",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "order": 11
     }
   },
-  "updated": "2026-04-06"
+  "updated": "2026-04-07"
 }

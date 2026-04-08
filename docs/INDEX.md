@@ -1,6 +1,6 @@
 # AI Prompts Manager — Документация
 
-> **Версия:** 4.4.8 | [CHANGELOG](reference/CHANGELOG.md)
+> **Версия:** 4.4.9 | [CHANGELOG](reference/CHANGELOG.md)
 
 ## Быстрый старт
 

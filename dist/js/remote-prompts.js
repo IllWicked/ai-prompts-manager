@@ -249,15 +249,12 @@ async function applyPromptsUpdate(tabs, remoteManifest, isNewTabs = false, skipR
     // Получаем текущие вкладки
     const allTabs = typeof getAllTabs === 'function' ? getAllTabs() : {};
     
-    // Загружаем текущие данные из отдельных хранилищ
+    // Загружаем collapsed из отдельного хранилища
+    // ВАЖНО: blockScripts и blockAutomation — локальные настройки, не трогаем
     let collapsedBlocks = {};
-    let blockScripts = {};
-    let blockAutomation = {};
     
     try {
         collapsedBlocks = JSON.parse(localStorage.getItem(STORAGE_KEYS.COLLAPSED_BLOCKS) || '{}');
-        blockScripts = JSON.parse(localStorage.getItem(STORAGE_KEYS.BLOCK_SCRIPTS) || '{}');
-        blockAutomation = JSON.parse(localStorage.getItem(STORAGE_KEYS.BLOCK_AUTOMATION) || '{}');
     } catch (e) {
         console.error('[RemotePrompts] Error loading block data:', e);
     }
@@ -279,7 +276,9 @@ async function applyPromptsUpdate(tabs, remoteManifest, isNewTabs = false, skipR
         // Получаем items из правильного места (поддержка обоих форматов)
         const tabItems = (tabData.tab || tabData).items || [];
         
-        // Переносим collapsed, scripts, automation из items в отдельные хранилища
+        // Переносим collapsed из items в отдельные хранилища
+        // ВАЖНО: scripts и automation — локальные пользовательские настройки,
+        // НЕ импортируем их из remote (иначе GitHub перезаписывает локальные изменения)
         for (const item of tabItems) {
             if (!item.id) continue;
             
@@ -288,15 +287,9 @@ async function applyPromptsUpdate(tabs, remoteManifest, isNewTabs = false, skipR
                 collapsedBlocks[item.id] = true;
             }
             
-            // Scripts
-            if (item.scripts && item.scripts.length > 0) {
-                blockScripts[item.id] = item.scripts;
-            }
-            
-            // Automation
-            if (item.automation && Object.keys(item.automation).length > 0) {
-                blockAutomation[item.id] = item.automation;
-            }
+            // Удаляем scripts/automation из item data чтобы не засорять
+            delete item.scripts;
+            delete item.automation;
         }
         
         // Добавляем/обновляем вкладку
@@ -334,8 +327,6 @@ async function applyPromptsUpdate(tabs, remoteManifest, isNewTabs = false, skipR
         
         // Сохраняем отдельные хранилища
         localStorage.setItem(STORAGE_KEYS.COLLAPSED_BLOCKS, JSON.stringify(collapsedBlocks));
-        localStorage.setItem(STORAGE_KEYS.BLOCK_SCRIPTS, JSON.stringify(blockScripts));
-        localStorage.setItem(STORAGE_KEYS.BLOCK_AUTOMATION, JSON.stringify(blockAutomation));
         
         // Перезагружаем данные в память
         if (typeof loadCollapsedBlocks === 'function') loadCollapsedBlocks();

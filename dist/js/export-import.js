@@ -59,12 +59,19 @@ async function exportConfig() {
             if (scripts.length > 0) {
                 const validScripts = scripts.filter(s => EMBEDDED_SCRIPTS[s]);
                 if (validScripts.length > 0) updatedItem.scripts = validScripts;
+                else delete updatedItem.scripts;
+            } else {
+                delete updatedItem.scripts;
             }
             if (collapsed) {
                 updatedItem.collapsed = true;
+            } else {
+                delete updatedItem.collapsed;
             }
             if (Object.keys(automation).length > 0) {
                 updatedItem.automation = automation;
+            } else {
+                delete updatedItem.automation;
             }
             if (hasAttachments) {
                 updatedItem.hasAttachments = true;

@@ -24,6 +24,9 @@ PROMPTS_DIR = 'prompts'
 MANIFEST_FILE = 'manifest.json'
 RELEASE_NOTES_FILE = 'RELEASE_NOTES.txt'
 DEFAULT_REMOTE_URL = 'https://github.com/IllWicked/ai-prompts-manager.git'
+GITHUB_API_BASE = 'https://api.github.com'
+GITHUB_OWNER = 'IllWicked'
+GITHUB_REPO = 'ai-prompts-manager'
 
 # ═══════════════════════════════════════════════════════════════════════════
 # УТИЛИТЫ

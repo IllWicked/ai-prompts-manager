@@ -8,6 +8,23 @@
 
 ---
 
+## [4.4.9] - 2026-04-08 {#v449}
+
+### Исправления
+
+- **Маркеры скриптов (W) возвращаются после удаления:** две причины: (1) `exportConfig()` делал `{ ...item }` spread-копию, которая включала старый `item.scripts` из данных вкладки, а условие `if (scripts.length > 0)` не срабатывало для очищенных скриптов — поле не удалялось из копии; (2) `applyPromptsUpdate()` при загрузке с GitHub перезаписывала локальные `blockScripts` данными из remote items. Исправлено: экспорт явно удаляет `scripts`/`collapsed`/`automation` если они пустые, remote-промпты не трогают локальные настройки блоков.
+- **`GITHUB_API_BASE`, `GITHUB_OWNER`, `GITHUB_REPO`** — добавлены пропущенные константы в `project-manager.py` (NameError при push)
+
+### Изменённые файлы
+
+| Файл | Изменения |
+|------|-----------|
+| `dist/js/export-import.js` | Экспорт явно удаляет scripts/collapsed/automation из spread-копии если пустые |
+| `dist/js/remote-prompts.js` | `applyPromptsUpdate()` не импортирует scripts/automation из remote items |
+| `project-manager/project-manager.py` | Добавлены GITHUB_API_BASE, GITHUB_OWNER, GITHUB_REPO |
+
+---
+
 ## [4.4.8] - 2026-04-07 {#v448}
 
 ### Исправления

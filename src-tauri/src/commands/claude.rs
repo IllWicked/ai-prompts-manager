@@ -131,10 +131,15 @@ pub async fn switch_claude_tab(app: AppHandle, tab: u8) -> Result<(), String> {
     
     let label = format!("claude_{}", tab);
     
-    // Если таб существует и на about:blank — навигируем на claude.ai
+    // Если таб существует и на about:blank или странице логина — навигируем на claude.ai
     if let Some(webview) = app.get_webview(&label) {
         if let Ok(url) = webview.url() {
-            if url.as_str() == "about:blank" {
+            let url_str = url.as_str();
+            let needs_navigate = url_str == "about:blank" 
+                || url_str.contains("/login")
+                || url_str.contains("/oauth")
+                || url_str.contains("/signin");
+            if needs_navigate {
                 let claude_url = "https://claude.ai/new".parse()
                     .map_err(|e| format!("Invalid URL: {}", e))?;
                 webview.navigate(claude_url).map_err(|e| e.to_string())?;

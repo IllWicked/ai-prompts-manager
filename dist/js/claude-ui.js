@@ -202,9 +202,6 @@ function updateClaudeUI() {
 function updateWorkflowChatButtons() {
     if (!workflowMode) return;
     
-    const blocks = getTabBlocks(currentTab);
-    const chatTabs = [1, 2, 3]; // Всегда 3 чата
-    
     // Проверка доступности кнопок чата (для Project Binding)
     const showChatButtons = !isProjectActive() || isCurrentTabProjectOwner();
     
@@ -217,27 +214,25 @@ function updateWorkflowChatButtons() {
             node.classList.toggle('project-restricted', !showChatButtons);
         }
         
-        // Обновляем кнопки в footer (развёрнутый блок)
-        const buttonsContainer = node.querySelector('.workflow-node-footer-buttons');
-        if (buttonsContainer) {
-            buttonsContainer.innerHTML = generateExpandedFooterHtml(index, chatTabs, { showChatButtons });
-        }
-        
-        // Обновляем кнопки в header (свёрнутый блок)
-        const collapsedButtons = node.querySelector('.collapsed-footer-buttons');
-        if (collapsedButtons) {
-            if (showChatButtons) {
-                const arrowSvgSmall = SVG_ICONS.arrowSmall;
-                const collapsedHtml = chatTabs.slice(0, 3).map(tab => {
-                    const isGen = (typeof isTabBusy === 'function' ? isTabBusy(tab) : generatingTabs[tab]) || false;
-                    return chatTabs.length === 1
-                        ? `<button class="collapsed-send-btn" onclick="event.stopPropagation(); sendNodeToClaude(${index}, ${tab})" title="Отправить в чат"${isGen ? ' disabled' : ''}>${arrowSvgSmall}</button>`
-                        : `<button class="collapsed-send-btn" onclick="event.stopPropagation(); sendNodeToClaude(${index}, ${tab})" title="${isGen ? 'Claude генерирует...' : 'Отправить в Чат ' + tab}"${isGen ? ' disabled' : ''}>${arrowSvgSmall}<span>${tab}</span></button>`;
-                }).join('');
-                collapsedButtons.innerHTML = collapsedHtml;
-            } else {
-                collapsedButtons.innerHTML = '';
+        // Точечное обновление disabled на существующих кнопках (без пересоздания DOM)
+        node.querySelectorAll('.chat-btn').forEach(btn => {
+            const onclick = btn.getAttribute('onclick') || '';
+            const tabMatch = onclick.match(/sendNodeToClaude\(\d+,\s*(\d+)\)/);
+            if (tabMatch) {
+                const tab = parseInt(tabMatch[1]);
+                const busy = (typeof isTabBusy === 'function' ? isTabBusy(tab) : generatingTabs[tab]) || false;
+                btn.disabled = busy;
             }
-        }
+        });
+        
+        node.querySelectorAll('.collapsed-send-btn').forEach(btn => {
+            const onclick = btn.getAttribute('onclick') || '';
+            const tabMatch = onclick.match(/sendNodeToClaude\(\d+,\s*(\d+)\)/);
+            if (tabMatch) {
+                const tab = parseInt(tabMatch[1]);
+                const busy = (typeof isTabBusy === 'function' ? isTabBusy(tab) : generatingTabs[tab]) || false;
+                btn.disabled = busy;
+            }
+        });
     });
 }

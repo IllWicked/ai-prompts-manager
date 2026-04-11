@@ -36,6 +36,15 @@ async function checkForUpdates(showModal = false) {
             const update = await check();
             
             if (update?.available) {
+                // Защита: не показываем обновление если версия совпадает с текущей
+                const remoteVersion = (update.version || '').replace(/^v/, '');
+                const localVersion = (currentVersion || '').replace(/^v/, '');
+                if (remoteVersion === localVersion) {
+                    lastUpdateCheck = { available: false, version: currentVersion };
+                    if (showModal) showUpdateModalLatest(currentVersion);
+                    return lastUpdateCheck;
+                }
+                
                 lastUpdateCheck = { available: true, version: update.version, body: update.body || '' };
                 if (showModal) {
                     showUpdateModalAvailable(update.version, update.body);

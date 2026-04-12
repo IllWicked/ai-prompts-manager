@@ -475,6 +475,16 @@ function _createWaves(container) {
     wrap.appendChild(inner);
     container.insertBefore(wrap, container.firstChild);
     container.classList.add('has-animated-bg');
+    
+    // Синхронизируем высоту inner с контейнером (вместо 100vh — не расширяет scroll area)
+    const syncHeight = () => {
+        inner.style.height = container.clientHeight + 'px';
+    };
+    syncHeight();
+    if (!container._wavesObserver) {
+        container._wavesObserver = new ResizeObserver(syncHeight);
+        container._wavesObserver.observe(container);
+    }
 }
 
 /**
@@ -483,6 +493,10 @@ function _createWaves(container) {
 function _removeWaves(container) {
     container.querySelector('.waves-wrap')?.remove();
     container.classList.remove('has-animated-bg');
+    if (container._wavesObserver) {
+        container._wavesObserver.disconnect();
+        container._wavesObserver = null;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -527,6 +541,16 @@ function _createSquares(container) {
     wrap.appendChild(inner);
     container.insertBefore(wrap, container.firstChild);
     container.classList.add('has-animated-bg');
+    
+    // Синхронизируем высоту inner с контейнером (вместо 100vh — не расширяет scroll area)
+    const syncHeight = () => {
+        inner.style.height = container.clientHeight + 'px';
+    };
+    syncHeight();
+    if (!container._squaresObserver) {
+        container._squaresObserver = new ResizeObserver(syncHeight);
+        container._squaresObserver.observe(container);
+    }
 }
 
 /**
@@ -535,6 +559,10 @@ function _createSquares(container) {
 function _removeSquares(container) {
     container.querySelector('.squares-wrap')?.remove();
     container.classList.remove('has-animated-bg');
+    if (container._squaresObserver) {
+        container._squaresObserver.disconnect();
+        container._squaresObserver = null;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -8,6 +8,20 @@
 
 ---
 
+## [4.4.13] - 2026-04-12 {#v4413}
+
+### Исправления
+
+- **Сдвиг холста влево при фонах «Волны»/«Квадраты» в view mode:** animated bg wraps (`position: sticky`) участвовали в потоке перед wrapper с `margin: 0 auto`, смещая центрирование. В view mode заменены на `position: absolute`.
+
+### Изменённые файлы
+
+| Файл | Изменения |
+|------|-----------|
+| `dist/css/styles.css` | `.waves-wrap`, `.squares-wrap`, `.grid3d-wrap` → `position: absolute` в view mode |
+
+---
+
 ## [4.4.12] - 2026-04-12 {#v4412}
 
 ### Исправления

@@ -2649,6 +2649,13 @@ header .flex {
     margin: 0 auto;
 }
 
+/* View mode - animated bg позиционируется абсолютно */
+.workflow-container:not(.edit-mode) .waves-wrap,
+.workflow-container:not(.edit-mode) .squares-wrap,
+.workflow-container:not(.edit-mode) .grid3d-wrap {
+    position: absolute;
+}
+
 /* View mode - canvas абсолютный внутри wrapper */
 .workflow-container:not(.edit-mode) .workflow-canvas {
     position: absolute;

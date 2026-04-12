@@ -32,7 +32,7 @@
     /* Workflow nodes */
     --node-default-width: 680px;
     --node-min-width: 480px;
-    --node-min-height: 440px;
+    --node-min-height: 160px;
     --node-header-icon-size: 28px;
     
     /* Светлая тема (по умолчанию) */
@@ -3191,6 +3191,24 @@ header .flex {
 .workflow-node-delete-btn:hover {
     color: white;
     background: rgba(255,255,255,0.2);
+}
+
+/* Компактный блок — скрываем пустые кнопки добавления */
+.workflow-node.compact .workflow-instruction-add,
+.workflow-node.compact .workflow-attachments-add {
+    display: none;
+}
+
+/* Минимизированный блок — скрываем только textarea/body и пустые кнопки */
+.workflow-node.minimized {
+    height: fit-content !important;
+}
+
+.workflow-node.minimized .workflow-node-textarea,
+.workflow-node.minimized .workflow-node-body,
+.workflow-node.minimized .workflow-instruction-add,
+.workflow-node.minimized .workflow-attachments-add {
+    display: none;
 }
 
 /* Свёрнутый блок */

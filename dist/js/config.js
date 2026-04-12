@@ -122,7 +122,7 @@ const WORKFLOW_CONFIG = {
     
     // Размеры нод
     NODE_MIN_WIDTH: 480,
-    NODE_MIN_HEIGHT: 440,
+    NODE_MIN_HEIGHT: 160,
     NODE_DEFAULT_WIDTH: 680,
     NODE_GAP_X: 40,
     NODE_GAP_Y: 40,

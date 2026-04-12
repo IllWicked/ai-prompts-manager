@@ -190,7 +190,22 @@ function onNodeResize(e) {
     
     const gridSize = WORKFLOW_CONFIG.GRID_SIZE;
     const minWidth = WORKFLOW_CONFIG.NODE_MIN_WIDTH;
-    const minHeight = WORKFLOW_CONFIG.NODE_MIN_HEIGHT;
+    
+    // Динамический minHeight: header + footer только (остальное сжимается)
+    let minHeight = WORKFLOW_CONFIG.NODE_MIN_HEIGHT;
+    const header = resizeNode.querySelector('.workflow-node-header');
+    const footer = resizeNode.querySelector('.workflow-node-footer');
+    if (header && footer) {
+        // Минимум = header + footer + активные панели (они никогда не скрываются)
+        const activeInstruction = resizeNode.querySelector('.workflow-instruction-strip');
+        const activeAttach = resizeNode.querySelector('.workflow-node-attachments');
+        const activeH = (activeInstruction ? 52 : 0) + (activeAttach ? 60 : 0);
+        
+        const dynamicMin = header.offsetHeight + footer.offsetHeight + activeH + 4;
+        minHeight = Math.max(minHeight, dynamicMin);
+        // Snap to grid
+        minHeight = Math.ceil(minHeight / gridSize) * gridSize;
+    }
     
     // Учитываем масштаб камеры
     const scale = camera.z;
@@ -251,6 +266,23 @@ function onNodeResize(e) {
     resizeNode.style.height = newHeight + 'px';
     resizeNode.style.left = newLeft + 'px';
     resizeNode.style.top = newTop + 'px';
+    
+    // Минимизация: скрываем элементы когда не хватает места
+    if (header && footer) {
+        const hf = header.offsetHeight + footer.offsetHeight;
+        const activeInstruction = resizeNode.querySelector('.workflow-instruction-strip');
+        const activeAttach = resizeNode.querySelector('.workflow-node-attachments');
+        const activeH = (activeInstruction ? 52 : 0) + (activeAttach ? 60 : 0);
+        
+        // Compact: скрываем пустые add-кнопки
+        const hasAddInstruction = !!resizeNode.querySelector('.workflow-instruction-add');
+        const hasAddAttach = !!resizeNode.querySelector('.workflow-attachments-add');
+        const addH = (hasAddInstruction ? 52 : 0) + (hasAddAttach ? 52 : 0);
+        resizeNode.classList.toggle('compact', addH > 0 && newHeight < hf + activeH + addH + 80);
+        
+        // Minimized: скрываем textarea (нужно 80px+ для контента: 44px padding + 36px текст)
+        resizeNode.classList.toggle('minimized', newHeight <= hf + activeH + 80);
+    }
     
     // Обновляем позицию в workflowPositions
     const blockId = resizeNode.dataset.blockId;

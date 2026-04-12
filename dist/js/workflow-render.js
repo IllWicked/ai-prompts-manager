@@ -257,6 +257,43 @@ function renderWorkflow(preserveScroll = null) {
         canvas.appendChild(node);
     });
     
+    // Пересчитываем минимальную высоту и минимизацию для нод с сохранённым размером
+    canvas.querySelectorAll('.workflow-node:not(.collapsed)').forEach(node => {
+        const savedHeight = parseFloat(node.style.height);
+        if (!savedHeight) return;
+        const header = node.querySelector('.workflow-node-header');
+        const footer = node.querySelector('.workflow-node-footer');
+        if (header && footer) {
+            const hf = header.offsetHeight + footer.offsetHeight;
+            const activeInstruction = node.querySelector('.workflow-instruction-strip');
+            const activeAttach = node.querySelector('.workflow-node-attachments');
+            const activeH = (activeInstruction ? 52 : 0) + (activeAttach ? 60 : 0);
+            
+            // Кэмп минимальной высоты (edit mode)
+            if (isEditMode) {
+                const minH = hf + activeH + 4;
+                if (savedHeight < minH) {
+                    const gridSize = WORKFLOW_CONFIG.GRID_SIZE;
+                    const clamped = Math.ceil(minH / gridSize) * gridSize;
+                    node.style.height = clamped + 'px';
+                    const blockId = node.dataset.blockId;
+                    if (blockId && workflowSizes[blockId]) {
+                        workflowSizes[blockId].height = clamped;
+                    }
+                }
+            }
+            
+            // Compact: скрываем пустые add-кнопки
+            const hasAddInstruction = !!node.querySelector('.workflow-instruction-add');
+            const hasAddAttach = !!node.querySelector('.workflow-attachments-add');
+            const addH = (hasAddInstruction ? 52 : 0) + (hasAddAttach ? 52 : 0);
+            node.classList.toggle('compact', addH > 0 && savedHeight < hf + activeH + addH + 80);
+            
+            // Minimized: скрываем textarea/body
+            node.classList.toggle('minimized', savedHeight <= hf + activeH + 80);
+        }
+    });
+    
     // Создаём ноды скраперов
     scrapers.forEach((scraper) => {
         const node = createScraperNode(scraper);

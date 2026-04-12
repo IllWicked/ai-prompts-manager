@@ -2649,7 +2649,10 @@ header .flex {
     margin: 0 auto;
 }
 
-/* Edit mode - animated bg скрыт */
+/* Edit mode - ВСЕ фоны скрыты */
+.workflow-container.edit-mode {
+    background-image: none !important;
+}
 .workflow-container.edit-mode .waves-wrap,
 .workflow-container.edit-mode .squares-wrap,
 .workflow-container.edit-mode .grid3d-wrap {

@@ -2649,6 +2649,13 @@ header .flex {
     margin: 0 auto;
 }
 
+/* Edit mode - animated bg скрыт */
+.workflow-container.edit-mode .waves-wrap,
+.workflow-container.edit-mode .squares-wrap,
+.workflow-container.edit-mode .grid3d-wrap {
+    display: none;
+}
+
 /* View mode - animated bg позиционируется абсолютно */
 .workflow-container:not(.edit-mode) .waves-wrap,
 .workflow-container:not(.edit-mode) .squares-wrap,

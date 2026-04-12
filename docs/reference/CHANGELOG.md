@@ -8,6 +8,21 @@
 
 ---
 
+## [4.4.14] - 2026-04-12 {#v4414}
+
+### Исправления
+
+- **Фон сдвигает холст / растягивает scroll area:** animated bg wraps (`waves-wrap`, `squares-wrap`) использовали `height: 100vh` на inner-элементах, что расширяло scrollable area контейнера. Исправлено: inner.height синхронизируется с `container.clientHeight` через ResizeObserver (как уже было у grid3d). В view mode wraps позиционируются абсолютно. В edit mode — скрыты.
+
+### Изменённые файлы
+
+| Файл | Изменения |
+|------|-----------|
+| `dist/css/styles.css` | `display: none` в edit mode, `position: absolute` в view mode для animated bg wraps |
+| `dist/js/settings.js` | ResizeObserver height sync для waves и squares (как grid3d) |
+
+---
+
 ## [4.4.13] - 2026-04-12 {#v4413}
 
 ### Исправления

@@ -12,8 +12,8 @@
     },
     "bet-pillar-main": {
       "name": "BET-PILLAR-MAIN",
-      "version": "1.0.46",
-      "order": 5
+      "version": "1.0.47",
+      "order": 11
     },
     "gamble-pillar-main": {
       "name": "GAMBLE-PILLAR-MAIN",
@@ -23,12 +23,12 @@
     "gamble-mirror-nogeo": {
       "name": "GAMBLE-MIRROR-NOGEO",
       "version": "1.0.1",
-      "order": 6
+      "order": 5
     },
     "gamble-mirror": {
       "name": "GAMBLE-MIRROR",
       "version": "1.0.1",
-      "order": 7
+      "order": 6
     },
     "test-pillar-skills": {
       "name": "TEST-PILLAR-SKILLS",
@@ -38,23 +38,23 @@
     "bet-wm2026": {
       "name": "BET-WM2026",
       "version": "1.0.5",
-      "order": 10
+      "order": 9
     },
     "gamble-mirror-packs": {
       "name": "GAMBLE-MIRROR-PACKS",
       "version": "1.0.1",
-      "order": 8
+      "order": 7
     },
     "bet-wm2026-nolinks": {
       "name": "BET-WM2026-NOLINKS",
       "version": "1.0.3",
-      "order": 11
+      "order": 10
     },
     "ausslot-renewal": {
       "name": "AUSSLOT-RENEWAL",
       "version": "1.0.4",
-      "order": 9
+      "order": 8
     }
   },
-  "updated": "2026-04-09"
+  "updated": "2026-04-13"
 }

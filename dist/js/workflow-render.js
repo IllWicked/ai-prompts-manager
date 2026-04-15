@@ -2174,15 +2174,18 @@ function showBlockEditModal(block, index) {
         contentTextarea.readOnly = false;
     }
     
-    // Заполняем данными
-    const titleValue = block.title || '';
+    // Заполняем данными (перечитываем из кэша для актуальности)
+    const freshBlocks = getTabBlocks(currentTab);
+    const freshBlock = freshBlocks[index] || block;
+    
+    const titleValue = freshBlock.title || '';
     getEditTitle().value = titleValue;
-    getEditContent().value = block.content || '';
+    getEditContent().value = freshBlock.content || '';
     modal.dataset.editIndex = index;
     
-    // Обновляем UI инструкции
+    // Обновляем UI инструкции (перечитываем из кэша для актуальности)
     if (isEditMode) {
-        updateModalInstructionUI(block);
+        updateModalInstructionUI(freshBlock);
     }
     
     // Обновляем счётчик символов названия

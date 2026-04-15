@@ -273,23 +273,22 @@ async function applyPromptsUpdate(tabs, remoteManifest, isNewTabs = false, skipR
         // Конвертируем в формат приложения
         const appTabData = convertRemoteTabToAppFormat(tabData, tabVersion);
         
-        // Получаем items из правильного места (поддержка обоих форматов)
-        const tabItems = (tabData.tab || tabData).items || [];
-        
-        // Переносим collapsed из items в отдельные хранилища
         // ВАЖНО: scripts и automation — локальные пользовательские настройки,
         // НЕ импортируем их из remote (иначе GitHub перезаписывает локальные изменения)
+        // Чистим из appTabData.items (конвертер уже скопировал их через spread)
+        for (const item of (appTabData.items || [])) {
+            if (!item.id) continue;
+            delete item.scripts;
+            delete item.automation;
+        }
+        
+        // Переносим collapsed из items в отдельные хранилища
+        const tabItems = (tabData.tab || tabData).items || [];
         for (const item of tabItems) {
             if (!item.id) continue;
-            
-            // Collapsed
             if (item.collapsed) {
                 collapsedBlocks[item.id] = true;
             }
-            
-            // Удаляем scripts/automation из item data чтобы не засорять
-            delete item.scripts;
-            delete item.automation;
         }
         
         // Добавляем/обновляем вкладку

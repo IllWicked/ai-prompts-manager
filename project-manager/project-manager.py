@@ -568,7 +568,7 @@ def display_tabs(tabs: List[Dict]):
     print("  └" + "─" * W + "┘")
 
 def fetch_github_manifest() -> Optional[Dict]:
-    """Загружает манифест с GitHub через API (без кэша)"""
+    """Загружает манифест промптов с GitHub через API (без кэша)"""
     import urllib.request
     import json
     import base64
@@ -597,6 +597,30 @@ def fetch_github_manifest() -> Optional[Dict]:
                 return json.loads(response.read().decode('utf-8'))
         except:
             return None
+
+
+def fetch_github_skills_manifest() -> Optional[Dict]:
+    """Загружает манифест скиллов с GitHub через API"""
+    import urllib.request
+    import base64
+    
+    token = get_github_token()
+    url = f"{GITHUB_API_BASE}/repos/{GITHUB_OWNER}/{GITHUB_REPO}/contents/skills/manifest.json"
+    
+    try:
+        headers = {
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'ai-prompts-manager'
+        }
+        if token:
+            headers['Authorization'] = f'token {token}'
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            content = base64.b64decode(data['content']).decode('utf-8')
+            return json.loads(content)
+    except:
+        return None
 
 def fetch_github_app_version() -> Optional[str]:
     """Загружает версию последнего релиза с GitHub"""
@@ -1259,8 +1283,133 @@ def submenu_create_release(project_dir: Path):
 # ═══════════════════════════════════════════════════════════════════════════
 
 # ═══════════════════════════════════════════════════════════════════════════
-# PUSH СКИЛЛОВ
+# УПРАВЛЕНИЕ СКИЛЛАМИ
 # ═══════════════════════════════════════════════════════════════════════════
+
+def menu_skills():
+    """Подменю управления скиллами"""
+    while True:
+        clear_screen()
+        print("\n  ═══════════════════════════════════════════════════════")
+        print("                    УПРАВЛЕНИЕ СКИЛЛАМИ")
+        print("  ═══════════════════════════════════════════════════════")
+        
+        # Загружаем данные с GitHub
+        print("\n  Загрузка данных с GitHub...", end="", flush=True)
+        manifest = fetch_github_skills_manifest()
+        print("\r" + " " * 40 + "\r", end="")
+        
+        if manifest and manifest.get('skills'):
+            skills = manifest['skills']
+            print(f"\n  Скиллы на GitHub (v{manifest.get('version', '?')}):\n")
+            for i, s in enumerate(skills, 1):
+                size_kb = s.get('size', 0) / 1024
+                print(f"    {i}. {s['name']} ({size_kb:.1f} KB)")
+        else:
+            print("\n  ⚠ Нет скиллов на GitHub или не удалось загрузить")
+        
+        print("\n  1. Удалить скилл (GitHub)")
+        print("  ─────────────────────────────────────")
+        print("  0. ← Назад")
+        
+        choice = input("\n  Выбор: ").strip()
+        
+        if choice == '0':
+            break
+        elif choice == '1':
+            submenu_delete_skill()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# СКИЛЛЫ — УДАЛЕНИЕ, PUSH
+# ═══════════════════════════════════════════════════════════════════════════
+
+def submenu_delete_skill():
+    """Удаление скилла с GitHub"""
+    print("\n  ─── УДАЛЕНИЕ СКИЛЛА (GitHub) ───")
+    
+    token = get_github_token()
+    if not token:
+        print("\n  ⚠ Нет GitHub токена!")
+        press_any_key()
+        return
+    
+    print("\n  Загрузка...", end="", flush=True)
+    manifest = fetch_github_skills_manifest()
+    print(f" {'✓' if manifest else '✗'}")
+    
+    if not manifest or not manifest.get('skills'):
+        print("\n  ⚠ Нет скиллов на GitHub!")
+        press_any_key()
+        return
+    
+    skills = manifest['skills']
+    print(f"\n  Скиллы ({len(skills)}):\n")
+    for i, s in enumerate(skills, 1):
+        print(f"    {i}. {s['name']}")
+    
+    try:
+        num = int(input("\n  Номер для удаления (0 - отмена): ").strip())
+        if num == 0:
+            return
+        if 1 <= num <= len(skills):
+            skill = skills[num - 1]
+            skill_name = skill['name']
+            skill_file = skill['file']
+            
+            if not confirm(f"Удалить '{skill_name}' с GitHub?"):
+                return
+            
+            print("\n  Удаление...", end="", flush=True)
+            
+            # Получаем sha файла
+            file_info = github_api_get_file(f"skills/{skill_file}", token)
+            if not file_info:
+                print(" ✗")
+                print("\n  ⚠ Файл не найден на GitHub!")
+                press_any_key()
+                return
+            
+            # Удаляем файл
+            success, msg = github_api_delete_file(
+                f"skills/{skill_file}",
+                f"Delete skill {skill_name}",
+                token,
+                file_info['sha']
+            )
+            
+            if not success:
+                print(" ✗")
+                print(f"\n  ✗ {msg}")
+                press_any_key()
+                return
+            
+            # Обновляем манифест
+            manifest['skills'] = [s for s in skills if s['name'] != skill_name]
+            parts = manifest.get('version', '1.0.0').split('.')
+            parts[-1] = str(int(parts[-1]) + 1)
+            manifest['version'] = '.'.join(parts)
+            manifest['updated'] = datetime.now().strftime("%Y-%m-%d")
+            
+            manifest_content = json.dumps(manifest, ensure_ascii=False, indent=4)
+            manifest_info = github_api_get_file("skills/manifest.json", token)
+            sha = manifest_info.get('sha') if manifest_info else None
+            success, msg = github_api_put_file(
+                "skills/manifest.json", manifest_content,
+                f"Update manifest after deleting {skill_name}",
+                token, sha
+            )
+            print()
+            
+            if success:
+                print(f"\n  ✓ Скилл '{skill_name}' удалён с GitHub!")
+            else:
+                print(f"\n  ⚠ Файл удалён, но манифест не обновлён: {msg}")
+        else:
+            print("\n  ⚠ Неверный номер!")
+    except ValueError:
+        print("\n  ⚠ Введи число!")
+    press_any_key()
 
 def _push_skills(script_dir: Path):
     """Пушит скиллы на GitHub. .skill файлы лежат рядом со скриптом, удаляются после пуша."""
@@ -1309,19 +1458,25 @@ def _push_skills(script_dir: Path):
     else:
         new_version = '1.0.0'
     
-    # Собираем манифест из файлов к пушу
-    skills_list = []
+    # Мержим: берём существующий манифест, обновляем/добавляем локальные файлы
+    existing_skills = {}
+    if github_manifest and 'skills' in github_manifest:
+        for s in github_manifest['skills']:
+            existing_skills[s['name']] = s
+    
     print(f"\n  📂 Подготовка файлов ({len(skill_files)})...\n")
     for sf in skill_files:
-        skills_list.append({
-            "name": sf.stem,
+        name = sf.stem
+        entry = {
+            "name": name,
             "file": sf.name,
             "size": sf.stat().st_size
-        })
-        if old_version:
-            print(f"     {sf.name} ({sf.stat().st_size / 1024:.1f} KB)")
-        else:
-            print(f"     {sf.name} ({sf.stat().st_size / 1024:.1f} KB) (новый)")
+        }
+        is_update = name in existing_skills
+        existing_skills[name] = entry
+        print(f"     {sf.name} ({sf.stat().st_size / 1024:.1f} KB) ({'обновление' if is_update else 'новый'})")
+    
+    skills_list = list(existing_skills.values())
     
     manifest = {
         "version": new_version,
@@ -1329,10 +1484,11 @@ def _push_skills(script_dir: Path):
         "skills": skills_list
     }
     
+    print(f"\n  Всего скиллов в манифесте: {len(skills_list)}")
     if old_version:
-        print(f"\n  Версия: v{old_version} → v{new_version}")
+        print(f"  Версия: v{old_version} → v{new_version}")
     else:
-        print(f"\n  Версия: v{new_version}")
+        print(f"  Версия: v{new_version}")
     
     message = f"Skills v{new_version}"
     
@@ -1412,13 +1568,14 @@ def main_menu():
         
         print("\n  ГЛАВНОЕ МЕНЮ:")
         print("  ═════════════════════════════════════")
-        print("  1. 📝 Промпты (переименовать/порядок на GitHub)")
-        print("  2. 📦 Push (промпты и скиллы на GitHub)")
-        print("  3. 🚀 Релизы (новая версия программы)")
+        print("  1. 📝 Промпты (управление на GitHub)")
+        print("  2. ⚡ Скиллы (управление на GitHub)")
+        print("  3. 📦 Push (промпты и скиллы на GitHub)")
+        print("  4. 🚀 Релизы (новая версия программы)")
         print("  ═════════════════════════════════════")
         print("  0. Выход")
         
-        choice = input("\n  Выбор (0-3): ").strip()
+        choice = input("\n  Выбор (0-4): ").strip()
         
         if choice == '0':
             print("\n  Выход...")
@@ -1426,8 +1583,10 @@ def main_menu():
         elif choice == '1':
             menu_prompts(script_dir, project_dir)
         elif choice == '2':
-            menu_git(script_dir, project_dir)
+            menu_skills()
         elif choice == '3':
+            menu_git(script_dir, project_dir)
+        elif choice == '4':
             menu_release(project_dir)
 
 def main():

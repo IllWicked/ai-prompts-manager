@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "exportDate": "2026-04-15T06:38:12.720Z",
+  "exportDate": "2026-04-15T06:39:12.665Z",
   "tab": {
     "id": "test-pillar-skills",
     "name": "TEST-PILLAR-SKILLS",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "items": [
       {
         "id": "item_1773837804841_rsmincrn3",
@@ -127,7 +127,9 @@
           "newChat": true
         }
       }
-    ]
+    ],
+    "language": "en",
+    "country": "us"
   },
   "workflow": {
     "positions": {

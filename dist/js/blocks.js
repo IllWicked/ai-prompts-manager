@@ -18,12 +18,12 @@ let collapsedBlocks = {};
  */
 function loadCollapsedBlocks() {
     collapsedBlocks = {};
-    if (typeof getAllTabs !== 'function') return;
-    for (const tab of Object.values(getAllTabs())) {
-        for (const item of (tab.items || [])) {
-            if (item.type === 'block' && item.collapsed) {
-                collapsedBlocks[item.id] = true;
-            }
+    if (typeof getAllTabs !== 'function' || typeof currentTab === 'undefined') return;
+    const tab = getAllTabs()[currentTab];
+    if (!tab || !tab.items) return;
+    for (const item of tab.items) {
+        if (item.type === 'block' && item.collapsed) {
+            collapsedBlocks[item.id] = true;
         }
     }
 }
@@ -59,17 +59,18 @@ let blockScripts = {};
  */
 function loadBlockScripts() {
     blockScripts = {};
-    if (typeof getAllTabs !== 'function') return;
-    for (const tab of Object.values(getAllTabs())) {
-        for (const item of (tab.items || [])) {
-            if (item.type === 'block' && item.scripts && item.scripts.length > 0) {
-                const valid = item.scripts.filter(s => typeof EMBEDDED_SCRIPTS !== 'undefined' && EMBEDDED_SCRIPTS[s]);
-                if (valid.length > 0) {
-                    blockScripts[item.id] = valid;
-                }
-                if (valid.length !== item.scripts.length) {
-                    item.scripts = valid.length > 0 ? valid : undefined;
-                }
+    if (typeof getAllTabs !== 'function' || typeof currentTab === 'undefined') return;
+    const tabs = getAllTabs();
+    const tab = tabs[currentTab];
+    if (!tab || !tab.items) return;
+    for (const item of tab.items) {
+        if (item.type === 'block' && item.scripts && item.scripts.length > 0) {
+            const valid = item.scripts.filter(s => typeof EMBEDDED_SCRIPTS !== 'undefined' && EMBEDDED_SCRIPTS[s]);
+            if (valid.length > 0) {
+                blockScripts[item.id] = valid;
+            }
+            if (valid.length !== item.scripts.length) {
+                item.scripts = valid.length > 0 ? valid : undefined;
             }
         }
     }
@@ -109,12 +110,12 @@ let blockAutomation = {};
  */
 function loadBlockAutomation() {
     blockAutomation = {};
-    if (typeof getAllTabs !== 'function') return;
-    for (const tab of Object.values(getAllTabs())) {
-        for (const item of (tab.items || [])) {
-            if (item.type === 'block' && item.automation && Object.keys(item.automation).length > 0) {
-                blockAutomation[item.id] = { ...item.automation };
-            }
+    if (typeof getAllTabs !== 'function' || typeof currentTab === 'undefined') return;
+    const tab = getAllTabs()[currentTab];
+    if (!tab || !tab.items) return;
+    for (const item of tab.items) {
+        if (item.type === 'block' && item.automation && Object.keys(item.automation).length > 0) {
+            blockAutomation[item.id] = { ...item.automation };
         }
     }
 }

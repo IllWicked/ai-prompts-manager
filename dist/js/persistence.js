@@ -315,6 +315,11 @@ function loadPrompts(preserveScroll = null) {
     // Скрыть оверлей загрузки
     loadingOverlay.classList.add('hidden');
     
+    // Перезагружаем состояния блоков для текущей вкладки
+    loadBlockScripts();
+    loadCollapsedBlocks();
+    loadBlockAutomation();
+    
     // Загружаем состояние и рендерим workflow
     loadWorkflowState();
     renderWorkflow(shouldPreserveScroll);

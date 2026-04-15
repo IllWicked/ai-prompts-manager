@@ -252,6 +252,10 @@ async function checkAppVersionAndReset() {
         if (needsReset && savedAppVersion !== '0.3.0') {
             // Авто-сброс: без перезагрузки (уже при старте), без Rust команд (webview пересоздадутся)
             await performReset({ reloadPage: false, callRustCommands: false });
+            // Удаляем файл данных вкладок (иначе initHybridStorage восстановит старые данные)
+            if (window.__TAURI__?.core) {
+                try { await window.__TAURI__.core.invoke('delete_tabs_file'); } catch(_) {}
+            }
         }
         
         // Сохраняем текущую версию

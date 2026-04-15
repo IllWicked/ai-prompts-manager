@@ -6,6 +6,10 @@
 .env.local
 .env.*.local
 
+# Промпты и скиллы — управляются через Project Manager API, не через git
+prompts/
+skills/
+
 # Бэкапы
 .backups/
 

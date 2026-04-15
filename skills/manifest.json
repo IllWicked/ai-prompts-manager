@@ -1,11 +1,11 @@
 {
-    "version": "1.0.0",
+    "version": "1.0.1",
     "updated": "2026-04-15",
     "skills": [
         {
             "name": "content-technical",
             "file": "content-technical.skill",
-            "size": 36617
+            "size": 36696
         },
         {
             "name": "html-page-design",

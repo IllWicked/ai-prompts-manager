@@ -1,5 +1,5 @@
 {
-    "version": "1.0.1",
+    "version": "1.0.2",
     "updated": "2026-04-15",
     "skills": [
         {
@@ -10,7 +10,7 @@
         {
             "name": "html-page-design",
             "file": "html-page-design.skill",
-            "size": 13318
+            "size": 13638
         },
         {
             "name": "quality-audit",

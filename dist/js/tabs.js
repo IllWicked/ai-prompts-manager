@@ -245,7 +245,6 @@ function removeItemFromTab(tabId, itemId) {
     // 3. Удаляем из blockScripts
     if (typeof blockScripts !== 'undefined' && blockScripts[itemId]) {
         delete blockScripts[itemId];
-        saveBlockScripts();
     }
     
     // 4. Удаляем из blockAutomation

@@ -3,7 +3,7 @@
  * Функции для управления UI блоков (сворачивание, скрипты, автоматизация)
  * 
  * @requires blocks.js (collapsedBlocks, saveCollapsedBlocks, isBlockCollapsed, 
- *                      blockScripts, saveBlockScripts, getBlockScripts,
+ *                      blockScripts, getBlockScripts,
  *                      blockAutomation, saveBlockAutomation, getBlockAutomationFlags,
  *                      blockAttachments)
  * @requires storage.js (getAllTabs, saveAllTabs)
@@ -196,7 +196,6 @@ function toggleBlockScript(blockId, scriptKey) {
         blockScripts[blockId].sort((a, b) => a === 'convert' ? -1 : 1);
     }
     if (blockScripts[blockId].length === 0) delete blockScripts[blockId];
-    saveBlockScripts();
     updateBlockScriptBadges(blockId);
     
     // Синхронизируем item.scripts в данных вкладки

@@ -23,7 +23,7 @@
  *     - clearNodeSelection(), onNodeDrag, onNodeDragEnd, onNodeResize, onNodeResizeEnd из workflow-interactions.js
  *     - sendNodeToClaude() из claude-api.js
  *   - Из blocks.js: getBlockScripts(), getBlockAutomationFlags(), isBlockCollapsed(), 
- *                   toggleBlockCollapsed(), saveCollapsedBlocks(), saveBlockScripts()
+ *                   toggleBlockCollapsed(), saveCollapsedBlocks()()
  *   - Из index.html: getTabBlocks(), getTabItems(), getAllTabs(), saveAllTabs(), 
  *                    escapeHtml(), showToast() из toast.js, hideContextMenu(), setupPortEvents(),
  *                    toggleBlockScript(), toggleBlockAutomation(), toggleAttachmentsPanel(),
@@ -2334,7 +2334,6 @@ function deleteWorkflowBlock(index) {
         }
         if (blockScripts[blockId]) {
             delete blockScripts[blockId];
-            saveBlockScripts();
         }
         
         // Удаляем из blockAutomation

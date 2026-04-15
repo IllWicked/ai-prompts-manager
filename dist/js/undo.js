@@ -10,7 +10,7 @@
  * 
  * @requires config.js (STORAGE_KEYS)
  * @requires storage.js (getAllTabs, setTabsCache, saveAllTabs)
- * @requires blocks.js (collapsedBlocks, saveCollapsedBlocks, blockScripts, saveBlockScripts, blockAutomation, saveBlockAutomation)
+ * @requires blocks.js (collapsedBlocks, saveCollapsedBlocks, blockScripts, blockAutomation, saveBlockAutomation)
  * @requires persistence.js (loadPrompts)
  * @requires workflow-render.js (renderWorkflow)
  * @requires workflow-state.js (workflowPositions, workflowConnections, workflowSizes)
@@ -328,7 +328,6 @@ function applyState(state) {
         Object.entries(state.blockScripts).forEach(([id, s]) => {
             blockScripts[id] = [...s];
         });
-        saveBlockScripts();
     }
     
     // Automation

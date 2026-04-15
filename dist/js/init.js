@@ -693,7 +693,6 @@ function pasteBlocksAtCoords(baseX, baseY) {
     
     // Сохраняем хранилища
     saveCollapsedBlocks();
-    saveBlockScripts();
     saveBlockAutomation();
     
     // Вставляем соединения с новыми ID

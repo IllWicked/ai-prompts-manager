@@ -273,16 +273,9 @@ async function applyPromptsUpdate(tabs, remoteManifest, isNewTabs = false, skipR
         // Конвертируем в формат приложения
         const appTabData = convertRemoteTabToAppFormat(tabData, tabVersion);
         
-        // ВАЖНО: scripts и automation — локальные пользовательские настройки,
-        // НЕ импортируем их из remote (иначе GitHub перезаписывает локальные изменения)
-        // Чистим из appTabData.items (конвертер уже скопировал их через spread)
-        for (const item of (appTabData.items || [])) {
-            if (!item.id) continue;
-            delete item.scripts;
-            delete item.automation;
-        }
-        
         // Переносим collapsed из items в отдельные хранилища
+        // ВАЖНО: scripts и automation из remote items НЕ трогаем blockScripts/blockAutomation
+        // (они не сохраняются в эти хранилища — см. ниже, сохраняется только collapsed)
         const tabItems = (tabData.tab || tabData).items || [];
         for (const item of tabItems) {
             if (!item.id) continue;
@@ -365,13 +358,9 @@ function removeObsoleteTabs(removedTabs) {
     
     // Загружаем отдельные хранилища для cleanup
     let collapsedBlocks = {};
-    let blockScripts = {};
-    let blockAutomation = {};
     
     try {
         collapsedBlocks = JSON.parse(localStorage.getItem(STORAGE_KEYS.COLLAPSED_BLOCKS) || '{}');
-        blockScripts = JSON.parse(localStorage.getItem(STORAGE_KEYS.BLOCK_SCRIPTS) || '{}');
-        blockAutomation = JSON.parse(localStorage.getItem(STORAGE_KEYS.BLOCK_AUTOMATION) || '{}');
     } catch (e) {
         console.error('[RemotePrompts] Error loading block data for cleanup:', e);
     }
@@ -435,8 +424,6 @@ function removeObsoleteTabs(removedTabs) {
             saveAllTabs(allTabs);
         }
         localStorage.setItem(STORAGE_KEYS.COLLAPSED_BLOCKS, JSON.stringify(collapsedBlocks));
-        localStorage.setItem(STORAGE_KEYS.BLOCK_SCRIPTS, JSON.stringify(blockScripts));
-        localStorage.setItem(STORAGE_KEYS.BLOCK_AUTOMATION, JSON.stringify(blockAutomation));
         
         // Перезагружаем данные в память
         if (typeof loadCollapsedBlocks === 'function') loadCollapsedBlocks();

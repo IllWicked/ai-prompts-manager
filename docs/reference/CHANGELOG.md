@@ -8,6 +8,99 @@
 
 ---
 
+## [4.4.20] - 2026-04-18 {#v4420}
+
+### Исправления
+
+- **Список языков не по алфавиту:** порядок опций в `index.html` и `langTexts` был сбит (`ga` перед `fr`), а объект `LANGUAGES` в `languages.js` — вообще в произвольном порядке, т.к. новые языки добавлялись в конец. Исправлено: все три списка пересортированы по коду языка (bg, cz, de, dk, en, es, et, fi, fr, ga, gr, hr, hu, is, it, lb, lv, nl, no, pl, pt, ro, se, sk, sl).
+- **Auto-continue не срабатывает в одном из табов (рандомно):** две причины. (1) Counter JS (676 строк), Auto-Continue JS и `initClaudeUI()` инжектились в один `onReady` колбек без изоляции — если Counter выкидывал исключение в середине, Auto-Continue IIFE до выполнения не доходил, `window._ac` не создавался, `setEnabled()` тихо no-op’ил. (2) Гонка между `PageLoadEvent::Finished` (эмит `claude-page-loaded`) и созданием `window._ac` внутри `onReady`: если Main WebView успевал прислать `setEnabled(true)` до того как IIFE отработал — команда терялась. Исправлено: (a) три инжекта обёрнуты в отдельные `try/catch` — падение одного не убивает соседей; (b) добавлен pending-флаг `window._acWantEnabled`, который Main WebView выставляет ДО попытки `setEnabled`. IIFE автоконтинью в конце своей инициализации читает флаг и самовключается если `true`. Гонка устранена в обе стороны.
+
+### Изменённые файлы
+
+| Файл | Изменения |
+|------|-----------|
+| `dist/index.html` | Перестановка `fr`/`ga` в списке `.language-option` |
+| `dist/js/language-ui.js` | Перестановка `fr`/`ga` в `langTexts` |
+| `dist/js/languages.js` | `LANGUAGES` полностью пересортирован по коду языка |
+| `src-tauri/src/webview/scripts.rs` | `initClaudeUI`, Counter, Auto-Continue — каждый в своём `try/catch` |
+| `src-tauri/scripts/claude_autocontinue.js` | В конце IIFE читает `window._acWantEnabled`, самовключается если `true` |
+| `dist/js/claude-api.js` | `claude-page-loaded` handler выставляет `window._acWantEnabled` перед `setEnabled` |
+| `dist/js/settings.js` | `syncAutoContinueToWebViews` также выставляет pending-флаг |
+
+---
+
+## [4.4.19] - 2026-04-15 {#v4419}
+
+### Исправления
+
+- **Project Manager затирает чужие скиллы в манифесте при push:** `_push_skills()` полностью заменял `manifest.json` на GitHub содержимым локальной папки. Если локально лежал один `.skill` файл — остальные скиллы исчезали из манифеста (сами файлы на GitHub оставались, но программа их уже не видела). Исправлено: перед push загружается текущий манифест с GitHub, локальные файлы мержатся в него по имени (обновление существующих + добавление новых), затем пушится объединённый манифест.
+- **Нет способа удалить скилл с GitHub через Project Manager:** добавлено подменю «Управление скиллами» (`menu_skills`) с операцией удаления скилла с GitHub (удаляет `.skill` файл + запись из `manifest.json`).
+
+### Изменённые файлы
+
+| Файл | Изменения |
+|------|-----------|
+| `project-manager/project-manager.py` | `_push_skills()` — merge c существующим GitHub манифестом; добавлены `menu_skills()` и `submenu_delete_skill()` |
+
+---
+
+## [4.4.18] - 2026-04-15 {#v4418}
+
+### Исправления
+
+- **Маркеры скриптов / свёрнутость / автоматизация протекают между вкладками с одинаковыми ID блоков:** `loadBlockScripts()`, `loadCollapsedBlocks()`, `loadBlockAutomation()` итерировались по **всем** вкладкам и складывали результат в плоский объект `{blockId: ...}`. Если в двух вкладках (например `bet-pillar-main` и `test-pillar-skills`) были блоки с одинаковыми ID, но скрипты стояли только в одной — скрипты из первой «перетекали» во вторую. Исправлено: все три функции грузят только `currentTab`; `loadPrompts()` вызывает их при каждом переключении вкладки.
+
+### Изменённые файлы
+
+| Файл | Изменения |
+|------|-----------|
+| `dist/js/blocks.js` | `loadBlockScripts/CollapsedBlocks/BlockAutomation` читают только `currentTab` вместо итерации по всем вкладкам |
+| `dist/js/persistence.js` | `loadPrompts()` перечитывает все три состояния при смене вкладки |
+
+---
+
+## [4.4.17] - 2026-04-15 {#v4417}
+
+### Исправления
+
+- **Маркеры скриптов возвращаются после обновления версии:** `checkAppVersionAndReset()` при детекте новой версии вызывал `performReset({ callRustCommands: false })` — localStorage чистился, но файл гибридного хранилища `tabs.json` оставался нетронутым. После этого `initHybridStorage()` находил файл, видел пустой localStorage и восстанавливал старые данные вкладок вместе с `item.scripts` → маркеры W/N/P воскресали. Исправлено: после авто-сброса инвокается Rust-команда `delete_tabs_file`, чтобы файл удалялся синхронно с localStorage.
+
+### Изменённые файлы
+
+| Файл | Изменения |
+|------|-----------|
+| `dist/js/persistence.js` | `checkAppVersionAndReset()` вызывает `delete_tabs_file` после `performReset` |
+
+---
+
+## [4.4.16] - 2026-04-15 {#v4416}
+
+### Исправления
+
+- **Инструкции блоков не синхронизированы между холстом и модальным окном:** `editWorkflowNode()` заполнял поля модалки из аргумента `block`, который мог быть stale snapshot (особенно после правок инструкции прямо на canvas через instruction strip). Фикс: модалка перечитывает свежие данные из кэша (`getTabBlocks(currentTab)[index]`) на открытии + force-save всех несохранённых значений `.workflow-instruction-input` перед открытием (на случай если `change` event ещё не сработал).
+
+### Изменённые файлы
+
+| Файл | Изменения |
+|------|-----------|
+| `dist/js/workflow-render.js` | `editWorkflowNode()` — force-save pending instruction inputs; `showBlockEditModal()` — перечитывание блока из кэша перед заполнением модалки |
+
+---
+
+## [4.4.15] - 2026-04-12 {#v4415}
+
+### Исправления
+
+- **В edit mode видны фоны холста (точки, квадраты, волны, матрица):** в v4.4.14 были скрыты только animated bg wraps (`waves-wrap`, `squares-wrap`, `grid3d-wrap`), но статические фоны через `background-image` на `.workflow-container` оставались видны в edit mode и мешали редактированию. Исправлено: все фоны (включая статические) принудительно скрыты в edit mode.
+
+### Изменённые файлы
+
+| Файл | Изменения |
+|------|-----------|
+| `dist/css/styles.css` | `.workflow-container.edit-mode { background-image: none !important; }` |
+
+---
+
 ## [4.4.14] - 2026-04-12 {#v4414}
 
 ### Исправления

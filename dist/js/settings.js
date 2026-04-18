@@ -878,7 +878,9 @@ function setAutoContinue(enabled) {
  * @param {boolean} enabled
  */
 function syncAutoContinueToWebViews(enabled) {
-    const script = `if(window._ac)window._ac.setEnabled(${!!enabled})`;
+    // Ставим pending-флаг + вызываем setEnabled. Флаг перехватит IIFE автоконтинью
+    // если он ещё не успел создать window._ac (при свежей загрузке таба).
+    const script = `window._acWantEnabled=${!!enabled};if(window._ac)window._ac.setEnabled(${!!enabled})`;
     for (let tab = 1; tab <= 3; tab++) {
         try { evalInClaude(tab, script); } catch(e) {}
     }

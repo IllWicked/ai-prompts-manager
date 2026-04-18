@@ -1480,7 +1480,10 @@ function initProjectUrlTracking() {
             // Синхронизируем auto-continue в загрузившийся таб
             try {
                 const acEnabled = getSettings().autoContinue === true;
-                if (acEnabled) evalInClaude(tab, 'if(window._ac)window._ac.setEnabled(true)');
+                // Ставим pending-флаг + пробуем вызвать setEnabled. Если IIFE
+                // автоконтинью ещё не успел создать window._ac (гонка с DOMContentLoaded),
+                // флаг подхватится при инициализации IIFE.
+                evalInClaude(tab, `window._acWantEnabled=${!!acEnabled};if(window._ac)window._ac.setEnabled(${!!acEnabled})`);
             } catch(e) {}
         }
         

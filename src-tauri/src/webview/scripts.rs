@@ -96,24 +96,30 @@ pub fn get_claude_init_script(tab: u8) -> String {
         }}
         
         onReady(function() {{
-            initClaudeUI();
+            // Изолированная инициализация: падение одного инжекта не ломает соседние
+            try {{ initClaudeUI(); }} catch(e) {{ console.error('[APM][initClaudeUI]', e); }}
             
-            // Claude Counter: inject CSS
-            var _ccStyle = document.createElement('style');
-            _ccStyle.id = '_ccs';
-            _ccStyle.textContent = `{counter_css}`;
-            document.head.appendChild(_ccStyle);
+            // Claude Counter: inject CSS + init — изолированы от Auto-Continue
+            try {{
+                var _ccStyle = document.createElement('style');
+                _ccStyle.id = '_ccs';
+                _ccStyle.textContent = `{counter_css}`;
+                document.head.appendChild(_ccStyle);
+                
+                // Hide Claude disclaimer
+                var _hdStyle = document.createElement('style');
+                _hdStyle.textContent = 'a[href*="claude-is-providing-incorrect"]{{display:none!important}}';
+                document.head.appendChild(_hdStyle);
+                
+                // Claude Counter: init
+                {counter_js}
+            }} catch(e) {{ console.error('[APM][Counter]', e); }}
             
-            // Hide Claude disclaimer
-            var _hdStyle = document.createElement('style');
-            _hdStyle.textContent = 'a[href*="claude-is-providing-incorrect"]{{display:none!important}}';
-            document.head.appendChild(_hdStyle);
-            
-            // Claude Counter: init
-            {counter_js}
-            
-            // Auto-Continue: init (starts disabled, enabled via eval from Main WebView)
-            {autocontinue_js}
+            // Auto-Continue: init (starts disabled, enabled via eval from Main WebView
+            // или через pending-флаг window._acWantEnabled если событие пришло раньше)
+            try {{
+                {autocontinue_js}
+            }} catch(e) {{ console.error('[APM][AutoContinue]', e); }}
         }});
     }})();
     "##, tab = tab, selectors = CLAUDE_SELECTORS_JSON, helpers = CLAUDE_HELPERS_JS,

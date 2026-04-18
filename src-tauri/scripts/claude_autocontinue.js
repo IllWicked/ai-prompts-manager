@@ -134,4 +134,10 @@
         }
     };
 
+    // Pending-flag: если Main WebView уже прислал команду включения ДО того как
+    // этот IIFE успел выполниться (race c claude-page-loaded), подхватываем её
+    if (window._acWantEnabled === true) {
+        window._ac.setEnabled(true);
+    }
+
 })();

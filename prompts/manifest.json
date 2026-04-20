@@ -13,47 +13,57 @@
     "gamble-mirror-nogeo": {
       "name": "GAMBLE-MIRROR-NOGEO",
       "version": "1.0.1",
-      "order": 4
+      "order": 3
     },
     "gamble-mirror": {
       "name": "GAMBLE-MIRROR",
       "version": "1.0.1",
-      "order": 5
+      "order": 4
     },
     "test-pillar-skills": {
       "name": "TEST-PILLAR-SKILLS",
       "version": "1.0.13",
-      "order": 12
+      "order": 11
     },
     "bet-wm2026": {
       "name": "BET-WM2026",
       "version": "1.0.5",
-      "order": 8
+      "order": 7
     },
     "gamble-mirror-packs": {
       "name": "GAMBLE-MIRROR-PACKS",
       "version": "1.0.1",
-      "order": 6
+      "order": 5
     },
     "bet-wm2026-nolinks": {
       "name": "BET-WM2026-NOLINKS",
       "version": "1.0.3",
-      "order": 9
+      "order": 8
     },
     "ausslot-renewal": {
       "name": "AUSSLOT-RENEWAL",
       "version": "1.0.4",
-      "order": 7
+      "order": 6
     },
     "gamble-mini-reviews-1": {
       "name": "GAMBLE-MINI REVIEWS",
       "version": "1.0.0",
-      "order": 10
+      "order": 9
     },
     "gamble-brand-review": {
       "name": "GAMBLE-BRAND REVIEW",
       "version": "1.0.0",
-      "order": 11
+      "order": 10
+    },
+    "gamble-pillar-main": {
+      "name": "GAMBLE-PILLAR-MAIN",
+      "version": "1.0.0",
+      "order": 12
+    },
+    "bet-pillar-main": {
+      "name": "BET-PILLAR-MAIN",
+      "version": "1.0.0",
+      "order": 13
     }
   },
   "updated": "2026-04-20"

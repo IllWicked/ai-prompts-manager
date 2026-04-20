@@ -1,11 +1,11 @@
 {
-    "version": "1.0.2",
+    "version": "1.0.3",
     "updated": "2026-04-20",
     "skills": [
         {
             "name": "content-technical",
             "file": "content-technical.skill",
-            "size": 26494
+            "size": 26557
         },
         {
             "name": "html-page-design",
@@ -15,7 +15,7 @@
         {
             "name": "quality-audit",
             "file": "quality-audit.skill",
-            "size": 10085
+            "size": 9953
         }
     ]
 }

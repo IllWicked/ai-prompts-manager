@@ -11,9 +11,9 @@
       "order": 2
     },
     "bet-pillar-main": {
-      "name": "BET-PILLAR-MAIN",
-      "version": "1.0.47",
-      "order": 10
+      "name": "GAMBLE-PILLAR-MAIN",
+      "version": "1.0.48",
+      "order": 13
     },
     "gamble-pillar-main": {
       "name": "GAMBLE-PILLAR-MAIN",
@@ -33,7 +33,7 @@
     "test-pillar-skills": {
       "name": "TEST-PILLAR-SKILLS",
       "version": "1.0.13",
-      "order": 13
+      "order": 12
     },
     "bet-wm2026": {
       "name": "BET-WM2026",
@@ -58,12 +58,12 @@
     "gamble-mini-reviews-1": {
       "name": "GAMBLE-MINI REVIEWS",
       "version": "1.0.0",
-      "order": 11
+      "order": 10
     },
     "gamble-brand-review": {
       "name": "GAMBLE-BRAND REVIEW",
       "version": "1.0.0",
-      "order": 12
+      "order": 11
     }
   },
   "updated": "2026-04-20"

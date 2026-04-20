@@ -32,7 +32,7 @@
     },
     "test-pillar-skills": {
       "name": "TEST-PILLAR-SKILLS",
-      "version": "1.0.12",
+      "version": "1.0.13",
       "order": 13
     },
     "bet-wm2026": {
@@ -66,5 +66,5 @@
       "order": 12
     }
   },
-  "updated": "2026-04-18"
+  "updated": "2026-04-20"
 }

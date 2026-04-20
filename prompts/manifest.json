@@ -10,11 +10,6 @@
       "version": "1.0.10",
       "order": 2
     },
-    "gamble-pillar-main": {
-      "name": "GAMBLE-PILLAR-MAIN",
-      "version": "1.0.9",
-      "order": 3
-    },
     "gamble-mirror-nogeo": {
       "name": "GAMBLE-MIRROR-NOGEO",
       "version": "1.0.1",

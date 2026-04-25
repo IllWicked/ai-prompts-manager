@@ -23,7 +23,7 @@
     "test-pillar-skills": {
       "name": "TEST-PILLAR-SKILLS",
       "version": "1.0.14",
-      "order": 11
+      "order": 10
     },
     "bet-wm2026": {
       "name": "BET-WM2026",
@@ -48,18 +48,33 @@
     "gamble-brand-review": {
       "name": "GAMBLE-BRAND REVIEW",
       "version": "1.0.0",
-      "order": 10
+      "order": 9
     },
     "gamble-pillar-main": {
       "name": "GAMBLE-PILLAR-MAIN",
       "version": "1.0.1",
-      "order": 12
+      "order": 11
     },
     "bet-pillar-main": {
       "name": "BET-PILLAR-MAIN",
       "version": "1.0.1",
+      "order": 12
+    },
+    "gamble-mini-fill": {
+      "name": "GAMBLE-MINI-FILL",
+      "version": "1.0.0",
       "order": 13
+    },
+    "gamble-mini-generation": {
+      "name": "GAMBLE-MINI-GENERATION",
+      "version": "1.0.0",
+      "order": 14
+    },
+    "gamble-mini-research": {
+      "name": "GAMBLE-MINI-RESEARCH",
+      "version": "1.0.0",
+      "order": 15
     }
   },
-  "updated": "2026-04-23"
+  "updated": "2026-04-25"
 }

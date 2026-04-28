@@ -74,7 +74,12 @@
       "name": "GAMBLE-MINI-RESEARCH",
       "version": "1.0.1",
       "order": 15
+    },
+    "livetv-categories": {
+      "name": "LIVETV-CATEGORIES",
+      "version": "1.0.0",
+      "order": 16
     }
   },
-  "updated": "2026-04-27"
+  "updated": "2026-04-28"
 }

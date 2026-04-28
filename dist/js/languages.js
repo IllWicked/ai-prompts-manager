@@ -446,6 +446,16 @@ const LANGUAGES = {
         aboutUs: 'O nas',
         legalInfo: 'Pravne informacije',
         cookiePolicy: 'Politika piškotkov',
+    },
+    tr: {
+        lang: 'турецкий',
+        native: 'турецкоязычный',
+        country: 'Турция',
+        locale: 'tr-TR',
+        privacyPolicy: 'Gizlilik Politikası',
+        aboutUs: 'Hakkımızda',
+        legalInfo: 'Yasal Bilgiler',
+        cookiePolicy: 'Çerez Politikası',
     }
 };
 

@@ -79,11 +79,6 @@
       "name": "LIVETV-CATEGORIES",
       "version": "1.0.0",
       "order": 15
-    },
-    "igaming": {
-      "name": "IGAMING",
-      "version": "1.0.0",
-      "order": 2
     }
   },
   "updated": "2026-05-29"

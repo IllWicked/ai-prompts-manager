@@ -8,78 +8,83 @@
     "bet-addcl": {
       "name": "BET-ADDCL",
       "version": "1.0.10",
-      "order": 2
+      "order": 3
     },
     "gamble-mirror-nogeo": {
       "name": "GAMBLE-MIRROR-NOGEO",
       "version": "1.0.1",
-      "order": 3
+      "order": 4
     },
     "gamble-mirror": {
       "name": "GAMBLE-MIRROR",
       "version": "1.0.1",
-      "order": 4
+      "order": 5
     },
     "test-pillar-skills": {
       "name": "TEST-PILLAR-SKILLS",
       "version": "1.0.14",
-      "order": 10
+      "order": 11
     },
     "bet-wm2026": {
       "name": "BET-WM2026",
       "version": "1.0.5",
-      "order": 7
+      "order": 8
     },
     "gamble-mirror-packs": {
       "name": "GAMBLE-MIRROR-PACKS",
       "version": "1.0.1",
-      "order": 5
+      "order": 6
     },
     "bet-wm2026-nolinks": {
       "name": "BET-WM2026-NOLINKS",
       "version": "1.0.3",
-      "order": 8
+      "order": 9
     },
     "ausslot-renewal": {
       "name": "AUSSLOT-RENEWAL",
       "version": "1.0.4",
-      "order": 6
+      "order": 7
     },
     "gamble-brand-review": {
       "name": "GAMBLE-BRAND REVIEW",
       "version": "1.0.0",
-      "order": 9
+      "order": 10
     },
     "gamble-pillar-main": {
       "name": "GAMBLE-PILLAR-MAIN",
       "version": "1.0.3",
-      "order": 15
+      "order": 16
     },
     "bet-pillar-main": {
       "name": "BET-PILLAR-MAIN",
       "version": "1.0.3",
-      "order": 16
+      "order": 17
     },
     "gamble-mini-fill": {
       "name": "GAMBLE-MINI-FILL",
       "version": "1.0.0",
-      "order": 11
+      "order": 12
     },
     "gamble-mini-generation": {
       "name": "GAMBLE-MINI-GENERATION",
       "version": "1.0.0",
-      "order": 12
+      "order": 13
     },
     "gamble-mini-research": {
       "name": "GAMBLE-MINI-RESEARCH",
       "version": "1.0.1",
-      "order": 13
+      "order": 14
     },
     "livetv-categories": {
       "name": "LIVETV-CATEGORIES",
       "version": "1.0.0",
-      "order": 14
+      "order": 15
+    },
+    "igaming": {
+      "name": "IGAMING",
+      "version": "1.0.0",
+      "order": 2
     }
   },
-  "updated": "2026-05-26"
+  "updated": "2026-05-29"
 }

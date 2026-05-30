@@ -82,9 +82,9 @@
     },
     "nonregservices": {
       "name": "NONREGSERVICES",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "order": 17
     }
   },
-  "updated": "2026-05-29"
+  "updated": "2026-05-30"
 }

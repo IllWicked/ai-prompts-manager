@@ -16,7 +16,7 @@ use tauri::{
 use ai_prompts_manager::{
     utils, 
     webview, 
-    commands::{app, claude, attachments, downloads, logs, toolbar, storage, scraper},
+    commands::{app, claude, attachments, downloads, logs, toolbar, storage, scraper, auth},
 };
 
 fn main() {
@@ -32,6 +32,8 @@ fn main() {
             app::open_app_data_dir,
             app::set_window_background,
             app::get_window_width,
+            auth::get_edit_mode_password_status,
+            auth::verify_edit_mode_password,
             
             // Claude commands
             claude::init_claude_webviews,

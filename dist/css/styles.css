@@ -210,6 +210,7 @@ button:active,
 input[type="text"],
 input[type="number"],
 input[type="search"],
+input[type="password"],
 textarea,
 .workflow-node-body,
 [contenteditable="true"] {
@@ -1527,12 +1528,14 @@ body {
 .dark .modal-content span {
     color: var(--text-secondary);
 }
-.dark .modal-content input[type="text"] {
+.dark .modal-content input[type="text"],
+.dark .modal-content input[type="password"] {
     background-color: var(--bg-tertiary);
     border-color: var(--border-light);
     color: var(--text-primary);
 }
-.dark .modal-content input[type="text"]::placeholder {
+.dark .modal-content input[type="text"]::placeholder,
+.dark .modal-content input[type="password"]::placeholder {
     color: var(--text-muted);
 }
 .dark .modal-content input[type="checkbox"] {

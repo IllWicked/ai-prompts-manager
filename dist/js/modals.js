@@ -50,10 +50,20 @@ const hideResetModal = () => hideModal('reset-modal');
 
 // --- МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ РЕЖИМА РЕДАКТИРОВАНИЯ ---
 
-function showEditModeConfirmModal() {
+async function showEditModeConfirmModal() {
     closeAllModals();
     const modal = document.getElementById('edit-mode-confirm-modal');
-    if (modal) modal.classList.add('open');
+    if (!modal) return;
+
+    modal.classList.add('open');
+    if (typeof prepareEditModeAuthModal === 'function') {
+        await prepareEditModeAuthModal();
+    }
 }
 
-const hideEditModeConfirmModal = () => hideModal('edit-mode-confirm-modal');
+const hideEditModeConfirmModal = () => {
+    hideModal('edit-mode-confirm-modal');
+    if (typeof clearEditModeAuthModal === 'function') {
+        clearEditModeAuthModal();
+    }
+};

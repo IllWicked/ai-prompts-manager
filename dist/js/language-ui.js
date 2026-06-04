@@ -11,6 +11,54 @@
 // Текущая выбранная страна для мультигео языков
 let currentCountry = null;
 
+/**
+ * Вернуть валидную страну для языка.
+ * Для языков без мультигео страна всегда сбрасывается в null.
+ * Для мультигео языков невалидная или пустая страна заменяется первой доступной.
+ * @param {string} langCode
+ * @param {string|null} countryCode
+ * @returns {string|null}
+ */
+function getValidCountryForLanguage(langCode, countryCode = null) {
+    if (!langCode || !hasCountrySelection(langCode)) return null;
+
+    const countries = getCountriesForLanguage(langCode) || [];
+    if (countries.length === 0) return null;
+
+    if (countryCode && countries.some(country => country.code === countryCode)) {
+        return countryCode;
+    }
+
+    return countries[0].code;
+}
+
+/**
+ * Инициализировать язык и страну из localStorage до первого рендера workflow.
+ * Не трогает DOM, поэтому может вызываться до initLanguageSelector().
+ * @param {Object} [options]
+ * @param {boolean} [options.persistCorrections=false] - записывать исправленные значения в localStorage
+ * @returns {{ langCode: string, countryCode: string|null }}
+ */
+function initializeLanguageStateFromStorage(options = {}) {
+    const persistCorrections = options.persistCorrections === true;
+    const savedLang = localStorage.getItem(STORAGE_KEYS.LANGUAGE);
+    const savedCountry = localStorage.getItem(STORAGE_KEYS.CURRENT_COUNTRY);
+
+    const langCode = (savedLang && LANGUAGES[savedLang]) ? savedLang : 'en';
+    const countryCode = getValidCountryForLanguage(langCode, savedCountry);
+
+    currentLanguage = langCode;
+    currentCountry = countryCode;
+    window.currentCountry = currentCountry;
+
+    if (persistCorrections || savedLang !== langCode || savedCountry !== (countryCode || '')) {
+        localStorage.setItem(STORAGE_KEYS.LANGUAGE, langCode);
+        localStorage.setItem(STORAGE_KEYS.CURRENT_COUNTRY, countryCode || '');
+    }
+
+    return { langCode, countryCode };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // ПОЛУЧЕНИЕ АКТИВНЫХ ДАННЫХ ЯЗЫКА
 // ═══════════════════════════════════════════════════════════════════════════
@@ -303,6 +351,7 @@ function initLanguageSelector() {
         'is': 'IS Исландский',
         'it': 'IT Итальянский',
         'lb': 'LB Люксембургский',
+        'lt': 'LT Литовский',
         'lv': 'LV Латышский',
         'nl': 'NL Голландский',
         'no': 'NO Норвежский',
@@ -409,17 +458,18 @@ function initLanguageSelector() {
     // Функция применения языка со страной (маркерная система)
     // Маркеры в данных не меняются — меняется только их отображение
     function applyLanguageWithCountry(langCode, countryCode) {
+        if (!LANGUAGES[langCode]) langCode = 'en';
         currentLanguage = langCode;
-        currentCountry = countryCode;
-        window.currentCountry = countryCode;
+        currentCountry = getValidCountryForLanguage(langCode, countryCode);
+        window.currentCountry = currentCountry;
         const newData = getActiveLanguageData();
         
-        updateSelectedUI(langCode, countryCode);
+        updateSelectedUI(langCode, currentCountry);
         localStorage.setItem(STORAGE_KEYS.LANGUAGE, langCode);
-        localStorage.setItem(STORAGE_KEYS.CURRENT_COUNTRY, countryCode || '');
+        localStorage.setItem(STORAGE_KEYS.CURRENT_COUNTRY, currentCountry || '');
         
         // Сохраняем язык в данные текущей вкладки
-        saveLanguageToTab(langCode, countryCode);
+        saveLanguageToTab(langCode, currentCountry);
         
         // Перерендерить — маркеры раскроются в новые значения
         renderWorkflow();
@@ -429,8 +479,9 @@ function initLanguageSelector() {
     
     // Функция применения языка (для языков без мультигео)
     function applyLanguage(langCode) {
+        if (!LANGUAGES[langCode]) langCode = 'en';
         currentLanguage = langCode;
-        currentCountry = hasCountrySelection(langCode) ? getCountriesForLanguage(langCode)[0].code : null;
+        currentCountry = getValidCountryForLanguage(langCode);
         window.currentCountry = currentCountry;
         const newData = getActiveLanguageData();
         
@@ -447,23 +498,10 @@ function initLanguageSelector() {
         showLanguageToast(newData.lang, currentCountry ? newData.country : null);
     }
 
-    // Инициализация языка
-    const savedLang = localStorage.getItem(STORAGE_KEYS.LANGUAGE);
-    const savedCountry = localStorage.getItem(STORAGE_KEYS.CURRENT_COUNTRY);
-    
-    if (savedLang && LANGUAGES[savedLang]) {
-        currentLanguage = savedLang;
-        currentCountry = savedCountry || (hasCountrySelection(savedLang) ? getCountriesForLanguage(savedLang)[0].code : null);
-        window.currentCountry = currentCountry;
-        updateSelectedUI(savedLang, currentCountry);
-    } else {
-        currentLanguage = 'en';
-        currentCountry = hasCountrySelection('en') ? getCountriesForLanguage('en')[0].code : null;
-        window.currentCountry = currentCountry;
-        updateSelectedUI('en', currentCountry);
-        localStorage.setItem(STORAGE_KEYS.LANGUAGE, 'en');
-        localStorage.setItem(STORAGE_KEYS.CURRENT_COUNTRY, currentCountry || '');
-    }
+    // Инициализация языка: состояние уже подготовлено до первого renderWorkflow(),
+    // здесь синхронизируем localStorage и UI селектора.
+    const { langCode: initializedLang, countryCode: initializedCountry } = initializeLanguageStateFromStorage({ persistCorrections: true });
+    updateSelectedUI(initializedLang, initializedCountry);
     
     // Обработчик клика на кнопку
     btn.addEventListener('click', (e) => {
@@ -541,7 +579,12 @@ function initLanguageSelector() {
             const tab = tabs[currentTab];
             if (tab && tab.language && LANGUAGES[tab.language]) {
                 const langCode = tab.language;
-                const countryCode = tab.country || (hasCountrySelection(langCode) ? getCountriesForLanguage(langCode)[0].code : null);
+                const countryCode = getValidCountryForLanguage(langCode, tab.country);
+
+                if ((tab.country || null) !== countryCode) {
+                    tab.country = countryCode || null;
+                    saveAllTabs(tabs);
+                }
                 
                 // Обновляем только если язык отличается
                 if (langCode !== currentLanguage || countryCode !== currentCountry) {
@@ -575,6 +618,8 @@ function initLanguageSelector() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 window.currentCountry = currentCountry;
+window.getValidCountryForLanguage = getValidCountryForLanguage;
+window.initializeLanguageStateFromStorage = initializeLanguageStateFromStorage;
 window.getActiveLanguageData = getActiveLanguageData;
 window.insertLanguageFormAtCursor = insertLanguageFormAtCursor;
 window.showLanguageFormMenu = showLanguageFormMenu;

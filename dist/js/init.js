@@ -1189,22 +1189,45 @@ function initSettingsHandlers() {
  * Обработчики режима редактирования
  */
 function initEditModeHandlers() {
+    function disableEditAccess(showMessage = true) {
+        const wasEnabled = isAdminMode || isEditMode;
+        isAdminMode = false;
+        isEditMode = false;
+        toggleEditToolbar(false);
+
+        const settings = getSettings();
+        settings.adminMode = false;
+        saveSettings(settings);
+
+        if (workflowMode) {
+            renderWorkflow();
+        } else {
+            loadPrompts();
+        }
+
+        updateEditModeToggle();
+        if (typeof updateTabSelectorUI === 'function') updateTabSelectorUI();
+        if (showMessage && wasEnabled) showToast('Режим редактирования выключен');
+    }
+
+    function enableEditAccessForSession() {
+        isAdminMode = true;
+
+        // adminMode больше не сохраняется между запусками: доступ активен только
+        // до закрытия приложения и всегда требует пароль при новом запуске.
+        const settings = getSettings();
+        settings.adminMode = false;
+        saveSettings(settings);
+
+        updateEditModeToggle();
+        if (typeof updateTabSelectorUI === 'function') updateTabSelectorUI();
+        hideEditModeConfirmModal();
+        showToast('Режим редактирования открыт до закрытия приложения');
+    }
+
     document.getElementById('edit-mode-off')?.addEventListener('click', () => {
-        if (isAdminMode) {
-            isAdminMode = false;
-            const settings = getSettings();
-            settings.adminMode = false;
-            saveSettings(settings);
-            if (isEditMode) {
-                isEditMode = false;
-                if (workflowMode) {
-                    renderWorkflow();
-                } else {
-                    loadPrompts();
-                }
-            }
-            updateEditModeToggle();
-            showToast('Режим редактирования выключен');
+        if (isAdminMode || isEditMode) {
+            disableEditAccess(true);
         }
     });
     
@@ -1214,14 +1237,22 @@ function initEditModeHandlers() {
         }
     });
     
-    document.getElementById('confirm-edit-mode-btn')?.addEventListener('click', () => {
-        isAdminMode = true;
-        const settings = getSettings();
-        settings.adminMode = true;
-        saveSettings(settings);
-        updateEditModeToggle();
-        hideEditModeConfirmModal();
-        showToast('Режим редактирования включён');
+    async function requestEditModeEnable() {
+        if (typeof submitEditModeAuthModal !== 'function') {
+            return;
+        }
+
+        const ok = await submitEditModeAuthModal();
+        if (ok) enableEditAccessForSession();
+    }
+
+    document.getElementById('confirm-edit-mode-btn')?.addEventListener('click', requestEditModeEnable);
+
+    document.getElementById('edit-mode-password-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            requestEditModeEnable();
+        }
     });
 }
 
@@ -1600,7 +1631,7 @@ function initApp() {
         initHybridStorage().catch(e => console.warn('[Storage] Hybrid init failed:', e));
     }
     
-    // 3. Восстанавливаем режим редактирования из настроек
+    // 3. Принудительно выключаем режим редактирования на старте
     if (typeof initAdminMode === 'function') {
         initAdminMode();
     }
@@ -1676,11 +1707,14 @@ function initApp() {
             }
         }
         
+        if (typeof initializeLanguageStateFromStorage === 'function') {
+            initializeLanguageStateFromStorage({ persistCorrections: true });
+        }
         loadPrompts();
         initTabSelector();
         initLanguageSelector();
         
-        // Восстанавливаем adminMode после возможного сброса
+        // Повторно гарантируем, что adminMode не восстановится из старых настроек
         if (typeof initAdminMode === 'function') {
             initAdminMode();
             if (typeof updateEditModeToggle === 'function') updateEditModeToggle();

@@ -357,6 +357,16 @@ const LANGUAGES = {
         legalInfo: 'Rechtlech Informatioun',
         cookiePolicy: 'Cookie-Richtlinn',
     },
+    lt: {
+        lang: 'литовский',
+        native: 'литовскоязычный',
+        country: 'Литва',
+        locale: 'lt-LT',
+        privacyPolicy: 'Privatumo politika',
+        aboutUs: 'Apie mus',
+        legalInfo: 'Teisinė informacija',
+        cookiePolicy: 'Slapukų politika',
+    },
     lv: {
         lang: 'латышский',
         native: 'латышскоязычный',

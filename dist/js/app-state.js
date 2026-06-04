@@ -245,13 +245,27 @@ Object.defineProperty(window, 'updateScheduled', {
 window.isTextSelecting = false;
 
 /**
- * Инициализация isAdminMode из настроек
- * Вызывается после загрузки storage.js
+ * Инициализация защищённого режима редактирования.
+ *
+ * Важно: режим редактирования теперь является состоянием только текущей сессии.
+ * При каждом запуске приложения он принудительно выключается, даже если старая
+ * версия приложения успела сохранить adminMode=true в localStorage.
  */
 function initAdminMode() {
-    const settings = typeof getSettings === 'function' ? getSettings() : {};
-    const adminMode = settings.adminMode || false;
-    window.isAdminMode = adminMode; // defineProperty синхронизирует AppState.app.isAdminMode
+    window.isAdminMode = false; // defineProperty синхронизирует AppState.app.isAdminMode
+    window.isEditMode = false;
+
+    if (typeof getSettings === 'function' && typeof saveSettings === 'function') {
+        try {
+            const settings = getSettings();
+            if (settings.adminMode !== false) {
+                settings.adminMode = false;
+                saveSettings(settings);
+            }
+        } catch (e) {
+            // Не ломаем запуск приложения из-за повреждённых настроек.
+        }
+    }
 }
 
 // Экспорт для использования в других модулях

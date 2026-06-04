@@ -18,6 +18,7 @@ pub mod claude;
 pub mod attachments;
 pub mod storage;
 pub mod scraper;
+pub mod auth;
 
 // Реэкспорт команд для удобной регистрации в main.rs
 
@@ -103,4 +104,10 @@ pub use scraper::{
     create_scraper_webview,
     destroy_scraper_webview,
     scrape_google_serp,
+};
+
+// Auth commands
+pub use auth::{
+    get_edit_mode_password_status,
+    verify_edit_mode_password,
 };

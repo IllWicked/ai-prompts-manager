@@ -105,6 +105,129 @@ function updateEditModeToggle() {
     }
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ПАРОЛЬ РЕЖИМА РЕДАКТИРОВАНИЯ
+// ═══════════════════════════════════════════════════════════════════════════
+
+let editModePasswordEmbedded = true;
+let editModeAuthBackendAvailable = true;
+
+function getEditModeAuthInvoke() {
+    return window.__TAURI__?.core?.invoke || null;
+}
+
+function getEditModeAuthErrorElement() {
+    return document.getElementById('edit-mode-password-error');
+}
+
+function setEditModeAuthError(message) {
+    const errorEl = getEditModeAuthErrorElement();
+    if (!errorEl) return;
+
+    if (message) {
+        errorEl.textContent = message;
+        errorEl.classList.remove('hidden');
+    } else {
+        errorEl.textContent = '';
+        errorEl.classList.add('hidden');
+    }
+}
+
+function clearEditModeAuthModal() {
+    const input = document.getElementById('edit-mode-password-input');
+    if (input) input.value = '';
+    setEditModeAuthError('');
+}
+
+async function getEditModePasswordEmbedded() {
+    const invoke = getEditModeAuthInvoke();
+    if (!invoke) {
+        editModeAuthBackendAvailable = false;
+        return false;
+    }
+
+    editModeAuthBackendAvailable = true;
+    return await invoke('get_edit_mode_password_status');
+}
+
+function setEditModeAuthLoading(isLoading) {
+    const input = document.getElementById('edit-mode-password-input');
+    const confirmBtn = document.getElementById('confirm-edit-mode-btn');
+    const cancelBtn = document.getElementById('cancel-edit-mode-btn');
+    const confirmLabel = document.getElementById('confirm-edit-mode-label');
+    const disabled = !!isLoading || !editModePasswordEmbedded || !editModeAuthBackendAvailable;
+
+    if (input) input.disabled = disabled;
+    if (confirmBtn) confirmBtn.disabled = disabled;
+    if (cancelBtn) cancelBtn.disabled = !!isLoading;
+    if (confirmLabel) confirmLabel.textContent = isLoading ? 'Проверка…' : 'Включить';
+}
+
+async function prepareEditModeAuthModal() {
+    clearEditModeAuthModal();
+    setEditModeAuthLoading(true);
+
+    try {
+        editModePasswordEmbedded = await getEditModePasswordEmbedded();
+    } catch (e) {
+        editModePasswordEmbedded = false;
+        editModeAuthBackendAvailable = false;
+    }
+
+    const titleEl = document.getElementById('edit-mode-auth-title');
+    if (titleEl) titleEl.textContent = 'Включить режим редактирования';
+
+    setEditModeAuthError('');
+    setEditModeAuthLoading(false);
+
+    if (editModeAuthBackendAvailable && editModePasswordEmbedded) {
+        setTimeout(() => {
+            document.getElementById('edit-mode-password-input')?.focus();
+        }, 50);
+    }
+}
+
+async function submitEditModeAuthModal() {
+    const invoke = getEditModeAuthInvoke();
+    const passwordInput = document.getElementById('edit-mode-password-input');
+
+    if (!invoke || !editModePasswordEmbedded) {
+        passwordInput?.focus();
+        return false;
+    }
+
+    const password = passwordInput?.value || '';
+    if (!password) {
+        passwordInput?.focus();
+        return false;
+    }
+
+    setEditModeAuthError('');
+    setEditModeAuthLoading(true);
+    let shouldRefocusInput = false;
+
+    try {
+        const ok = await invoke('verify_edit_mode_password', { password });
+        if (!ok) {
+            if (passwordInput) passwordInput.value = '';
+            shouldRefocusInput = true;
+            return false;
+        }
+
+        return true;
+    } catch (e) {
+        if (passwordInput) passwordInput.value = '';
+        shouldRefocusInput = true;
+        return false;
+    } finally {
+        setEditModeAuthLoading(false);
+        if (shouldRefocusInput) {
+            setTimeout(() => passwordInput?.focus(), 0);
+        }
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // МОДАЛЬНОЕ ОКНО ПОДТВЕРЖДЕНИЯ ИМПОРТА
 // ═══════════════════════════════════════════════════════════════════════════
@@ -180,6 +303,9 @@ window.toggleEditToolbar = toggleEditToolbar;
 window.insertTextIntoTextarea = insertTextIntoTextarea;
 window.insertTextAtCursor = insertTextAtCursor;
 window.updateEditModeToggle = updateEditModeToggle;
+window.prepareEditModeAuthModal = prepareEditModeAuthModal;
+window.submitEditModeAuthModal = submitEditModeAuthModal;
+window.clearEditModeAuthModal = clearEditModeAuthModal;
 window.showImportConfirm = showImportConfirm;
 window.hideImportConfirm = hideImportConfirm;
 window.selectChatForNode = selectChatForNode;

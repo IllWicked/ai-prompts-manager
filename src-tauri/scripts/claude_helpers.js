@@ -172,15 +172,8 @@ function __logSelectorFallback__(path) {
     }
     __fallbackLogTimestamps__[path] = now;
     
-    if (window._inv) {
-        window._inv('write_diagnostic', {
-            eventType: 'selector_heuristic_fallback',
-            details: JSON.stringify({
-                path: path,
-                tab: window._t || 0
-            })
-        }).catch(() => {});
-    }
+    // Диагностика: emit из remote origin заблокирован Tauri 2 ACL,
+    // поэтому fallback логируется только в console (dev mode)
 }
 
 /**
@@ -220,17 +213,8 @@ function runSelectorHealthCheck() {
     
     // Пишем в лог, только если что-то сломано
     if (broken.length > 0 || heuristicWorking.length > 0) {
-        if (window._inv) {
-            window._inv('write_diagnostic', {
-                eventType: 'selector_health_check',
-                details: JSON.stringify({
-                    broken: broken,
-                    heuristicOnly: heuristicWorking,
-                    total: critical.length,
-                    tab: window._t || 0
-                })
-            }).catch(() => {});
-        }
+        // Health-check: emit из remote origin заблокирован Tauri 2 ACL,
+        // результаты доступны через console (dev mode)
     }
 }
 
@@ -385,11 +369,9 @@ function initClaudeUI() {
             
             if (isGenerating !== lastState) {
                 lastState = isGenerating;
-                // Прямой invoke → AtomicBool в Rust (надёжный канал, _inv проверен)
-                if (window._inv) {
-                    try { window._inv('set_generation_state', { tab: window._t, generating: isGenerating }); } catch(e) {}
-                }
             }
+            // Флаг на window — Main WebView читает через CDP (eval_in_claude_with_result)
+            window._apmGen = isGenerating;
         }
         
         if (window._g1) clearInterval(window._g1);
@@ -449,9 +431,8 @@ function setupGlobalClickListener() {
     window._c0 = true;
     
     document.addEventListener('click', () => {
-        if (window._inv) {
-            window._inv('hide_downloads').catch(() => {});
-        }
+        // Флаг для Main WebView (CDP polling)
+        window._apmClick = Date.now();
     }, { capture: true });
 }
 
@@ -479,13 +460,8 @@ function setupUrlChangeDetection() {
             const newBase = location.href.split('#')[0];
             if (oldBase === newBase) return;
             
-            // Уведомляем Tauri
-            if (window._inv) {
-                window._inv('notify_url_change', { 
-                    tab: window._t || 1,
-                    url: location.href 
-                }).catch(() => {});
-            }
+            // Сохраняем для CDP polling из Main WebView
+            window._apmUrl = location.href;
         }
     };
     

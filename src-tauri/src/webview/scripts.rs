@@ -65,10 +65,14 @@ pub fn get_claude_init_script(tab: u8) -> String {
         
         window._i0 = true;
         
-        // Кэшируем invoke/listen/emit до очистки __TAURI__
-        const _inv = window.__TAURI__?.core?.invoke?.bind(window.__TAURI__.core);
-        const _listen = window.__TAURI__?.event?.listen?.bind(window.__TAURI__.event);
-        const _emit = window.__TAURI__?.event?.emit?.bind(window.__TAURI__.event);
+        // Захватываем __TAURI_INTERNALS__ в замыкание ДО очистки.
+        // Прямой bind НЕ работает: внутри invoke() стоит
+        // window.__TAURI_INTERNALS__.invoke() — после delete ломается.
+        // Замыкание держит ссылку на объект, delete убирает только
+        // свойство с window, сам объект живёт пока есть ссылка.
+        var _ti = window.__TAURI_INTERNALS__;
+        var _inv = _ti ? function(cmd, args) {{ return _ti.invoke(cmd, args || {{}}); }} : null;
+        var _emit = _ti ? function(evt, payload) {{ return _ti.invoke('plugin:event|emit', {{ event: evt, payload: payload }}); }} : null;
         
         // Компактные глобалы вместо __CLAUDE_TAB__, __SEL__
         window._t = {tab};
@@ -145,12 +149,18 @@ pub fn get_generation_monitor_script() -> String {
                 window._s = {selectors};
             }}
             
-            if (!window._inv && window.__TAURI__?.core?.invoke) {{
-                window._inv = window.__TAURI__.core.invoke.bind(window.__TAURI__.core);
+            if (!window._inv) {{
+                var _ti = window.__TAURI_INTERNALS__;
+                if (_ti) {{
+                    window._inv = function(cmd, args) {{ return _ti.invoke(cmd, args || {{}}); }};
+                }}
             }}
             
-            if (!window._emit && window.__TAURI__?.event?.emit) {{
-                window._emit = window.__TAURI__.event.emit.bind(window.__TAURI__.event);
+            if (!window._emit) {{
+                var _ti2 = window.__TAURI_INTERNALS__;
+                if (_ti2) {{
+                    window._emit = function(evt, payload) {{ return _ti2.invoke('plugin:event|emit', {{ event: evt, payload: payload }}); }};
+                }}
             }}
             
             {helpers}

@@ -3,6 +3,7 @@
   "identifier": "default",
   "description": "Default capabilities",
   "windows": ["main"],
+  "webviews": ["ui", "claude_1", "claude_2", "claude_3", "toolbar", "downloads", "scraper"],
   "permissions": [
     "core:default",
     "core:app:default",

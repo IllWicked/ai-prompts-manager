@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "identifier": "remote-claude",
+  "description": "IPC access for Claude.ai webviews — allows invoke and events from remote origin",
+  "remote": {
+    "urls": ["https://claude.ai", "https://claude.ai/", "https://claude.ai/*", "https://*.claude.ai", "https://*.claude.ai/", "https://*.claude.ai/*"]
+  },
+  "permissions": [
+    "core:default",
+    "core:event:default"
+  ]
+}

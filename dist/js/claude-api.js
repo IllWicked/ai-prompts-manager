@@ -1028,7 +1028,26 @@ async function checkAllGenerationStatus() {
     let changed = false;
     for (const tab of [1, 2, 3]) {
         try {
-            const isGenerating = await window.__TAURI__.core.invoke('check_generation_status', { tab });
+            // Читаем window._apmGen и _apmUrl из Claude WebView через один CDP вызов
+            // (Claude WV не может invoke/emit в Rust из remote origin,
+            //  поэтому ставит флаги на window, а мы читаем через CDP)
+            let isGenerating = false;
+            let cdpUrl = null;
+            let cdpClick = 0;
+            try {
+                const result = await cdpEval(tab, '({g:!!window._apmGen,u:window._apmUrl||"",c:window._apmClick||0})', {
+                    timeoutType: 'fast', maxRetries: 0, silent: true
+                });
+                if (result && result !== 'null') {
+                    const data = typeof result === 'string' ? JSON.parse(result) : result;
+                    isGenerating = !!data.g;
+                    cdpUrl = data.u || null;
+                    cdpClick = data.c || 0;
+                }
+            } catch (_) {
+                // CDP failed — tab may not be loaded yet
+            }
+            
             const wasGenerating = generatingTabs[tab] || false;
             
             if (isGenerating && !wasGenerating) {
@@ -1040,10 +1059,25 @@ async function checkAllGenerationStatus() {
                 showToast(`Чат ${tab}: Claude закончил`, 3000);
             }
             
-            // Обновляем URL таба
-            const url = await window.__TAURI__.core.invoke('get_tab_url', { tab });
+            // Обновляем URL таба (CDP URL ловит SPA-навигацию, get_tab_url — полные загрузки)
+            const url = cdpUrl || await window.__TAURI__.core.invoke('get_tab_url', { tab });
             if (url && url !== 'about:blank' && url.startsWith('https://claude.ai')) {
+                const prevUrl = tabUrls[tab];
                 tabUrls[tab] = url;
+                
+                // SPA URL changed — валидируем для project binding
+                if (prevUrl && prevUrl !== url && typeof ProjectFSM !== 'undefined') {
+                    ProjectFSM.validateUrl(tab, url);
+                    if (tab === activeClaudeTab && typeof checkForContinueProject === 'function') {
+                        checkForContinueProject();
+                    }
+                }
+            }
+            
+            // Hide downloads при клике в Claude WebView
+            if (cdpClick && (!window._lastApmClick || cdpClick > window._lastApmClick)) {
+                window._lastApmClick = cdpClick;
+                try { await window.__TAURI__.core.invoke('hide_downloads'); } catch(_) {}
             }
         } catch (e) {
             // Ignore

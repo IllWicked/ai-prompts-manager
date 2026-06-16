@@ -52,13 +52,13 @@
     },
     "gamble-pillar-main": {
       "name": "GAMBLE-PILLAR-MAIN",
-      "version": "1.0.3",
-      "order": 15
+      "version": "1.0.4",
+      "order": 16
     },
     "bet-pillar-main": {
       "name": "BET-PILLAR-MAIN",
-      "version": "1.0.3",
-      "order": 16
+      "version": "1.0.4",
+      "order": 17
     },
     "gamble-mini-fill": {
       "name": "GAMBLE-MINI-FILL",
@@ -83,8 +83,8 @@
     "nonregservices": {
       "name": "NONREGSERVICES",
       "version": "1.0.5",
-      "order": 17
+      "order": 15
     }
   },
-  "updated": "2026-06-15"
+  "updated": "2026-06-16"
 }
